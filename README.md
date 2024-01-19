@@ -8,5 +8,4 @@ To register your interest and receive the agenda and zoom links, please sign up 
 
 The live part of the workshop will run from Sun Feb 11th 20:00h/8pm (GMT) to Tues Feb 13th 21:00h/9pm (GMT).
 
-To do:
-+ Link to Discussions.
+[Discussions](https://github.com/NASA-GISS/freshwater-forcing-workshop/discussions) will take place within this GitHub repository
