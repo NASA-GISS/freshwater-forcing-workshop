@@ -105,10 +105,11 @@ snow --> ocean : (3) runoff
 snow <--> ice  : (2) Firn transfer
 ice --> ocean : (5) Iceberg flux
 ice --> ocean : (6) Basal melt
+ice --> ocean : (7) Surface runoff
 
 rectangle legend [
 (1) + (2) + (3) = 0
-(2) + (4) + (5) + (6) = 0
+(2) + (4) + (5) + (6) + (7) = 0
 ]
 @enduml
 #+END_SRC
@@ -138,10 +139,11 @@ snow --> ocean : (C) runoff
 snow <--> ice  : (D) Firn transfer
 ice --> ocean : (F) Iceberg flux
 ice --> ocean : (G) Basal melt
+ice --> ocean : (H) Surface runoff
 
 rectangle legend [
 (A) + [B] + (C) + (D) = 0
-(D) + (E) + (F) + (G) = 0
+(D) + (E) + (F) + (G) + (H) = 0
 ]
 @enduml
 #+END_SRC
