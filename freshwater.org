@@ -102,7 +102,7 @@ stack ocean
 
 atm <--> snow : (1) precip & \n sublimation
 snow --> ocean : (3) runoff
-snow -- ice  : (2) Firn transfer
+snow <--> ice  : (2) Firn transfer
 ice --> ocean : (5) Iceberg flux
 ice --> ocean : (6) Basal melt
 
@@ -135,7 +135,7 @@ stack ocean
 
 atm <--> snow : (A) precip & \n sublimation
 snow --> ocean : (C) runoff
-snow -- ice  : (D) Firn transfer
+snow <--> ice  : (D) Firn transfer
 ice --> ocean : (F) Iceberg flux
 ice --> ocean : (G) Basal melt
 
