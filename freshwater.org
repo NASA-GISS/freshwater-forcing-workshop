@@ -21,6 +21,8 @@ If you want to make or suggest edits, there are several methods:
   + Copy-and-paste the source into the PlantUML editor at http://www.plantuml.com/plantuml/ and edit there as desired
   + Submit updated code (and figure?) as GitHub pull request
 
+We also uploaded the `.key` file and `.pptx` files as templates, in the `fig` folder.
+
 ** Uncoupled Type 2
 
 #+BEGIN_SRC plantuml :file fig/type_2_uncoupled.svg :exports results
