@@ -1,0 +1,151 @@
+* Table of contents                               :toc_2:noexport:
+- [[#diagrams-of-freshwater-reservoirs-and-fluxes-in-gcms][Diagrams of freshwater reservoirs and fluxes in GCMs]]
+  - [[#introduction][Introduction]]
+  - [[#uncoupled-type-2][Uncoupled Type 2]]
+  - [[#uncoupled-type-1][Uncoupled Type 1]]
+  - [[#coupled-type-2][Coupled Type 2]]
+  - [[#coupled-type-1][Coupled Type 1]]
+
+* Diagrams of freshwater reservoirs and fluxes in GCMs
+
+** Introduction
+
+The figures below are a [[https://plantuml.com/][PlantUML]] SVG representation of the [[https://github.com/NASA-GISS/freshwater-forcing-workshop/files/14337476/FW-workshop.pdf][PDF]] provide at https://github.com/NASA-GISS/freshwater-forcing-workshop/discussions/5#discussioncomment-8548202
+
+If you want to make or suggest edits, there are several methods:
++ Open a GitHub issue here and describe what changes you think should be made in written form.
++ Edit a graphic in your preferred drawing program - mark up and overwrite. Attached to a new issue and someone will incorporate suggested changes into the figures below
++ Edit the source code yourself.
+  + View this file in raw mode at https://raw.githubusercontent.com/NASA-GISS/freshwater-forcing-workshop/main/freshwater.org
+  + Install and run PlantUML locally and make edits, OR
+  + Copy-and-paste the source into the PlantUML editor at http://www.plantuml.com/plantuml/ and edit there as desired
+  + Submit updated code (and figure?) as GitHub pull request
+
+** Uncoupled Type 2
+
+#+BEGIN_SRC plantuml :file fig/type_2_uncoupled.svg :exports results
+@startuml
+Title: Type 2 Uncoupled
+
+cloud atm
+node snow
+node ice [
+fixed ice sheet
+]
+stack ocean
+
+atm <--> snow : (1) precip & \n sublimation
+snow --> ocean : (3) runoff
+snow -- ice 
+ice --> ocean : (2) mass gain\n(no ocean -> ice)
+
+rectangle legend [
+(1) + (2) + (3) = 0
+]
+
+note right of snow : Closed volume graphics\nare fixed volumes in models
+note right of ocean : Open-topped stacks\nare not fixed-volume
+
+
+@enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:fig/type_2_uncoupled.svg]]
+
+** Uncoupled Type 1
+
+#+BEGIN_SRC plantuml :file fig/type_1_uncoupled.svg :exports results
+@startuml
+Title: Type 1 Uncoupled
+
+cloud atm
+stack snow  [
+snow (D)
+]
+node ice [
+fixed ice sheet
+]
+stack ocean
+
+atm <--> snow : (A) precip & \nsublimation
+snow --> ocean : (C) runoff
+snow -- ice 
+ice --> ocean : (B) excess mass\nfrom ice\n(no ocean -> ice)
+
+note right of snow : Labels inside are reservoirs\nLabels on arrows are fluxes
+
+rectangle legend [
+(A) + (B) + (C) + (D) = 0
+]
+@enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:fig/type_1_uncoupled.svg]]
+
+
+** Coupled Type 2
+
+#+BEGIN_SRC plantuml :file fig/type_2_coupled.svg :exports results
+@startuml
+Title: Type 2 Coupled
+
+cloud atm
+node snow
+stack ice [
+ ice sheet (4)
+]
+stack ocean
+
+atm <--> snow : (1) precip & \n sublimation
+snow --> ocean : (3) runoff
+snow -- ice  : (2) Firn transfer
+ice --> ocean : (5) Iceberg flux
+ice --> ocean : (6) Basal melt
+
+rectangle legend [
+(1) + (2) + (3) = 0
+(2) + (4) + (5) + (6) = 0
+]
+@enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:fig/type_2_coupled.svg]]
+
+
+
+** Coupled Type 1
+
+#+BEGIN_SRC plantuml :file fig/type_1_coupled.svg :exports results
+@startuml
+Title: Type 2 Coupled
+
+cloud atm
+stack snow [
+Snow (B)
+]
+stack ice [
+ ice sheet (E)
+]
+stack ocean
+
+atm <--> snow : (A) precip & \n sublimation
+snow --> ocean : (C) runoff
+snow -- ice  : (D) Firn transfer
+ice --> ocean : (F) Iceberg flux
+ice --> ocean : (G) Basal melt
+
+rectangle legend [
+(A) + [B] + (C) + (D) = 0
+(D) + (E) + (F) + (G) = 0
+]
+@enduml
+#+END_SRC
+
+#+RESULTS:
+[[file:fig/type_1_coupled.svg]]
+
+
+
