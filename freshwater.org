@@ -122,7 +122,7 @@ rectangle legend [
 
 #+BEGIN_SRC plantuml :file fig/type_1_coupled.svg :exports results
 @startuml
-Title: Type 2 Coupled
+Title: Type 1 Coupled
 
 cloud atm
 stack snow [
@@ -140,7 +140,7 @@ ice --> ocean : (F) Iceberg flux
 ice --> ocean : (G) Basal melt
 
 rectangle legend [
-(A) + [B] + (C) + (D) = 0
+(A) + (B) + (C) + (D) = 0
 (D) + (E) + (F) + (G) = 0
 ]
 @enduml
