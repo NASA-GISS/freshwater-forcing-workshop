@@ -1,0 +1,480 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session icebergs
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+- [[#notes][Notes]]
+- [[#setup-grass-environment][Setup GRASS environment]]
+- [[#import-iceberg-db][Import iceberg DB]]
+- [[#metadata][Metadata]]
+  - [[#rignot-basin][Rignot basin]]
+  - [[#longitude][Longitude]]
+- [[#export][Export]]
+  - [[#raw-data-as-csv][Raw data as CSV]]
+    - [[#qc-size-increases-with-time][QC: Size increases with time?]]
+    - [[#visualize][Visualize]]
+  - [[#netcdf-rasters][NetCDF rasters]]
+    - [[#bin-into-lonlat-bins][Bin into lon,lat bins]]
+    - [[#convert-to-netcdf-w-xarray][Convert to NetCDF w/ Xarray]]
+
+* Introduction
+
++ Data from Budge (2018) http://doi.org/10.1109/jstars.2017.2784186 
++ Gridded iceberg position in 1° (lon,lat) bins by initial Rignot (IMBIE) basin
+
+All basins and icebergs. Color represents initial basin:
+
+[[./fig/raw.png]]
+
+* Notes
+
++ This is a first pass. May not be properly processed. Does not make use of "flags" field in CSV data.
++ The iceberg database contains iceberg size (sometimes, rarely), so we can maybe sometimes estimate melt rate between each observation. The current density maps only show iceberg density at each location.
++ WARNING :: Iceberg sizes increase for many icebergs. Needs quality check.
++ Only large icebergs are tracked. Many smaller bergs will melt nearer to shelf fronts. These, being small, should perhaps inject freshwater at the surface, and not be lumped with sub-shelf melt which injects freshwater at depth.
++ Total icebergs may be ~2x due to exclusion of small bergs
++ Date field is not used, etc.
+
+* Setup GRASS environment
+
+#+BEGIN_SRC bash :exports both :results verbatim
+rm -fR G_3031
+grass -c EPSG:3031 G_3031
+#+END_SRC
+
+* Import iceberg DB
+
+#+BEGIN_SRC bash :exports both :results verbatim
+g.mapset -c Budge_2018
+root=${DATADIR}/Budge_2018/stats_database_v7.1/
+csv=${root}/$(ls ${root}|head -n1) # debug
+for csv in ${root}/*; do
+  id=$(basename ${csv%.*}) # filename w/o remove extension
+  echo "Processing berg: ${id}"
+  cat ${csv} \
+    | tail -n +2 \
+    | awk -F',' '{print $6"|"$5"|"$1"|"$2"|"$3"|"$4"|"$7"|"$8"|"$9}' \
+    | m.proj -ie input=- \
+    | tr ' ' '|' \
+    | v.in.ascii -n input=- output=${id} x=3 y=4 columns="lon double precision, lat double precision, x double precision, y double precision, yyyydoy double, date_gap int, disp double, flags int, mask int, size double, vel_angle double"
+
+  # add iceberg name so we can merge all and still track unique bergs
+  v.db.addcolumn map=${id} columns="id varchar(32)"
+  db.execute sql="update ${id} set id = '${id}'"
+done
+
+# merge to one DB
+v.patch -e input=$(g.list type=vector separator=,) output=bergs
+v.db.select map=bergs | head
+#+END_SRC
+
+Set up a grid, and make it square, and save it
+
+#+BEGIN_SRC bash :exports both :results verbatim
+# Set up a grid (units: m)
+g.region vector=bergs res=10000 -pa
+
+eval $(g.region -pg)
+max=$(echo "${e} ${w} ${n} ${s}" | tr ' ' '\n'  | datamash absmax 1)
+g.region w=-${max} e=${max} s=-${max} n=${max} -pa
+g.region save=domain
+#+END_SRC
+
+Visualize
+
+#+BEGIN_SRC bash :exports both :results verbatim
+d.mon wx0
+d.vect bergs
+#+END_SRC
+
+* Metadata
+
+** Rignot basin
+
+Import
+
+#+BEGIN_SRC bash :exports both :results verbatim
+g.mapset -c Rignot_basins
+v.import input=${DATADIR}/IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp output=basins
+
+# remove islands
+v.edit map=basins where="cat == 1" tool=delete
+#+END_SRC
+
+Assign Rignot basin to start of each iceberg trajectory
+
+#+BEGIN_SRC bash :exports both :results verbatim
+g.mapset Budge_2018
+
+v.db.addcolumn map=bergs columns="basin_cat int"
+v.distance from=bergs to=basins@Rignot_basins upload=cat column=basin_cat
+
+v.db.addcolumn map=bergs columns="basin_name VARCHAR(32)"
+v.distance from=bergs to=basins@Rignot_basins upload=to_attr to_column=Subregion column=basin_name
+
+# v.db.select map=bergs | head
+
+berg=a63 # debug
+for berg in $(db.select -c sql='select distinct id from bergs'); do
+  echo "Processing berg: ${berg}"
+  basin_cat0=$(db.select -c sql="select basin_cat from bergs where id == '${berg}'" | head -n1)
+  db.execute sql="update bergs set basin_cat = ${basin_cat0} where id == '${berg}'"
+
+  basin_name0=$(db.select -c sql="select basin_name from bergs where id == '${berg}'" | head -n1)
+  db.execute sql="update bergs set basin_name = '${basin_name0}' where id == '${berg}'"
+done
+#+END_SRC
+
+** Longitude
+
+Track initial longitude with all subsequent locations
+
+#+BEGIN_SRC bash :exports both :results verbatim
+g.mapset Budge_2018
+
+v.db.addcolumn map=bergs columns="lon0 double"
+berg=a63 # debug
+for berg in $(db.select -c sql='select distinct id from bergs'); do
+  echo "Processing berg: ${berg}"
+  lon0=$(db.select -c sql="select lon from bergs where id == '${berg}'" | head -n1)
+  db.execute sql="update bergs set lon0 = ${lon0} where id == '${berg}'"
+done
+#+END_SRC
+
+* Export
+
+** Raw data as CSV
+
+#+BEGIN_SRC bash :exports both :results verbatim
+mkdir -p dat
+v.out.ascii -c input=bergs output=./dat/bergs.csv precision=3 columns=lon,lat,yyyydoy,id,size,basin_cat,basin_name,lon0 sep=,
+#+END_SRC
+
+#+BEGIN_SRC bash :exports both :results table
+# head -n1 ./dat/bergs.csv
+# shuf -n 15 dat/bergs.csv # random sample
+head dat/bergs.csv # random sample
+echo "...,"
+tail dat/bergs.csv # random sample
+#+END_SRC
+
+#+RESULTS:
+|       east |       north |    cat |     lon |     lat |   yyyydoy | id    |     size | basin_cat | basin_name |   lon0 |
+| -998171.84 |  1128228.03 |      2 |   -41.5 |   -76.2 | 1991314.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |      3 |   -41.5 |   -76.2 | 1991315.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |      4 |   -41.5 |   -76.2 | 1991316.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |      5 |   -41.5 |   -76.2 | 1991317.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |      6 |   -41.5 |   -76.2 | 1991318.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |      7 |   -41.5 |   -76.2 | 1991319.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |      8 |   -41.5 |   -76.2 | 1991320.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |      9 |   -41.5 |   -76.2 | 1991321.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+| -998171.84 |  1128228.03 |     10 |   -41.5 |   -76.2 | 1991322.0 | a23a  |      0.0 |        14 | K-A        |  -41.5 |
+|        ... |             |        |         |         |           |       |          |           |            |        |
+| 2135662.31 | -1709764.51 | 291041 |  128.68 |   -65.2 | 2021003.0 | ukc33 |  9574.15 |        11 | Dp-E       | 163.64 |
+| 2131873.85 | -1707220.06 | 291042 | 128.688 |  -65.24 | 2021004.0 | ukc33 |   9653.5 |        11 | Dp-E       | 163.64 |
+|  2136909.6 | -1709661.75 | 291043 | 128.662 | -65.192 | 2021005.0 | ukc33 |  9732.86 |        11 | Dp-E       | 163.64 |
+|  2136909.6 | -1709661.75 | 291044 | 128.662 | -65.192 | 2021006.0 | ukc33 |  9812.22 |        11 | Dp-E       | 163.64 |
+| 2136579.77 | -1710437.82 | 291045 | 128.679 |  -65.19 | 2021007.0 | ukc33 |  9891.57 |        11 | Dp-E       | 163.64 |
+| 2136036.03 |  -1712389.6 | 291046 | 128.718 | -65.183 | 2021008.0 | ukc33 |  9970.93 |        11 | Dp-E       | 163.64 |
+| 2135428.58 | -1714781.99 | 291047 | 128.765 | -65.174 | 2021009.0 | ukc33 | 10050.28 |        11 | Dp-E       | 163.64 |
+| 2135324.25 | -1717090.24 | 291048 | 128.804 | -65.162 | 2021010.0 | ukc33 | 10129.64 |        11 | Dp-E       | 163.64 |
+| 2136085.07 | -1718684.48 | 291049 |  128.82 | -65.148 | 2021011.0 | ukc33 | 10208.99 |        11 | Dp-E       | 163.64 |
+|  2141333.1 | -1716145.01 | 291050 |  128.71 | -65.126 | 2021012.0 | ukc33 | 10288.35 |        11 | Dp-E       | 163.64 |
+
+*** QC: Size increases with time?
+
+#+BEGIN_SRC jupyter-python :exports both
+import pandas as pd
+df = pd.read_csv('./dat/bergs.csv')
+for berg in df['id'].unique()[0:10]: # ONLP CHECK SOME
+    b = df[df['id'] == berg].copy(deep=True)
+    if b['size'].diff().max() > 0:
+        print("Berg size increases: ", berg)
+    else:
+        print("Berg size decreases: ", berg)
+#+END_SRC
+
+#+RESULTS:
+: Berg size increases:  a23a
+: Berg size increases:  a56
+: Berg size increases:  a57
+: Berg size increases:  a57a
+: Berg size increases:  a57b
+: Berg size increases:  a61
+: Berg size increases:  a62
+: Berg size increases:  a62a
+: Berg size increases:  a63
+: Berg size increases:  a64
+
+
+*** Visualize
+
++ Graphic of raw CSV (table subset above)
++ Color marks initial longitude
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/raw.png
+import pandas as pd
+import geopandas as gpd
+
+df = pd.read_csv('./dat/bergs.csv')
+
+# bin to 1 degree lon x lat
+df['lon'] = df['lon'].round().astype(int)
+df['lon0'] = df['lon0'].round().astype(int)
+df['lat'] = df['lat'].round().astype(int)
+df['count'] = 1
+
+df = df\
+    .groupby(['lon0','lon','lat'])\
+    .agg({'east':'mean',
+          'north':'mean',
+          'count':'sum',
+          'yyyydoy':'mean',
+          'basin_cat':'first',
+          'basin_name':'first',
+          'cat':'first',
+          'lon0':'first'})\
+    .drop(['cat'], axis='columns')
+
+gdf = gpd.GeoDataFrame(
+    df,
+    geometry = gpd.points_from_xy(df['east'],df['north']),
+    crs="EPSG:3031"
+)
+
+_ = gdf.plot(markersize=1, c=df['lon0'])
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/raw.png]]
+
+** NetCDF rasters
+
+*** Bin into lon,lat bins
+
++ Reproject vector points from EPSG:3031 to EPSG:4326
++ Add a 'count' column
++ Rasterize at a given resolution, summing count column
+
+#+BEGIN_SRC bash :exports both :results verbatim
+
+rm -fR G_4326
+grass -c EPSG:4326 ./G_4326
+
+# work at RES ° resolution
+g.region n=-40 s=-90 w=-180 e=180 res=1 -pa
+
+r.mapcalc "x = x()"
+r.mapcalc "y = y()"
+
+# Reproject
+v.proj location=G_3031 mapset=Budge_2018 input=bergs
+v.db.select map=bergs | head
+
+# add new column for counting
+v.db.addcolumn bergs column="count integer"
+v.db.update bergs column=count value=1
+
+# rasterize each sector
+b=09 # debug
+for b in $(seq -w 19); do
+  echo "Processing region: ${b}"
+  v.out.ascii input=bergs where="basin_cat == ${b}" column=count output=- \
+    | r.in.xyz input=- z=4 output=basin_${b} method=sum
+  r.null map=basin_${b} setnull=0
+done
+
+# All
+v.out.ascii input=bergs column=count output=- \
+    | r.in.xyz input=- z=4 output=basin_all method=sum
+r.null map=basin_all setnull=0
+#+END_SRC
+
+*** Convert to NetCDF w/ Xarray
+
++ Be sure to exit GRASS session
+
+#+BEGIN_SRC jupyter-python :exports both
+import numpy as np
+import xarray as xr
+import pandas as pd
+import geopandas as gpd
+import rioxarray as rxr
+import sqlite3
+from tqdm import tqdm
+
+from grass_session import Session
+from grass.script import core as gcore
+import grass.script as gscript
+# import grass python libraries
+from grass.pygrass.modules.shortcuts import general as g
+from grass.pygrass.modules.shortcuts import raster as r
+from grass.pygrass.modules.shortcuts import vector as v
+from grass.pygrass.modules.shortcuts import temporal as t
+from grass.script import array as garray
+
+ds = xr.Dataset() # Data structure for final output
+ 
+with Session(gisdb=".", location="G_4326", mapset="PERMANENT", create_opts=None):
+
+    # Read the GRASS icebergs DB into Pandas
+    sqlpath = gscript.read_command("db.databases", driver="sqlite").replace('\n', '')
+    con = sqlite3.connect(sqlpath)
+    sqlstat="SELECT * FROM bergs"
+    df = pd.read_sql_query(sqlstat, con)
+    con.close()
+
+    # build NetCDF raster
+    x = garray.array("x", null=np.nan)
+    y = garray.array("y", null=np.nan)
+    ds['lon'] = x[0,:].astype(int)
+    ds['lat'] = y[:,0].astype(int)
+    ds['basin_id'] = np.sort(df['basin_cat'].unique().astype(int))
+
+    # data
+    ds['iceberg_days'] = (('basin_id','lat','lon'),
+                          np.zeros((ds['basin_id'].size, ds['lat'].size, ds['lon'].size)))
+    ds['basin_name'] = (('basin_id'), ['x'*16]*ds['basin_id'].size)
+
+    for b in tqdm(ds['basin_id'].data):
+        bstr = str(b).zfill(2)
+        raster = garray.array("basin_"+bstr, null=np.nan)
+        ds['iceberg_days'].loc[{'basin_id': b}] = raster
+
+        # metadata
+        fr = df[df['basin_cat'] == b].iloc[0] # first record for this iceberg
+        ds['basin_name'].loc[{'basin_id': b}] = fr['basin_name']
+
+
+    # all bergs
+    ds['iceberg_days_all'] = ds['iceberg_days'].sum(dim='basin_id')
+    
+print(ds)        
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+100% 16/16 [00:02<00:00,  6.58it/s]<xarray.Dataset>
+Dimensions:           (lon: 360, lat: 50, basin_id: 16)
+Coordinates:
+  ,* lon               (lon) int64 -179 -178 -177 -176 -175 ... 176 177 178 179
+  ,* lat               (lat) int64 -40 -41 -42 -43 -44 ... -85 -86 -87 -88 -89
+  ,* basin_id          (basin_id) int64 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 19
+Data variables:
+    iceberg_days      (basin_id, lat, lon) float64 nan nan nan ... nan nan nan
+    basin_name        (basin_id) <U16 'F-G' 'E-Ep' 'D-Dp' ... 'I-Ipp' 'Ep-F'
+    iceberg_days_all  (lat, lon) float64 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+
+#+end_example
+
+#+BEGIN_SRC jupyter-python :exports both
+# clean up
+ds['lon'] = ds['lon'].astype('int16') # ncview complains w/o this?
+ds['lat'] = ds['lat'].astype('int16')
+ds['basin_id'] = ds['basin_id'].astype('int16')
+
+# support QGIS viewing
+# ds = ds.rio.write_crs('epsg:4326') # sets type to int64 :(.
+ds['spatial_ref'] = True
+ds['spatial_ref'] = ds.rio.set_crs('epsg:4326')['spatial_ref']
+
+ds['lon'].attrs['long_name'] = 'longitude'
+ds['lon'].attrs['units'] = 'degrees_north'
+ds['lat'].attrs['long_name'] = 'latitude'
+ds['lat'].attrs['units'] = 'degrees_north'
+
+ds['basin_id'].attrs['description'] = 'Rignot (IMBIE) basin category'
+ds['basin_name'].attrs['description'] = 'Rignot (IMBIE) basin name'
+ds['iceberg_days'].attrs['_FillValue'] = 0
+ds['iceberg_days'].attrs['grid_mapping'] = 'spatial_ref'
+ds['iceberg_days_all'].attrs['_FillValue'] = 0
+ds['iceberg_days_all'].attrs['grid_mapping'] = 'spatial_ref'
+
+comp = dict(zlib=True, complevel=5)
+encoding = {var: comp for var in ds.data_vars}
+ds.to_netcdf('dat/iceberg_days.nc')
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:           (lon: 360, lat: 50, basin_id: 16)
+Coordinates:
+  ,* lon               (lon) int16 -179 -178 -177 -176 -175 ... 176 177 178 179
+  ,* lat               (lat) int16 -40 -41 -42 -43 -44 ... -85 -86 -87 -88 -89
+  ,* basin_id          (basin_id) int16 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 19
+Data variables:
+    iceberg_days      (basin_id, lat, lon) float64 nan nan nan ... nan nan nan
+    basin_name        (basin_id) <U16 'F-G' 'E-Ep' 'D-Dp' ... 'I-Ipp' 'Ep-F'
+    iceberg_days_all  (lat, lon) float64 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+    spatial_ref       bool True
+#+end_example
+
+visualize
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/basin_all.png
+import xarray as xr
+import numpy as np
+
+ds = xr.open_dataset('dat/iceberg_days.nc')
+_ = np.log10(ds['iceberg_days_all']).plot()
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/basin_all.png]]
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/basin_every.png
+_ = np.log10(ds['iceberg_days']).plot(x='lon', y='lat', col='basin_id', col_wrap=4)
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/basin_every.png]]
+
+dump
+
+#+BEGIN_SRC bash :exports both :results verbatim
+ncdump -h ./dat/iceberg_days.nc
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+netcdf iceberg_days {
+dimensions:
+	lon = 360 ;
+	lat = 50 ;
+	basin_id = 16 ;
+variables:
+	short lon(lon) ;
+		lon:long_name = "longitude" ;
+		lon:units = "degrees_north" ;
+		lon:grid_mapping = "spatial_ref" ;
+	short lat(lat) ;
+		lat:long_name = "latitude" ;
+		lat:units = "degrees_north" ;
+		lat:grid_mapping = "spatial_ref" ;
+	short basin_id(basin_id) ;
+		basin_id:description = "Rignot (IMBIE) basin category" ;
+	double iceberg_days(basin_id, lat, lon) ;
+		iceberg_days:_FillValue = 0. ;
+		iceberg_days:grid_mapping = "spatial_ref" ;
+		iceberg_days:coordinates = "spatial_ref" ;
+	string basin_name(basin_id) ;
+		basin_name:description = "Rignot (IMBIE) basin name" ;
+		basin_name:coordinates = "spatial_ref" ;
+	double iceberg_days_all(lat, lon) ;
+		iceberg_days_all:_FillValue = 0. ;
+		iceberg_days_all:coordinates = "spatial_ref" ;
+	int64 spatial_ref ;
+		spatial_ref:crs_wkt = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
+		spatial_ref:semi_major_axis = 6378137. ;
+		spatial_ref:semi_minor_axis = 6356752.31424518 ;
+		spatial_ref:inverse_flattening = 298.257223563 ;
+		spatial_ref:reference_ellipsoid_name = "WGS 84" ;
+		spatial_ref:longitude_of_prime_meridian = 0. ;
+		spatial_ref:prime_meridian_name = "Greenwich" ;
+		spatial_ref:geographic_crs_name = "WGS 84" ;
+		spatial_ref:grid_mapping_name = "latitude_longitude" ;
+		spatial_ref:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
+}
+#+end_example

@@ -40,6 +40,9 @@ To stay up-to-date with existing and new discussions, click on the =watch= butto
 
 This data product is not meltwater from icebergs, but instead days and locations where icebergs are observed. The raw data comes from Budge (2018) http://doi.org/10.1109/jstars.2017.2784186 and is then binned in (lon,lat) bins where the values shows the number of days icebergs spend in each in. 18 maps are generated, one per Rignot (IMBIE) basin, where icebergs are assigned to the basin nearest their first recorded location.
 
++ Workbook: [[./iceberg_days.org]]
++ Data product: =iceberg_days.nc=
+
 **** Iceberg melt
 
 **** Ice shelf melt
