@@ -1,0 +1,56 @@
+
+* Table of contents                               :toc_4:noexport:
+- [[#ice-sheet-freshwater-forcing][Ice Sheet Freshwater Forcing]]
+  - [[#introduction][Introduction]]
+  - [[#workshop][Workshop]]
+  - [[#data-products][Data Products]]
+    - [[#antarctic][Antarctic]]
+      - [[#iceberg-days][Iceberg Days]]
+      - [[#iceberg-melt][Iceberg melt]]
+      - [[#ice-shelf-melt][Ice shelf melt]]
+      - [[#surface-runoff][Surface runoff]]
+      - [[#basal-grounded-runoff][Basal (grounded) runoff]]
+    - [[#greenland][Greenland]]
+      - [[#surface-runoff-1][Surface Runoff]]
+      - [[#basal-runoff][Basal Runoff]]
+      - [[#glacier-termini][Glacier Termini]]
+
+* Ice Sheet Freshwater Forcing
+
+** Introduction
+
+This repository contains
++ [[https://github.com/NASA-GISS/freshwater-forcing-workshop/discussions][Discussions]] from a virtual workshop on Anomalous Freshwater Fluxes from ice sheets and ice shelves for use in climate models that don't include interactive ice sheets
++ Workbooks (code) used to build data products (e.g. Greenlandic and Antarctic freshwater from surface melt, ice shelf melt, basal melt, icebergs, etc.)
++ Examples of data product post-processing to aid modelers who want use the data
+
+** Workshop
+
+Workshop [[https://github.com/NASA-GISS/freshwater-forcing-workshop/discussions][discussions]] took place and can continue to take place in the GitHub [[https://github.com/NASA-GISS/freshwater-forcing-workshop/discussions][discussions]] section of this repository. To stay up-to-date with existing and new discussions, click on the =watch= button near the top of this page and then select =All Activity= or =Custom > Discussions (and Issues)=.
+
+Workshop presentations and talks can be found on the [[https://drive.google.com/drive/u/0/folders/1A4Npk28JKi60uifOFx4LpSZmL8ZHXUyt][workshop Google Drive]].
+
+If you're new to GitHub, it can be used as a collaborative project management tool (in addition to a code repository). See Braga (2023) http://doi.org/10.1111/2041-210x.14108.
+  
+** Data Products
+
+*** Antarctic
+
+**** Iceberg Days
+
+This data product is not meltwater from icebergs, but instead days and locations where icebergs are observed. The raw data comes from Budge (2018) http://doi.org/10.1109/jstars.2017.2784186 and is then binned in (lon,lat) bins where the values shows the number of days icebergs spend in each in. 18 maps are generated, one per Rignot (IMBIE) basin, where icebergs are assigned to the basin nearest their first recorded location.
+
+**** Iceberg melt
+
+**** Ice shelf melt
+**** Surface runoff
+**** Basal (grounded) runoff
+
+*** Greenland
+
+**** Surface Runoff
+**** Basal Runoff
+**** Glacier Termini
+***** Solid ice calving
+***** Submarine melt
+
