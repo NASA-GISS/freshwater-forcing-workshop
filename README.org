@@ -52,6 +52,9 @@ This data product is not meltwater from icebergs, but instead days and locations
 *** Greenland
 
 **** Surface runoff
+
+See [[./greenland_runoff.org]].
+
 **** Basal runoff
 **** Glacier termini
 ***** Solid ice calving

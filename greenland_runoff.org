@@ -1,0 +1,182 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session mankoff_2020_liquid
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data-example][Data example]]
+    - [[#minimum-discharge-depth-per-roi][Minimum discharge depth per ROI]]
+    - [[#plot-of-annual-discharge-summed-for-all-of-greenland][Plot of annual discharge summed for all of Greenland]]
+    - [[#plot-of-monthly-discharge-by-roi][Plot of monthly discharge by ROI]]
+- [[#fetch-data][Fetch data]]
+- [[#combine-land-and-ice-runoff-and-bin-by-roi][Combine land and ice runoff and bin by ROI]]
+  - [[#land-runoff][Land runoff]]
+
+* Introduction
+
+
+Greenland surface runoff is repackaged from:
++ Paper: Mankoff (2020) http://doi.org/10.5194/essd-12-2811-2020.
++ Code (original): https://github.com/GEUS-Glaciology-and-Climate/freshwater
++ Data: http://doi.org/10.22008/promice/freshwater
+
+** Data example
+
+*** Minimum discharge depth per ROI
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/GL_runoff.nc').load()
+ds['min_discharge_depth'].to_dataframe()
+#+END_SRC
+
+#+RESULTS:
+| M2019_region   |   min_discharge_depth |
+|----------------+-----------------------|
+| CE             |                  -661 |
+| CW             |                  -824 |
+| NE             |                 -1341 |
+| NO             |                 -1094 |
+| NW             |                 -1158 |
+| SE             |                  -643 |
+| SW             |                  -243 |
+
+*** Plot of annual discharge summed for all of Greenland
+
+Example showing 5 years of monthly data for
++ Land runoff that enters the ocean subglacially (at depth)
++ Land runoff that enters the ocean at the surface
++ Ice runoff that enters the ocean subglacially
++ Ice runoff that enters the ocean at the surface
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff.png
+import xarray as xr
+ds = xr.open_dataset('dat/GL_runoff.nc').load()
+ax = ds.sum(dim='M2019_region')\
+       .drop('min_discharge_depth')\
+       .sel({'time':slice('2010-01-01','2021-01-01')})\
+       .resample({'time':'YS'})\
+       .sum()\
+       .to_dataframe()\
+       .plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/GL_runoff.png]]
+
+*** Plot of monthly discharge by ROI
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff_ROI.png
+import xarray as xr
+import matplotlib.pyplot as plt
+
+ds = xr.open_dataset('dat/GL_runoff.nc').load()
+
+fig, axs = plt.subplots(ncols=2, nrows=4, squeeze=False, sharex=True, sharey=True, figsize=(8,8))
+axs = axs.flatten()
+for i,r in enumerate(ds['M2019_region'].data):
+    legend_TF = True if i == 0 else False
+    _ = ds.sel({'M2019_region':r})\
+          .drop('min_discharge_depth')\
+          .sel({'time':slice('2010-01-01','2011-01-01')})\
+          .to_dataframe()\
+          .plot(drawstyle='steps', ax=axs[i], legend=legend_TF, title=r)
+
+fig.delaxes(axs[-1])
+plt.setp(axs[-2].xaxis.get_minorticklabels(), rotation=45)
+plt.setp(axs[-2].xaxis.get_majorticklabels(), rotation=45)
+_ = axs[0].set_ylabel('Discharge [Gt month$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/GL_runoff_ROI.png]]
+
+* Fetch data
+
++ Warning: ~20 GB
+
+#+BEGIN_SRC bash :exports both :results verbatim
+mkdir -p greenland_runoff
+pushd greenland_runoff
+wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/FK2/XKQVL7"
+popd
+#+END_SRC
+
+* Combine land and ice runoff and bin by ROI
+
+Create one dataset that includes
++ Land runoff (melted snow, and rain on land)
++ Ice runoff (melted snow, melted ice, and rain on the ice sheet that does not refreeze)
+
+Note that land runoff can enter fjords via streams at their surface, or route subglacially and then mix with subglacial discharge at depth in fjords at the grounding line of marine-terminating glaciers. Ice runoff can also enter fjords at depth at the grounding line of marine-terminating glaciers, or at the surface from sub-aerial streams from land terminating glaciers. Metadata will be used to track each of these sources and destinations.
+
+Runoff will be binned by Mouginot basins in Greenland. See Mouginot (2019) https://doi.org/10.7280/d1wt11. This metadata is already include in the product downloaded above.
+
+** Land runoff
+
++ Split by destination
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+
+ds_land = xr.open_mfdataset('greenland_runoff/freshwater/land/MAR.nc',
+                            chunks={'time':365, 'station':100})
+ds_ice = xr.open_mfdataset('greenland_runoff/freshwater/ice/MAR.nc',
+                            chunks={'time':365, 'station':100})
+
+ds_land = ds_land.reset_coords('alt')
+ds_ice = ds_ice.reset_coords('alt')
+
+# Land runoff by destination (use alt metadata = BedMachine depth at outlet location)
+land_sub = ds_land.where(ds_land['alt'] < 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+land_surf = ds_land.where(ds_land['alt'] >= 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+
+# Max depth of discharge within each region    
+sub_depth = ds_land.where(ds_land['alt'] < 0).groupby('M2019_region').min()['alt']
+
+# Ice runoff by destination
+ice_sub = ds_ice.where(ds_ice['coast_alt'] < 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+ice_surf = ds_ice.where(ds_ice['coast_alt'] >= 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+
+ds = xr.Dataset({'subglacial_discharge_from_land':land_sub,
+                 'surface_runoff_from_land':land_surf,
+                 'subglacial_discharge_from_ice':ice_sub,
+                 'surface_runoff_from_ice':ice_surf,
+                 'min_discharge_depth':sub_depth})
+
+
+# scale from m^3/s -> km^3/sample_period
+scale = 86400 / 1E9
+# /1E9:  m^3 -> km^3
+# 86400: nuber of seconds in a day. Because sum() used above, works for month or year or any resample period
+scale_items = ['subglacial_discharge_from_land','surface_runoff_from_land',
+               'subglacial_discharge_from_ice','surface_runoff_from_ice']
+ds[scale_items] = ds[scale_items] * scale                 
+
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:                         (M2019_region: 7, time: 876)
+Coordinates:
+  ,* M2019_region                    (M2019_region) object 'CE' 'CW' ... 'SW'
+  ,* time                            (time) datetime64[ns] 1950-01-01 ... 2022...
+Data variables:
+    subglacial_discharge_from_land  (M2019_region, time) float64 dask.array<chunksize=(1, 1), meta=np.ndarray>
+    surface_runoff_from_land        (M2019_region, time) float64 dask.array<chunksize=(1, 1), meta=np.ndarray>
+    subglacial_discharge_from_ice   (M2019_region, time) float64 dask.array<chunksize=(1, 1), meta=np.ndarray>
+    surface_runoff_from_ice         (M2019_region, time) float64 dask.array<chunksize=(1, 1), meta=np.ndarray>
+    min_discharge_depth             (M2019_region) float32 dask.array<chunksize=(1,), meta=np.ndarray>
+#+end_example
+
+Write it out using Dask so it works on lightweight machines. This takes a few hours.
+
+#+BEGIN_SRC jupyter-python :exports both
+delayed_obj = ds.to_netcdf('dat/GL_runoff.nc', compute=False)
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    results = delayed_obj.compute()
+#+END_SRC
