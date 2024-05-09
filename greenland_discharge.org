@@ -3,6 +3,7 @@
 
 * Table of contents                               :toc_3:noexport:
 - [[#introduction][Introduction]]
+  - [[#warning][WARNING]]
   - [[#data-example][Data example]]
 - [[#fetch-data][Fetch data]]
 - [[#reprocess][Reprocess]]
@@ -13,6 +14,17 @@ Greenland discharge is repackaged from:
 + Paper: Mankoff (2020) http://doi.org/10.5194/essd-12-1367-2020 
 + Code (original): https://github.com/GEUS-Glaciology-and-Climate/ice_discharge
 + Data: https://doi.org/10.22008/promice/data/ice_discharge/d/v02
+
+** WARNING
+
+This product is generated from flux gates ~5 km upstream of the terminus.
+
+It lacks
++ Terminus retreat, which should add ~10 % over the last two decades
+  + Greene (2024) http://doi.org/10.1038/s41586-023-06863-2
+  + Kochtitzky (2023) http://doi.org/10.1029/2023gl104095 
++ Splitting output between icebergs and submarine melt, which is ~50 % +- 40 %
+  + Enderlin (2013) http://doi.org/10.3189/2013JoG12J049 
 
 ** Data example
 

@@ -59,9 +59,24 @@ This data product is MAR runoff distributed by Rignot (IMBIE) region, but proces
 + Data product: =GL_runoff.nc=
 
 **** Basal runoff
+
+See Karlsson (2023) http://doi.org/10.34194/geusb.v53.8338 
+
 **** Glacier termini
 
+This product is generated from flux gates ~5 km upstream of the terminus.
+
+It lacks:
++ Terminus retreat, which should add ~10 % over the last two decades
++ Splitting output between icebergs and submarine melt, which is ~50 % +- 40 %
+
++ Workbook: [[./greenland_discharge.org]]
++ Data product: =GL_discharge.nc=
 
 ***** Solid ice calving
+
+To do
+
 ***** Submarine melt
 
+To do
