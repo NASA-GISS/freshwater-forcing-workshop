@@ -53,10 +53,15 @@ This data product is not meltwater from icebergs, but instead days and locations
 
 **** Surface runoff
 
-See [[./greenland_runoff.org]].
+This data product is MAR runoff distributed by Rignot (IMBIE) region, but processed at stream level by Mankoff (2020) http://doi.org/10.5194/essd-12-2811-2020. The data includes 'ice runoff' which comes from melted ice, snow, and rain on the ice sheet, and 'land runoff' which comes from melted snow and rain on land. Runoff is routed through individual streams (subglacial for ice, sub-aerial for land). Both ice-sourced and land-sourced runoff can enter the ocean either at the surface (from a terrestrial stream) or at depth subglacially. This value is estimated per stream. When summing by ROI, the minimum submarine discharge depth is provided for each ROI.
+
++ Workbook: [[./greenland_runoff.org]]
++ Data product: =GL_runoff.nc=
 
 **** Basal runoff
 **** Glacier termini
+
+
 ***** Solid ice calving
 ***** Submarine melt
 
