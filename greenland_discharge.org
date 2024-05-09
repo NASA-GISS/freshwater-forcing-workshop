@@ -1,0 +1,88 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session mankoff_2020_solid
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data-example][Data example]]
+- [[#fetch-data][Fetch data]]
+- [[#reprocess][Reprocess]]
+
+* Introduction
+
+Greenland discharge is repackaged from:
++ Paper: Mankoff (2020) http://doi.org/10.5194/essd-12-1367-2020 
++ Code (original): https://github.com/GEUS-Glaciology-and-Climate/ice_discharge
++ Data: https://doi.org/10.22008/promice/data/ice_discharge/d/v02
+
+** Data example
+
++ Discharge by ROI
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff_ROI.png
+import xarray as xr
+import matplotlib.pyplot as plt
+
+ds = xr.open_dataset('dat/GL_discharge.nc').load()
+df = ds['discharge'].to_dataframe()
+ax = df['discharge'].unstack().plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/GL_runoff_ROI.png]]
+
+* Fetch data
+
+#+BEGIN_SRC bash :exports both :results verbatim
+mkdir -p greenland_discharge
+pushd greenland_discharge
+wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/promice/data/ice_discharge/d/v02"
+popd
+#+END_SRC
+
+* Reprocess
+
++ Annual discharge
++ Group by ROI
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('./greenland_discharge/gate.nc')
+
+ds = ds.drop(['coverage','mean_x','mean_y','mean_lon','mean_lat',
+              'sector','Zwally_2012','name_Bjørk','name_Mouginot',
+              'ID_Moon','ID_Moon_dist'])
+
+ds = ds.set_coords('region')\
+    .groupby('region')\
+    .sum()\
+    .resample({'time':'YS'})\
+    .mean()
+
+ds.to_netcdf('./dat/GL_discharge.nc')
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:    (time: 38, region: 7)
+Coordinates:
+  ,* region     (region) object 'CE' 'CW' 'NE' 'NO' 'NW' 'SE' 'SW'
+  ,* time       (time) datetime64[ns] 1986-01-01 1987-01-01 ... 2023-01-01
+Data variables:
+    discharge  (time, region) float32 69.82 73.52 22.75 ... 116.4 143.0 18.66
+    err        (time, region) float32 6.434 6.158 1.856 ... 10.64 15.45 1.948
+Attributes:
+    featureType:      timeSeries
+    title:            Greenland discharge
+    summary:          Greenland discharge per gate
+    keywords:         Greenland; Ice Discharge; Calving; Submarine Melt
+    source:           git commit: 840f081
+    creator_name:     Ken Mankoff
+    creator_email:    kdm@geus.dk
+    creator_url:      http://kenmankoff.com
+    institution:      GEUS
+    references:       10.22008/promice/ice_discharge
+    product_version:  2.0
+#+end_example
