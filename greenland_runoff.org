@@ -4,9 +4,9 @@
 * Table of contents                               :toc_3:noexport:
 - [[#introduction][Introduction]]
   - [[#data-example][Data example]]
-    - [[#minimum-discharge-depth-per-roi][Minimum discharge depth per ROI]]
-    - [[#plot-of-annual-discharge-summed-for-all-of-greenland][Plot of annual discharge summed for all of Greenland]]
-    - [[#plot-of-monthly-discharge-by-roi][Plot of monthly discharge by ROI]]
+    - [[#minimum-runoff-depth-per-roi][Minimum runoff depth per ROI]]
+    - [[#plot-of-annual-runoff-summed-for-all-of-greenland][Plot of annual runoff summed for all of Greenland]]
+    - [[#plot-of-monthly-runoff-by-roi][Plot of monthly runoff by ROI]]
 - [[#fetch-data][Fetch data]]
 - [[#combine-land-and-ice-runoff-and-bin-by-roi][Combine land and ice runoff and bin by ROI]]
   - [[#land-runoff][Land runoff]]
@@ -21,7 +21,7 @@ Greenland surface runoff is repackaged from:
 
 ** Data example
 
-*** Minimum discharge depth per ROI
+*** Minimum runoff depth per ROI
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
@@ -40,7 +40,7 @@ ds['min_discharge_depth'].to_dataframe()
 | SE             |                  -643 |
 | SW             |                  -243 |
 
-*** Plot of annual discharge summed for all of Greenland
+*** Plot of annual runoff summed for all of Greenland
 
 Example showing 5 years of monthly data for
 + Land runoff that enters the ocean subglacially (at depth)
@@ -58,13 +58,13 @@ ax = ds.sum(dim='M2019_region')\
        .sum()\
        .to_dataframe()\
        .plot(drawstyle='steps-post')
-_ = ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
+_ = ax.set_ylabel('Runoff [Gt yr$^{-1}$]')
 #+END_SRC
 
 #+RESULTS:
 [[file:./fig/GL_runoff.png]]
 
-*** Plot of monthly discharge by ROI
+*** Plot of monthly runoff by ROI
 
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff_ROI.png
 import xarray as xr
@@ -85,7 +85,7 @@ for i,r in enumerate(ds['M2019_region'].data):
 fig.delaxes(axs[-1])
 plt.setp(axs[-2].xaxis.get_minorticklabels(), rotation=45)
 plt.setp(axs[-2].xaxis.get_majorticklabels(), rotation=45)
-_ = axs[0].set_ylabel('Discharge [Gt month$^{-1}$]')
+_ = axs[0].set_ylabel('Runoff [Gt month$^{-1}$]')
 #+END_SRC
 
 #+RESULTS:
