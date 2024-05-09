@@ -5,6 +5,8 @@
 - [[#introduction][Introduction]]
   - [[#warning][WARNING]]
   - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#discharge-by-roi][Discharge by ROI]]
 - [[#fetch-data][Fetch data]]
 - [[#reprocess][Reprocess]]
 
@@ -28,7 +30,54 @@ It lacks
 
 ** Data example
 
-+ Discharge by ROI
+*** Printout
+
+#+BEGIN_SRC bash :exports both :results verbatim
+ncdump -h ./dat/GL_discharge.nc
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+netcdf GL_discharge {
+dimensions:
+	time = 38 ;
+	region = 7 ;
+variables:
+	float discharge(time, region) ;
+		discharge:_FillValue = NaNf ;
+		discharge:long_name = "Discharge" ;
+		discharge:standard_name = "land_ice_mass_tranport_due_to_calving_and_ice_front_melting" ;
+		discharge:units = "Gt yr-1" ;
+	float err(time, region) ;
+		err:_FillValue = NaNf ;
+		err:long_name = "Error" ;
+		err:standard_name = "Uncertainty" ;
+		err:units = "Gt yr-1" ;
+	string region(region) ;
+		region:long_name = "Mouginot 2019 region containing gate" ;
+	int64 time(time) ;
+		time:cf_role = "timeseries_id" ;
+		time:standard_name = "time" ;
+		time:axis = "T" ;
+		time:units = "days since 1986-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+
+// global attributes:
+		:featureType = "timeSeries" ;
+		:title = "Greenland discharge" ;
+		:summary = "Greenland discharge per gate" ;
+		:keywords = "Greenland; Ice Discharge; Calving; Submarine Melt" ;
+		:source = "git commit: 840f081" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "kdm@geus.dk" ;
+		:creator_url = "http://kenmankoff.com" ;
+		:institution = "GEUS" ;
+		:references = "10.22008/promice/ice_discharge" ;
+		:product_version = 2. ;
+}
+#+end_example
+
+*** Discharge by ROI
 
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff_ROI.png
 import xarray as xr

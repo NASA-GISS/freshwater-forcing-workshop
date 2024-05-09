@@ -4,6 +4,7 @@
 * Table of contents                               :toc_3:noexport:
 - [[#introduction][Introduction]]
   - [[#data-example][Data example]]
+    - [[#printout][Printout]]
     - [[#minimum-runoff-depth-per-roi][Minimum runoff depth per ROI]]
     - [[#plot-of-annual-runoff-summed-for-all-of-greenland][Plot of annual runoff summed for all of Greenland]]
     - [[#plot-of-monthly-runoff-by-roi][Plot of monthly runoff by ROI]]
@@ -20,6 +21,44 @@ Greenland surface runoff is repackaged from:
 + Data: http://doi.org/10.22008/promice/freshwater
 
 ** Data example
+
+*** Printout
+
+#+BEGIN_SRC bash :exports both :results verbatim
+ncdump -h ./dat/GL_runoff.nc
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+netcdf GL_runoff {
+dimensions:
+	M2019_region = 7 ;
+	time = 876 ;
+variables:
+	string M2019_region(M2019_region) ;
+	int64 time(time) ;
+		time:long_name = "time of measurement" ;
+		time:standard_name = "time" ;
+		time:axis = "T" ;
+		time:units = "days since 1950-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+	double subglacial_discharge_from_land(M2019_region, time) ;
+		subglacial_discharge_from_land:_FillValue = NaN ;
+	double surface_runoff_from_land(M2019_region, time) ;
+		surface_runoff_from_land:_FillValue = NaN ;
+	double subglacial_discharge_from_ice(M2019_region, time) ;
+		subglacial_discharge_from_ice:_FillValue = NaN ;
+	double surface_runoff_from_ice(M2019_region, time) ;
+		surface_runoff_from_ice:_FillValue = NaN ;
+	float min_discharge_depth(M2019_region) ;
+		min_discharge_depth:_FillValue = NaNf ;
+		min_discharge_depth:long_name = "height_above_mean_sea_level" ;
+		min_discharge_depth:standard_name = "altitude" ;
+		min_discharge_depth:units = "m" ;
+		min_discharge_depth:positive = "up" ;
+		min_discharge_depth:axis = "Z" ;
+}
+#+end_example
 
 *** Minimum runoff depth per ROI
 
