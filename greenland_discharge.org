@@ -40,46 +40,46 @@ ncdump -h ./dat/GL_discharge.nc
 #+begin_example
 netcdf GL_discharge {
 dimensions:
-	time = 38 ;
+	time = 185 ;
 	region = 7 ;
 variables:
 	float discharge(time, region) ;
 		discharge:_FillValue = NaNf ;
-		discharge:long_name = "Discharge" ;
-		discharge:standard_name = "land_ice_mass_tranport_due_to_calving_and_ice_front_melting" ;
+		discharge:long_name = "Marine discharge. Includes both calving and submarine melt. Some calvinvg is equivalent to submarine melt if using at fjord mouth" ;
+		discharge:standard_name = "land_ice_mass_tranport" ;
 		discharge:units = "Gt yr-1" ;
 	float err(time, region) ;
 		err:_FillValue = NaNf ;
-		err:long_name = "Error" ;
-		err:standard_name = "Uncertainty" ;
+		err:long_name = "Marine mass balance uncertainty" ;
+		err:standard_name = "land_ice_mass_tranport" ;
 		err:units = "Gt yr-1" ;
 	string region(region) ;
-		region:long_name = "Mouginot 2019 region containing gate" ;
+		region:long_name = "Mouginot 2019 regions" ;
 	int64 time(time) ;
 		time:cf_role = "timeseries_id" ;
 		time:standard_name = "time" ;
 		time:axis = "T" ;
-		time:units = "days since 1986-01-01 00:00:00" ;
+		time:units = "days since 1840-01-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
 
 // global attributes:
 		:featureType = "timeSeries" ;
-		:title = "Greenland discharge" ;
-		:summary = "Greenland discharge per gate" ;
-		:keywords = "Greenland; Ice Discharge; Calving; Submarine Melt" ;
-		:source = "git commit: 840f081" ;
+		:title = "Greenland ice sheet mass balance from 1840 through next week" ;
+		:summary = "Greenland ice sheet mass balance from 1840 through next week" ;
+		:keywords = "Greenland; Mass; Mass balance" ;
+		:source = "git commit: 20af941" ;
 		:creator_name = "Ken Mankoff" ;
 		:creator_email = "kdm@geus.dk" ;
 		:creator_url = "http://kenmankoff.com" ;
 		:institution = "GEUS" ;
-		:references = "10.22008/promice/ice_discharge" ;
-		:product_version = 2. ;
+		:references = "10.22008/promice/mass_balance" ;
+		:product_version = 1. ;
 }
 #+end_example
 
 *** Discharge by ROI
 
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff_ROI.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge_ROI.png
 import xarray as xr
 import matplotlib.pyplot as plt
 
@@ -90,14 +90,27 @@ _ = ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
 #+END_SRC
 
 #+RESULTS:
-[[file:./fig/GL_runoff_ROI.png]]
+[[file:./fig/GL_discharge_ROI.png]]
 
 * Fetch data
+
+#+BEGIN_SRC bash :exports both :results verbatim :wrap src json
+export SERVER_URL=https://dataverse.geus.dk
+export PERSISTENT_IDENTIFIER=doi:10.22008/FK2/OHI23Z
+export METADATA_FORMAT=dataverse_json # ddi dataverse_json schema.org Datacite oai_datacite
+curl "$SERVER_URL/api/datasets/export?exporter=$METADATA_FORMAT&persistentId=$PERSISTENT_IDENTIFIER" | jq .datasetVersion.versionNumber
+#+END_SRC
+
+#+RESULTS:
+#+begin_src json
+875
+#+end_src
 
 #+BEGIN_SRC bash :exports both :results verbatim
 mkdir -p greenland_discharge
 pushd greenland_discharge
-wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/promice/data/ice_discharge/d/v02"
+wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/FK2/OHI23Z"
+# wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/promice/data/ice_discharge/d/v02"
 popd
 #+END_SRC
 
@@ -108,17 +121,34 @@ popd
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
-ds = xr.open_dataset('./greenland_discharge/gate.nc')
+ds = xr.open_dataset('./greenland_discharge/MB_region.nc')
 
-ds = ds.drop(['coverage','mean_x','mean_y','mean_lon','mean_lat',
-              'sector','Zwally_2012','name_Bjørk','name_Mouginot',
-              'ID_Moon','ID_Moon_dist'])
+# Limit to discharge 
+ds = ds[['D_ROI','D_ROI_err']]
 
-ds = ds.set_coords('region')\
-    .groupby('region')\
-    .sum()\
-    .resample({'time':'YS'})\
-    .mean()
+# Drop partial years
+this_yr = ds['time'].to_series().dt.year[-1]
+ds = ds.sel({'time':slice('1800',str(this_yr))})
+
+# Resample by year
+ds = ds.resample({'time':'YS'}).sum()
+
+# Prior to 1986 there is no regional resolution, just one value for all of Greenland.
+for r in ds['region']:
+    # Set regional values to the average of the first 5 years when there is regional resolution
+    ds['D_ROI'].sel({'region':r}).loc[{'time': slice('1840-01-01','1985-12-31')}] = \
+        ds['D_ROI'].sel({'region':r}).loc[{'time': slice('1986-01-01','1990-12-31')}].mean()
+    # Set regional uncertainty to the full range of observed values
+    errmax = ds['D_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).max()
+    errmin = ds['D_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).min()
+    ds['D_ROI_err'].sel({'region':r}).loc[{'time': slice('1840-01-01','1985-12-31')}] = (errmax-errmin)
+
+ds = ds.rename({'D_ROI':'discharge','D_ROI_err':'err'})
+
+ds['discharge'].attrs['units'] = 'Gt yr-1'
+ds['err'].attrs['units'] = 'Gt yr-1'
+
+ds['discharge'].attrs['long_name'] = 'Marine discharge. Includes both calving and submarine melt. Some calvinvg is equivalent to submarine melt if using at fjord mouth'
 
 ds.to_netcdf('./dat/GL_discharge.nc')
 print(ds)
@@ -127,23 +157,24 @@ print(ds)
 #+RESULTS:
 #+begin_example
 <xarray.Dataset>
-Dimensions:    (time: 38, region: 7)
+Dimensions:    (time: 185, region: 7)
 Coordinates:
-  ,* region     (region) object 'CE' 'CW' 'NE' 'NO' 'NW' 'SE' 'SW'
-  ,* time       (time) datetime64[ns] 1986-01-01 1987-01-01 ... 2023-01-01
+  ,* region     (region) object 'NE' 'CE' 'SE' 'SW' 'CW' 'NW' 'NO'
+  ,* time       (time) datetime64[ns] 1840-01-01 1841-01-01 ... 2024-01-01
 Data variables:
-    discharge  (time, region) float32 69.82 73.52 22.75 ... 116.4 143.0 18.66
-    err        (time, region) float32 6.434 6.158 1.856 ... 10.64 15.45 1.948
+    discharge  (time, region) float32 22.37 71.81 136.6 ... 33.95 46.07 10.38
+    err        (time, region) float32 3.992 11.53 17.82 ... 7.341 9.919 1.912
 Attributes:
     featureType:      timeSeries
-    title:            Greenland discharge
-    summary:          Greenland discharge per gate
-    keywords:         Greenland; Ice Discharge; Calving; Submarine Melt
-    source:           git commit: 840f081
+    title:            Greenland ice sheet mass balance from 1840 through next...
+    summary:          Greenland ice sheet mass balance from 1840 through next...
+    keywords:         Greenland; Mass; Mass balance
+    source:           git commit: 20af941
     creator_name:     Ken Mankoff
     creator_email:    kdm@geus.dk
     creator_url:      http://kenmankoff.com
     institution:      GEUS
-    references:       10.22008/promice/ice_discharge
-    product_version:  2.0
+    references:       10.22008/promice/mass_balance
+    product_version:  1.0
 #+end_example
+
