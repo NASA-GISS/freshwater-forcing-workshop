@@ -1,0 +1,176 @@
+
+#+PROPERTY: header-args:jupyter-python+ :session marson_2024
+
+* Provenance
+
+Data from Marson (2024) http://doi.org/10.1029/2023jc020697 
+
++ https://canwin-datahub.ad.umanitoba.ca/data/dataset/nemo-anha4-seaice-locking-icebergs/resource/8aa9c193-214e-4152-9abe-037010bf1999
+
+* Clean up data set
+
+First, compress all NetCDF with
+
+#+BEGIN_SRC bash :exports both :results verbatim
+nccopy -d1 ${1} ${1}.tmp.nc
+mv ${1}.tmp.nc ${1}
+#+END_SRC
+
+Then build one NetCDF file
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import pandas as pd
+import numpy as np
+
+root='~/data/Marson_2024/'
+lon = xr.open_mfdataset(root+'lon_*.nc', join='override', concat_dim='particle', combine='nested')
+lat = xr.open_mfdataset(root+'lat_*.nc', join='override', concat_dim='particle', combine='nested')
+length = xr.open_mfdataset(root+'length_*.nc', join='override', concat_dim='particle', combine='nested')
+width = xr.open_mfdataset(root+'width_*.nc', join='override', concat_dim='particle', combine='nested')
+thick = xr.open_mfdataset(root+'thickness_*.nc', join='override', concat_dim='particle', combine='nested')
+vol = length.rename({'length':'vol'}) * \
+    width.rename({'width':'vol'}) * \
+    thick.rename({'thickness':'vol'})
+
+ds = xr.merge([lon,lat,vol])
+ds = ds.rename({'timestep':'time'})
+ds['time'].attrs['calendar'] = 'noleap'
+ds['time'].attrs['units'] = 'days since 2000-01-01'
+ds['time'] = np.arange(ds['time'].values.size).astype(np.int16)
+ds['particle'] = ds['particle'].astype(np.int32)
+
+# Convert volume ice iceberg to volume of meltwater into ocean per timestep
+ds['vol'] = -1 * 0.917 * ds['vol'].diff(dim='time') 
+
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+: <xarray.Dataset>
+: Dimensions:   (time: 5840, particle: 34025)
+: Coordinates:
+:   * time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
+:   * particle  (particle) int32 117 118 128 129 ... 1806577 1806831 1807085
+: Data variables:
+:     lon       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+:     lat       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+:     vol       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+
+#+BEGIN_SRC jupyter-python :exports both
+comp = dict(zlib=True, complevel=2)
+encoding = {var: comp for var in ds.data_vars}
+ds.to_netcdf('tmp/bergs.nc', encoding=encoding)
+# saves as 175 MB file
+#+END_SRC
+
+#+RESULTS:
+
+
+* Iceberg meltwater locations
+
+** Save each particle to its own file
+
+#+BEGIN_SRC jupyter-python :exports both
+ds = xr.open_dataset('tmp/bergs.nc').load() # load everything into memory
+# this takes a few minutes
+#+END_SRC
+
++ Warning: 34k files generated here.
+
+#+BEGIN_SRC jupyter-python :exports both
+from tqdm import tqdm
+for p in tqdm(range(ds['particle'].values.size)):
+    df = ds.isel({'particle':p})\
+           .to_dataframe()\
+           .dropna()
+    if df.size == 0: continue
+    df.index = df.index - df.index[0] + 1
+    df.to_csv(f"./Marson_2024_tmp/{str(p).zfill(5)}.csv", header=None)
+#+END_SRC
+
+#+RESULTS:
+: 100% 34025/34025 [01:47<00:00, 316.21it/s]
+
+
+** Ingest each track and organize by source
+
+*** Set up domain
+
+#+BEGIN_SRC bash :exports both :results verbatim
+grass -c EPSG:3413 ./G_3413
+#+END_SRC
+
+*** Load ice ROIs
+
+#+BEGIN_SRC bash :exports both :results verbatim
+ogr2ogr ./tmp/Rignot_E_GL.gpkg -t_srs "EPSG:3413" ${DATADIR}/IMBIE/Rignot/GRE_Basins_IMBIE2_v1.3.shp
+v.import input=./tmp/Rignot_E_GL.gpkg output=GL
+# clean
+v.db.droprow input=GL where='SUBREGION1 == "ICE_CAP"' output=nocaps
+g.rename vector=nocaps,GL --o
+v.to.rast input=GL output=GL use=cat
+#+END_SRC
+
+*** 
+*** Import each track and find closest ice ROI for initial location
+
+#+BEGIN_SRC bash :exports both :results verbatim
+# reorder from cat, ID, lon, lat, dV 
+cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$5,$2,$1}' > tracks.csv
+
+#  | head -n 500 \
+cat tracks.csv \
+  | m.proj -i input=- separator=comma \
+  | tr ' ' ',' \
+  | v.in.ascii -n input=- output=bergs sep=, \
+	       columns='x double precision,y double precision,dV double precision,id INT,step INT'
+
+g.region vector=bergs res=25000 -pas
+
+# Record nearest region at all times
+v.db.addcolumn map=bergs columns="region VARCHAR(3)"
+
+v.extract input=bergs where='step == 1' output=first
+v.distance from=first to=GL upload=to_attr to_column=SUBREGION1 column=region
+db.select table=first|head
+db.select table=bergs|head
+
+roi=NO # debug
+for roi in NO NE SE SW CW NW; do
+  echo "Processing ROI: ${roi}"
+  ids=$(db.select -c sql="select id from first where region == '${roi}'")
+  ids=$(echo ${ids}| tr ' ' ',')
+  db.execute sql="update bergs set region = \"${roi}\" where id in (${ids})"
+done
+
+db.select table=bergs | head -n 10 | column -s"|" -t
+
+# convert to raster, binned by melt per cell (a.k.a density or heat or quilt map)
+roi=NO # debug
+# this loop takes a few minutes per ROI.
+for roi in NO NE SE SW CW NW; do
+  echo "Processing ROI: ${roi}"
+  v.out.ascii input=bergs output=- format=point columns=dV where="region == \"${roi}\"" \
+    | r.in.xyz input=- z=4 output=${roi} method=sum
+  r.colors -g map=${roi} color=viridis
+done
+#+END_SRC
+
+graphic
+
+#+BEGIN_SRC bash :exports both :results verbatim
+for roi in NO NE SE SW CW NW; do
+  d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=204 width=148 --o
+  d.vect GL color=gray fill_color=none
+  d.rast ${roi} values=1-1E15
+  d.mon stop=png
+done
+
+convert -colorspace rgb +append tmp/GL_berg_melt_{NW,NO,NE}.png ./tmp/row1.png
+convert -colorspace rgb +append tmp/GL_berg_melt_{CW,SW,SE}.png ./tmp/row2.png
+convert -append tmp/row{1,2}.png ./fig/GL_berg_melt.png
+
+#+END_SRC
+
+[[./fig/GL_berg_melt.png]]
