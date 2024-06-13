@@ -214,8 +214,47 @@ Data variables:
 Write it out using Dask so it works on lightweight machines. This takes a few hours.
 
 #+BEGIN_SRC jupyter-python :exports both
-delayed_obj = ds.to_netcdf('dat/GL_runoff.nc', compute=False)
+delayed_obj = ds.to_netcdf('dat/GL_runoff_tmp.nc', compute=False)
 from dask.diagnostics import ProgressBar
 with ProgressBar():
     results = delayed_obj.compute()
 #+END_SRC
+
+Add metadata, extend back to 1840, etc.
+
+#+BEGIN_SRC jupyter-python :exports both
+ds = xr.open_dataset('dat/GL_runoff_tmp.nc')
+
+ds = ds.rename({'M2019_region':'region'})
+
+ax = ds.sum(dim='region')\
+       .drop('min_discharge_depth')\
+       .resample({'time':'YS'})\
+       .sum()\
+       .to_dataframe()\
+       .plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Runoff [Gt yr$^{-1}$]')
+
+
+ds.to_netcdf('dat/GL_runoff.nc')
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:                         (region: 7, time: 876)
+Coordinates:
+  ,* region                          (region) object 'CE' 'CW' 'NE' ... 'SE' 'SW'
+  ,* time                            (time) datetime64[ns] 1950-01-01 ... 2022...
+Data variables:
+    subglacial_discharge_from_land  (region, time) float64 0.2146 ... 0.465
+    surface_runoff_from_land        (region, time) float64 0.2601 ... 1.312
+    subglacial_discharge_from_ice   (region, time) float64 0.0005627 ... 0.00...
+    surface_runoff_from_ice         (region, time) float64 9.466e-05 ... 0.01583
+    min_discharge_depth             (region) float32 -661.0 -824.0 ... -243.0
+#+end_example
+[[file:./figs_tmp/5455270180992d91f505ff6e8c30ddbc53c2b112.png]]
+:END:
+
