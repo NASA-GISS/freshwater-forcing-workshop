@@ -61,7 +61,7 @@ print(ds)
 comp = dict(zlib=True, complevel=2)
 encoding = {var: comp for var in ds.data_vars}
 ds.to_netcdf('tmp/bergs.nc', encoding=encoding)
-# saves as 175 MB file
+# saves as 175 MB file. Takes a few minutes
 #+END_SRC
 
 #+RESULTS:
@@ -75,6 +75,8 @@ ds.to_netcdf('tmp/bergs.nc', encoding=encoding)
 ds = xr.open_dataset('tmp/bergs.nc').load() # load everything into memory
 # this takes a few minutes
 #+END_SRC
+
+#+RESULTS:
 
 + Warning: 34k files generated here.
 
@@ -90,7 +92,7 @@ for p in tqdm(range(ds['particle'].values.size)):
 #+END_SRC
 
 #+RESULTS:
-: 100% 34025/34025 [01:47<00:00, 316.21it/s]
+: 100% 34025/34025 [02:20<00:00, 242.67it/s]
 
 
 ** Ingest each track and organize by source
@@ -98,7 +100,8 @@ for p in tqdm(range(ds['particle'].values.size)):
 *** Set up domain
 
 #+BEGIN_SRC bash :exports both :results verbatim
-grass -c EPSG:3413 ./G_3413
+[[ -e G_3413 ]] || grass -ec EPSG:3413 ./G_3413
+grass -c ./G_3413/Marson_2024
 #+END_SRC
 
 *** Load ice ROIs
@@ -112,21 +115,20 @@ g.rename vector=nocaps,GL --o
 v.to.rast input=GL output=GL use=cat
 #+END_SRC
 
-*** 
 *** Import each track and find closest ice ROI for initial location
 
 #+BEGIN_SRC bash :exports both :results verbatim
 # reorder from cat, ID, lon, lat, dV 
 cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$5,$2,$1}' > tracks.csv
 
-#  | head -n 500 \
 cat tracks.csv \
   | m.proj -i input=- separator=comma \
   | tr ' ' ',' \
   | v.in.ascii -n input=- output=bergs sep=, \
-	       columns='x double precision,y double precision,dV double precision,id INT,step INT'
+               columns='x double precision,y double precision,dV double precision,id INT,step INT'
 
-g.region vector=bergs res=25000 -pas
+g.region vector=bergs res=25000 -pa
+g.region save=iceberg_region
 
 # Record nearest region at all times
 v.db.addcolumn map=bergs columns="region VARCHAR(3)"
@@ -160,9 +162,14 @@ done
 graphic
 
 #+BEGIN_SRC bash :exports both :results verbatim
+
+r.colors -g map=NO,NE,SE,SW,CW,NW color=viridis # range all
+
 for roi in NO NE SE SW CW NW; do
   d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=204 width=148 --o
   d.vect GL color=gray fill_color=none
+  cat=$(db.select -c sql="select cat from GL where SUBREGION1 = \"${roi}\"")
+  d.vect GL color=gray fill_color=red cats=${cat}
   d.rast ${roi} values=1-1E15
   d.mon stop=png
 done
