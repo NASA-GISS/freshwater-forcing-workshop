@@ -1,5 +1,6 @@
 
 #+PROPERTY: header-args:jupyter-python+ :session marson_2024
+#+PROPERTY: header-args:bash+ :session (concat "*" (nth 1 (reverse (split-string default-directory "/"))) "-shell*")
 
 * Provenance
 
@@ -7,16 +8,146 @@ Data from Marson (2024) http://doi.org/10.1029/2023jc020697
 
 + https://canwin-datahub.ad.umanitoba.ca/data/dataset/nemo-anha4-seaice-locking-icebergs/resource/8aa9c193-214e-4152-9abe-037010bf1999
 
-* Clean up data set
+* Tests and checks
 
-First, compress all NetCDF with
+** Algorithm demonstration
 
-#+BEGIN_SRC bash :exports both :results verbatim
-nccopy -d1 ${1} ${1}.tmp.nc
-mv ${1}.tmp.nc ${1}
+#+BEGIN_SRC jupyter-python :exports both
+# synthetic ice mass array, dimesions [x=time, y=mass]
+mass = np.zeros((5,5)) * np.nan
+mass[0,0] = 5
+mass[1,[1,2]] = [10,9]
+mass[2,[1,2]] = [10,5]
+mass[3,[2,3,4]] = [20,10,5]
+mass[4,[3,4]] = [1.1,1]
+print('mass', mass)
+
+# flag the first time the iceberg appears
+first = np.vstack([np.zeros(mass[:,0].shape)*np.nan, mass.T]).T
+first = (~np.isnan(first[:,1:]) & np.isnan(first[:,:-1]))
+# print('first', first)
+
+# the water mass is just the derivative of the ice mass in time
+h2o = np.vstack([mass.T, np.zeros(mass[:,0].shape)*np.nan]).T
+h2o = -1 * np.diff(h2o, axis=1)
+# except the diff() drops the last timestep, so we lose that without some extra work...
+last = np.vstack([mass.T, np.zeros(mass[:,0].shape)*np.nan]).T
+last = (np.isnan(last[:,1:]) & ~np.isnan(last[:,:-1]))
+h2o[last] = mass[last]
+print('h2o', h2o)
+
+print('ice mass: ', mass[first].sum(), mass[first])
+print('water mass: ', np.nansum(h2o), np.nansum(h2o,axis=1))
 #+END_SRC
 
-Then build one NetCDF file
+#+RESULTS:
+#+begin_example
+mass [[ 5.   nan  nan  nan  nan]
+ [ nan 10.   9.   nan  nan]
+ [ nan 10.   5.   nan  nan]
+ [ nan  nan 20.  10.   5. ]
+ [ nan  nan  nan  1.1  1. ]]
+h2o [[ 5.   nan  nan  nan  nan]
+ [ nan  1.   9.   nan  nan]
+ [ nan  5.   5.   nan  nan]
+ [ nan  nan 10.   5.   5. ]
+ [ nan  nan  nan  0.1  1. ]]
+ice mass:  46.1 [ 5.  10.  10.  20.   1.1]
+water mass:  46.1 [ 5.  10.  10.  20.   1.1]
+#+end_example
+
+** Tests on real data
+*** Load a subset
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+
+root = "~/data/Marson_2024/"
+
+mass = xr.open_mfdataset(root+'from_email/mass_01.nc')
+bits = xr.open_mfdataset(root+'from_email/mass_of_bits_01.nc')
+scale = xr.open_mfdataset(root+'from_email/mass_scaling_01.nc')
+
+# xarray needs things named the same in order to multiply them together.
+bits = bits.rename({'mass_of_bits':'mass'})
+scale = scale.rename({'mass_scaling':'mass'})
+
+ds = xr.merge([(mass+bits)*scale])
+ds = ds.rename({'timestep':'time'})
+
+# %time ds = ds.isel({'particle':np.arange(1000), 'time':np.arange(1000)}).load()
+
+ds['time'].attrs['calendar'] = 'noleap'
+ds['time'].attrs['units'] = 'days since 2000-01-01'
+ds['time'] = np.arange(ds['time'].values.size).astype(np.int16)
+ds['particle'] = ds['particle'].astype(np.int32)
+
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+: <xarray.Dataset>
+: Dimensions:   (time: 5840, particle: 10000)
+: Coordinates:
+:   * time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
+:   * particle  (particle) int32 117 118 128 129 ... 205888 205896 205897 205916
+: Data variables:
+:     mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+
+
+*** Initial ice mass should equal final water mass
+
+#+BEGIN_SRC jupyter-python :exports both
+# flag the first time the iceberg appears
+empty = np.empty(ds['particle'].size)*np.nan
+first = np.vstack([empty, ds['mass'].values.T]).T
+first = (~np.isnan(first[:,1:]) & np.isnan(first[:,:-1]))
+
+# the water mass is just the derivative of the ice mass in time
+h2o = np.vstack([ds['mass'].T, empty]).T
+h2o = -1 * np.diff(h2o, axis=1)
+# except the diff() drops the last timestep, so we lose that without some extra work...
+last = np.vstack([ds['mass'].T, empty]).T
+last = (np.isnan(last[:,1:]) & ~np.isnan(last[:,:-1]))
+h2o[last] = ds['mass'].values[last]
+
+ds['h2o'] = (('particle','time'), h2o)
+print(ds)
+
+print('ice mass: ', ds['mass'].values[first].sum())
+print('water mass: ', ds['h2o'].sum().values)
+print('diff: ', (ds['mass'].values[first].sum() - ds['h2o'].sum()).values)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:   (time: 5840, particle: 10000)
+Coordinates:
+  ,* time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
+  ,* particle  (particle) int32 117 118 128 129 ... 205888 205896 205897 205916
+Data variables:
+    mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+    h2o       (particle, time) float64 nan nan nan nan nan ... nan nan nan nan
+ice mass:  1886583699309968.5
+water mass:  1886583699309959.8
+diff:  8.75
+#+end_example
+
+Per Marson (2021) http://doi.org/10.1029/2021jc017542
+
+#+BEGIN_QUOTE
+The annual mass loss (hereafter referred as discharge) from the Greenland Ice Sheet (GrIS) is currently estimated to be around 1,100 Gt/yr, half of which is attributed to liquid runoff and the other half to solid discharge (Bam- ber et al., 2012, 2018)
+
+Greenland discharge was provided by Bamber et al. (2012) on a 5 × 5 km grid and was remapped to the ANHA4 grid. According to the averages estimated in Bamber et al. (2012), we divided the total discharge into 46% liquid runoff and 54% solid discharge.
+#+END_QUOTE
+
+So discharge should be ~1100*0.54 = 594 Gt/yr
+
+* Load data
+
+In addition to loading the public data from Marson (2024) http://doi.org/10.1029/2023jc020697 we need to add in the bergy bits (personal communication). Also, the provided mass is particles (groups of bergs) and needs to be scaled by Martin (2010) http://doi.org/10.1016/j.ocemod.2010.05.001 Table 1 to convert particle mass to ice mass.
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
@@ -24,59 +155,141 @@ import pandas as pd
 import numpy as np
 
 root='~/data/Marson_2024/'
+
 lon = xr.open_mfdataset(root+'lon_*.nc', join='override', concat_dim='particle', combine='nested')
 lat = xr.open_mfdataset(root+'lat_*.nc', join='override', concat_dim='particle', combine='nested')
-length = xr.open_mfdataset(root+'length_*.nc', join='override', concat_dim='particle', combine='nested')
-width = xr.open_mfdataset(root+'width_*.nc', join='override', concat_dim='particle', combine='nested')
-thick = xr.open_mfdataset(root+'thickness_*.nc', join='override', concat_dim='particle', combine='nested')
-vol = length.rename({'length':'vol'}) * \
-    width.rename({'width':'vol'}) * \
-    thick.rename({'thickness':'vol'})
+mass = xr.open_mfdataset([root+'from_email/mass_01.nc',
+                          root+'from_email/mass_02.nc',
+                          root+'from_email/mass_03.nc',
+                          root+'from_email/mass_04.nc'],
+                         join='override', concat_dim='particle', combine='nested')
+bits = xr.open_mfdataset(root+'from_email/mass_of_bits_*.nc', join='override', concat_dim='particle', combine='nested')
+scale = xr.open_mfdataset(root+'from_email/mass_scaling_*.nc', join='override', concat_dim='particle', combine='nested')
 
-ds = xr.merge([lon,lat,vol])
+# xarray needs things named the same in order to multiply them together.
+bits = bits.rename({'mass_of_bits':'mass'})
+scale = scale.rename({'mass_scaling':'mass'})
+
+%time ds = xr.merge([lon,lat,(mass+bits)*scale])
+
 ds = ds.rename({'timestep':'time'})
 ds['time'].attrs['calendar'] = 'noleap'
 ds['time'].attrs['units'] = 'days since 2000-01-01'
 ds['time'] = np.arange(ds['time'].values.size).astype(np.int16)
 ds['particle'] = ds['particle'].astype(np.int32)
 
-# Convert volume ice iceberg to volume of meltwater into ocean per timestep
-ds['vol'] = -1 * 0.917 * ds['vol'].diff(dim='time') 
-
 print(ds)
 #+END_SRC
 
 #+RESULTS:
-: <xarray.Dataset>
-: Dimensions:   (time: 5840, particle: 34025)
-: Coordinates:
-:   * time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
-:   * particle  (particle) int32 117 118 128 129 ... 1806577 1806831 1807085
-: Data variables:
-:     lon       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-:     lat       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-:     vol       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+#+begin_example
+CPU times: user 4.67 ms, sys: 1.08 ms, total: 5.75 ms
+Wall time: 7.45 ms
+<xarray.Dataset>
+Dimensions:   (time: 5840, particle: 34025)
+Coordinates:
+  ,* time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
+  ,* particle  (particle) int32 117 118 128 129 ... 1806577 1806831 1807085
+Data variables:
+    lon       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+    lat       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+    mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+#+end_example
+
+** Compute mass loss
+
+#+BEGIN_SRC jupyter-python :exports both
+# flag the first time the iceberg appears
+empty = np.empty(ds['particle'].size)*np.nan
+first = np.vstack([empty, ds['mass'].values.T]).T
+first = (~np.isnan(first[:,1:]) & np.isnan(first[:,:-1]))
+
+# the water mass is just the derivative of the ice mass in time
+h2o = np.vstack([ds['mass'].T, empty]).T
+h2o = -1 * np.diff(h2o, axis=1)
+# except the diff() drops the last timestep, so we lose that without some extra work...
+last = np.vstack([ds['mass'].T, empty]).T
+last = (np.isnan(last[:,1:]) & ~np.isnan(last[:,:-1]))
+h2o[last] = ds['mass'].values[last]
+
+ds['h2o'] = (('particle','time'), h2o)
+ds['first'] = (('particle','time'), first)
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:   (time: 5840, particle: 34025)
+Coordinates:
+  ,* time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
+  ,* particle  (particle) int32 117 118 128 129 ... 1806577 1806831 1807085
+Data variables:
+    lon       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+    lat       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+    mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+    h2o       (particle, time) float64 nan nan nan nan ... nan nan nan 1.648e+11
+    first     (particle, time) bool False False False False ... False False True
+#+end_example
+
+
+** Save snapshot
 
 #+BEGIN_SRC jupyter-python :exports both
 comp = dict(zlib=True, complevel=2)
 encoding = {var: comp for var in ds.data_vars}
-ds.to_netcdf('tmp/bergs.nc', encoding=encoding)
-# saves as 175 MB file. Takes a few minutes
+
+delayed_obj = ds.to_netcdf('tmp/bergs.nc', encoding=encoding, compute=False)
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    results = delayed_obj.compute()
+
+# saves as 175 MB file. Takes a few minutes...
 #+END_SRC
 
 #+RESULTS:
+: [########################################] | 100% Completed | 86.61 s
 
+** Load snapshot
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+import pandas as pd
+
+%time ds = xr.open_dataset('tmp/bergs.nc').load() # load everything into memory
+# Takes a while...
+#+END_SRC
+
+#+RESULTS:
+: CPU times: user 17.1 s, sys: 1min 19s, total: 1min 37s
+: Wall time: 1min 38s
+
+*** Test
+#+BEGIN_SRC jupyter-python :exports both
+%time ice_mass = ds['mass'].values[ds['first'].values].sum()
+print('ice mass: ', ice_mass * 1E-12 / 16) # total kg over 16 years -> Gt/yr
+%time water_mass = np.nansum(ds['h2o'].values)
+print('water mass: ', water_mass * 1E-12 / 16)
+#+END_SRC
+
+#+RESULTS:
+: CPU times: user 152 ms, sys: 0 ns, total: 152 ms
+: Wall time: 150 ms
+: ice mass:  407.2388163829433
+: CPU times: user 2.29 s, sys: 12 s, total: 14.3 s
+: Wall time: 14.5 s
+: water mass:  407.2388163829417
+
+The difference between the Marson (2024) http://doi.org/10.1029/2023jc020697 407 Gt/year and the Mankoff (2020) http://doi.org/10.5194/essd-12-1367-2020 ~500 Gt/year (subject to change with each version) is not important. It can represent a lot of things, most likely that Mankoff (2020) is discharge across flux gates upstream from the terminus, so 100 - 407/500 % = 18.6 % is submarine melt, and the remainder is the Marson icebergs.
+
+Additional melting occurs in the fjord and must be handled if the model does not resolve fjords.
+
+This product should be shared as one and several weighted masks that sum to 1, and then users can scale by their own estimated discharge.
 
 * Iceberg meltwater locations
 
-** Save each particle to its own file
-
-#+BEGIN_SRC jupyter-python :exports both
-ds = xr.open_dataset('tmp/bergs.nc').load() # load everything into memory
-# this takes a few minutes
-#+END_SRC
-
-#+RESULTS:
+** Export each particle to file
 
 + Warning: 34k files generated here.
 
@@ -88,11 +301,12 @@ for p in tqdm(range(ds['particle'].values.size)):
            .dropna()
     if df.size == 0: continue
     df.index = df.index - df.index[0] + 1
-    df.to_csv(f"./Marson_2024_tmp/{str(p).zfill(5)}.csv", header=None)
+    df[['particle','lon','lat','mass','h2o']]\
+        .to_csv(f"./Marson_2024_tmp/{str(p).zfill(5)}.csv", header=None)
 #+END_SRC
 
 #+RESULTS:
-: 100% 34025/34025 [02:20<00:00, 242.67it/s]
+: 100% 34025/34025 [02:17<00:00, 246.62it/s]
 
 
 ** Ingest each track and organize by source
@@ -101,47 +315,55 @@ for p in tqdm(range(ds['particle'].values.size)):
 
 #+BEGIN_SRC bash :exports both :results verbatim
 [[ -e G_3413 ]] || grass -ec EPSG:3413 ./G_3413
-grass -c ./G_3413/Marson_2024
+grass ./G_3413/PERMANENT
+g.mapset -c Marson_2024
+export GRASS_OVERWRITE=1
 #+END_SRC
 
 *** Load ice ROIs
 
 #+BEGIN_SRC bash :exports both :results verbatim
-ogr2ogr ./tmp/Rignot_E_GL.gpkg -t_srs "EPSG:3413" ${DATADIR}/IMBIE/Rignot/GRE_Basins_IMBIE2_v1.3.shp
-v.import input=./tmp/Rignot_E_GL.gpkg output=GL
+ogr2ogr ./tmp/Mouginot.gpkg -t_srs "EPSG:3413" ${DATADIR}/Mouginot_2019/Greenland_Basins_PS_v1.4.2.shp
+v.import input=./tmp/Mouginot.gpkg output=GL_all
 # clean
-v.db.droprow input=GL where='SUBREGION1 == "ICE_CAP"' output=nocaps
-g.rename vector=nocaps,GL --o
+v.db.droprow input=GL_all where='NAME like "ICE_CAPS_%"' output=nocaps
+v.dissolve input=nocaps column=SUBREGION1 output=GL_dirty
+v.clean input=GL_dirty tool=rmarea thresh=1000 output=GL
+
+g.region vector=GL_all res=10000
 v.to.rast input=GL output=GL use=cat
 #+END_SRC
 
 *** Import each track and find closest ice ROI for initial location
 
 #+BEGIN_SRC bash :exports both :results verbatim
-# reorder from cat, ID, lon, lat, dV 
-cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$5,$2,$1}' > tracks.csv
+# reorder from "cat,id,lon,lat,ice mass,water mass" to lon,lat,water,id,time
+cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$6,$2,$1}' > tracks.csv
 
 cat tracks.csv \
   | m.proj -i input=- separator=comma \
   | tr ' ' ',' \
   | v.in.ascii -n input=- output=bergs sep=, \
-               columns='x double precision,y double precision,dV double precision,id INT,step INT'
+               columns='x double,y double,water double,id int,time int'
 
 g.region vector=bergs res=25000 -pa
 g.region save=iceberg_region
 
-# Record nearest region at all times
+r.mapcalc "x = x()"
+r.mapcalc "y = y()"
+
+# Record nearest region at all times, by finding the region nearest the 1st time
 v.db.addcolumn map=bergs columns="region VARCHAR(3)"
 
-v.extract input=bergs where='step == 1' output=first
-v.distance from=first to=GL upload=to_attr to_column=SUBREGION1 column=region
-db.select table=first|head
+v.extract input=bergs where='(time == 1)' output=t0
+v.distance from=t0 to=GL upload=to_attr to_column=SUBREGION1 column=region
+db.select table=t0|head
 db.select table=bergs|head
 
 roi=NO # debug
-for roi in NO NE SE SW CW NW; do
+for roi in NO NE SE SW CW NW CE; do
   echo "Processing ROI: ${roi}"
-  ids=$(db.select -c sql="select id from first where region == '${roi}'")
+  ids=$(db.select -c sql="select id from t0 where region == '${roi}'")
   ids=$(echo ${ids}| tr ' ' ',')
   db.execute sql="update bergs set region = \"${roi}\" where id in (${ids})"
 done
@@ -150,34 +372,96 @@ db.select table=bergs | head -n 10 | column -s"|" -t
 
 # convert to raster, binned by melt per cell (a.k.a density or heat or quilt map)
 roi=NO # debug
-# this loop takes a few minutes per ROI.
-for roi in NO NE SE SW CW NW; do
+# this loop takes a few minutes per ROI. Could use GNU parallel.
+for roi in NO NE SE SW CW NW CE; do
   echo "Processing ROI: ${roi}"
-  v.out.ascii input=bergs output=- format=point columns=dV where="region == \"${roi}\"" \
+  v.out.ascii input=bergs output=- format=point columns=water where="region == \"${roi}\"" \
     | r.in.xyz input=- z=4 output=${roi} method=sum
   r.colors -g map=${roi} color=viridis
+  
+  # Convert from kg/16 years to kg/s
+  r.mapcalc "${roi} = ${roi} / 16 / 365 / 86400" 
 done
 #+END_SRC
 
-graphic
+#+BEGIN_SRC bash :exports both :results verbatim
+tot=0
+for roi in CE CW NE NO NW SE SW; do
+  eval $(r.univar -g ${roi})
+  # convert from kg/s to Gt/year
+  roi_gt=$(echo "${sum} * 86400 * 365 * 10^(-12)" | bc -l)
+  echo "${roi}: ${roi_gt}"
+  tot=$(echo "${tot} + ${roi_gt}" | bc -l)
+done
+echo ""
+echo "total: " ${tot}
+#+END_SRC
+
+#+RESULTS:
+: [?2004lCE: 60.88001865521231664000
+: CW: 64.46425864166702496000
+: NE: 25.40014168772459318400
+: NO: 28.68058742930748950400
+: NW: 97.94160451838922336000
+: SE: 111.14793375478535664000
+: SW: 18.72428341325589532800
+: [?2004l
+: [?2004ltotal:  407.23882810034189961600
+
+My estimates of discharge by ROI?
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+dd = xr.open_dataset('/home/kdm/data/Mankoff_2020/ice/latest/region.nc')\
+       .sel({'time':slice('2000-01-01','2019-12-31')})\
+       .resample({'time':'YS'})\
+       .mean()\
+       .mean(dim='time')\
+       ['discharge']
+
+print(dd.sum())
+dd.to_dataframe()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <xarray.DataArray 'discharge' ()>
+: array(476.48053387)
+| region   |   discharge |
+|----------+-------------|
+| CE       |     77.8964 |
+| CW       |     86.1499 |
+| NE       |     25.9822 |
+| NO       |     25.329  |
+| NW       |    103.127  |
+| SE       |    139.048  |
+| SW       |     18.9477 |
+:END:
+
+Graphic
 
 #+BEGIN_SRC bash :exports both :results verbatim
 
-r.colors -g map=NO,NE,SE,SW,CW,NW color=viridis # range all
+r.colors -g map=NO,NE,SE,SW,CW,NW,CE color=viridis # range all
 
-for roi in NO NE SE SW CW NW; do
+for roi in NO NE SE SW CE CW NW; do
+  # r.colors -e map=${roi} color=viridis # range each (not all)
+  # r.colors --q -g map=${roi} color=viridis # range each (not all)
+  rm tmp/GL_berg_melt_${roi}.png
   d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=204 width=148 --o
-  d.vect GL color=gray fill_color=none
+  d.vect --q GL color=gray fill_color=none
   cat=$(db.select -c sql="select cat from GL where SUBREGION1 = \"${roi}\"")
-  d.vect GL color=gray fill_color=red cats=${cat}
-  d.rast ${roi} values=1-1E15
+  d.vect --q GL color=gray fill_color=red cats=${cat}
+  d.rast --q ${roi} values=1-1E15
   d.mon stop=png
 done
 
 convert -colorspace rgb +append tmp/GL_berg_melt_{NW,NO,NE}.png ./tmp/row1.png
-convert -colorspace rgb +append tmp/GL_berg_melt_{CW,SW,SE}.png ./tmp/row2.png
-convert -append tmp/row{1,2}.png ./fig/GL_berg_melt.png
-
+convert -colorspace rgb +append tmp/GL_berg_melt_{CW,CE}.png ./tmp/row2.png
+convert -colorspace rgb +append tmp/GL_berg_melt_{SW,SE}.png ./tmp/row3.png
+convert -append tmp/row{1,2,3}.png ./fig/GL_berg_melt.png
+o ./fig/GL_berg_melt.png
 #+END_SRC
 
 [[./fig/GL_berg_melt.png]]
+

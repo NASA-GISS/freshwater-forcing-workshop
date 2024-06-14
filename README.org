@@ -5,7 +5,6 @@
   - [[#workshop][Workshop]]
   - [[#data-products][Data Products]]
     - [[#antarctic][Antarctic]]
-      - [[#iceberg-days][Iceberg Days]]
       - [[#iceberg-melt][Iceberg melt]]
       - [[#ice-shelf-melt][Ice shelf melt]]
       - [[#surface-runoff][Surface runoff]]
@@ -14,6 +13,9 @@
       - [[#surface-runoff-1][Surface runoff]]
       - [[#basal-runoff][Basal runoff]]
       - [[#glacier-termini][Glacier termini]]
+      - [[#iceberg-melt-locations][Iceberg melt locations]]
+    - [[#unused][Unused]]
+      - [[#antarctic-iceberg-days][Antarctic Iceberg Days]]
 
 * Ice Sheet Freshwater Forcing
 
@@ -35,13 +37,6 @@ To stay up-to-date with existing and new discussions, click on the =watch= butto
 ** Data Products
 
 *** Antarctic
-
-**** Iceberg Days
-
-This data product is not meltwater from icebergs, but instead days and locations where icebergs are observed. The raw data comes from Budge (2018) http://doi.org/10.1109/jstars.2017.2784186 and is then binned in (lon,lat) bins where the values shows the number of days icebergs spend in each in. 18 maps are generated, one per Rignot (IMBIE) basin, where icebergs are assigned to the basin nearest their first recorded location.
-
-+ Workbook: [[./iceberg_days.org]]
-+ Data product: =iceberg_days.nc=
 
 **** Iceberg melt
 
@@ -80,3 +75,20 @@ To do
 ***** Submarine melt
 
 To do
+
+**** Iceberg melt locations
+
+This dataset provides spatial maps of iceberg meltwater based on iceberg source. Maps are weighted masks where each region sums to one, plus one all-Greenland weighted map.
+
++ Workbook: [[./greenland_iceberg_melt.org]]
++ Data product: =GL_iceberg_melt_map.nc=
+
+
+*** Unused
+**** Antarctic Iceberg Days
+
+This data product is not meltwater from icebergs, but instead days and locations where icebergs are observed. The raw data comes from Budge (2018) http://doi.org/10.1109/jstars.2017.2784186 and is then binned in (lon,lat) bins where the values shows the number of days icebergs spend in each in. 18 maps are generated, one per Rignot (IMBIE) basin, where icebergs are assigned to the basin nearest their first recorded location.
+
++ Workbook: [[./iceberg_days.org]]
++ Data product: =iceberg_days.nc=
+
