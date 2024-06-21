@@ -81,7 +81,7 @@ To do
 This dataset provides spatial maps of iceberg meltwater based on iceberg source. Maps are weighted masks where each region sums to one, plus one all-Greenland weighted map.
 
 + Workbook: [[./greenland_iceberg_melt.org]]
-+ Data product: =GL_iceberg_melt_map.nc=
++ Data product: =GL_iceberg_melt_{3413,4326}.nc=
 
 
 *** Unused
