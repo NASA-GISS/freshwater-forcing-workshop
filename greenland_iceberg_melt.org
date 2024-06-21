@@ -8,48 +8,60 @@
 
 *** Printout
 
-#+BEGIN_SRC jupyter-python :exports both
-print(xr.open_dataset('./dat/GL_iceberg_melt_4326.nc'))
+#+BEGIN_SRC bash :exports both :results verbatim
+ncdump -h ./dat/GL_iceberg_melt_4326.nc | grep -vE 'coordinates|_Fill|spatial_ref'
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
-Dimensions:  (lat: 1800, lon: 3600)
-Coordinates:
-  ,* lat      (lat) float64 -89.95 -89.85 -89.75 -89.65 ... 89.75 89.85 89.95
-  ,* lon      (lon) float64 -179.9 -179.8 -179.8 -179.7 ... 179.7 179.8 179.9
-Data variables:
-    NO       (lat, lon) float64 ...
-    NW       (lat, lon) float64 ...
-    NE       (lat, lon) float64 ...
-    CW       (lat, lon) float64 ...
-    CE       (lat, lon) float64 ...
-    SW       (lat, lon) float64 ...
-    SE       (lat, lon) float64 ...
-    GL       (lat, lon) float64 ...
+netcdf GL_iceberg_melt_4326 {
+dimensions:
+	lat = 1800 ;
+	lon = 3600 ;
+variables:
+	double NO(lat, lon) ;
+	double NW(lat, lon) ;
+	double NE(lat, lon) ;
+	double CW(lat, lon) ;
+	double CE(lat, lon) ;
+	double SW(lat, lon) ;
+	double SE(lat, lon) ;
+	double GL(lat, lon) ;
+	double lat(lat) ;
+		lat:long_name = "latitude" ;
+		lat:units = "degrees_north" ;
+	double lon(lon) ;
+		lon:long_name = "longitude" ;
+		lon:units = "degrees_east" ;
+}
 #+end_example
 
-#+BEGIN_SRC jupyter-python :exports both
-print(xr.open_dataset('./dat/GL_iceberg_melt_3413.nc'))
+#+BEGIN_SRC bash :exports both :results verbatim
+ncdump -h ./dat/GL_iceberg_melt_3413.nc | grep -vE 'coordinates|_Fill|spatial_ref'
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
-Dimensions:  (y: 205, x: 146)
-Coordinates:
-  ,* x        (x) float64 -1.688e+06 -1.662e+06 ... 1.912e+06 1.938e+06
-  ,* y        (y) float64 -5.612e+06 -5.588e+06 ... -5.375e+05 -5.125e+05
-Data variables:
-    NO       (y, x) float64 ...
-    NW       (y, x) float64 ...
-    NE       (y, x) float64 ...
-    CW       (y, x) float64 ...
-    CE       (y, x) float64 ...
-    SW       (y, x) float64 ...
-    SE       (y, x) float64 ...
-    GL       (y, x) float64 ...
+netcdf GL_iceberg_melt_3413 {
+dimensions:
+	y = 205 ;
+	x = 146 ;
+variables:
+	double NO(y, x) ;
+	double NW(y, x) ;
+	double NE(y, x) ;
+	double CW(y, x) ;
+	double CE(y, x) ;
+	double SW(y, x) ;
+	double SE(y, x) ;
+	double GL(y, x) ;
+	double x(x) ;
+		x:long_name = "projection_x_coordinate" ;
+		x:units = "meters" ;
+	double y(y) ;
+		y:long_name = "projection_y_coordinate" ;
+		y:units = "meters" ;
+}
 #+end_example
 
 *** Description
@@ -600,6 +612,14 @@ for d in ds.data_vars:
     
 ds = ds.where(ds != 0) # 0 to NaN
 
+ds = ds.rio.write_crs('epsg:3413')
+ds = ds.rio.set_spatial_dims('x','y')
+
+ds['y'].attrs['long_name'] = 'projection_y_coordinate'
+ds['y'].attrs['units'] = 'meters'
+ds['x'].attrs['long_name'] = 'projection_x_coordinate'
+ds['x'].attrs['units'] = 'meters'
+
 comp = dict(zlib=True, complevel=2) # Internal NetCDF compression
 encoding = {var: comp for var in ds.data_vars}
 
@@ -610,19 +630,20 @@ print(ds)
 #+RESULTS:
 #+begin_example
 <xarray.Dataset>
-Dimensions:  (y: 205, x: 146)
+Dimensions:      (y: 205, x: 146)
 Coordinates:
-  ,* x        (x) float64 -1.688e+06 -1.662e+06 ... 1.912e+06 1.938e+06
-  ,* y        (y) float64 -5.612e+06 -5.588e+06 ... -5.375e+05 -5.125e+05
+  ,* x            (x) float64 -1.688e+06 -1.662e+06 ... 1.912e+06 1.938e+06
+  ,* y            (y) float64 -5.612e+06 -5.588e+06 ... -5.375e+05 -5.125e+05
+    spatial_ref  int64 0
 Data variables:
-    NO       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
-    NW       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
-    NE       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
-    CW       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
-    CE       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
-    SW       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
-    SE       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
-    GL       (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+    NO           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    NW           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    NE           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    CW           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    CE           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    SW           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    SE           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    GL           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
 #+end_example
 
 *** Global 4326 projection
@@ -672,6 +693,14 @@ for d in ds.data_vars:
     
 ds = ds.where(ds != 0) # 0 to NaN
 
+ds = ds.rio.write_crs('epsg:4326')
+ds = ds.rio.set_spatial_dims('lon','lat')
+
+ds['lat'].attrs['long_name'] = 'latitude'
+ds['lat'].attrs['units'] = 'degrees_north'
+ds['lon'].attrs['long_name'] = 'longitude'
+ds['lon'].attrs['units'] = 'degrees_east'
+
 comp = dict(zlib=True, complevel=2) # Internal NetCDF compression
 encoding = {var: comp for var in ds.data_vars}
 
@@ -682,18 +711,19 @@ print(ds)
 #+RESULTS:
 #+begin_example
 <xarray.Dataset>
-Dimensions:  (lat: 1800, lon: 3600)
+Dimensions:      (lat: 1800, lon: 3600)
 Coordinates:
-  ,* lat      (lat) float64 -89.95 -89.85 -89.75 -89.65 ... 89.75 89.85 89.95
-  ,* lon      (lon) float64 -179.9 -179.8 -179.8 -179.7 ... 179.7 179.8 179.9
+  ,* lat          (lat) float64 -89.95 -89.85 -89.75 -89.65 ... 89.75 89.85 89.95
+  ,* lon          (lon) float64 -179.9 -179.8 -179.8 -179.7 ... 179.7 179.8 179.9
+    spatial_ref  int64 0
 Data variables:
-    NO       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    NW       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    NE       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    CW       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    CE       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    SW       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    SE       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    GL       (lat, lon) float64 nan nan nan nan nan nan ... nan nan nan nan nan
+    NO           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    NW           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    NE           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    CW           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    CE           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    SW           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    SE           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    GL           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
 #+end_example
 
