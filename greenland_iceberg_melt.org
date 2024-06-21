@@ -2,15 +2,26 @@
 #+PROPERTY: header-args:jupyter-python+ :session marson_2024
 #+PROPERTY: header-args:bash+ :session (concat "*" (nth 1 (reverse (split-string default-directory "/"))) "-shell*")
 
-* Provenance
+* Introduction
+
+** Data
+
+*** Printout
+
+*** Description
+
+*** Graphic
+
+* Processing
+** Provenance
 
 Data from Marson (2024) http://doi.org/10.1029/2023jc020697 
 
 + https://canwin-datahub.ad.umanitoba.ca/data/dataset/nemo-anha4-seaice-locking-icebergs/resource/8aa9c193-214e-4152-9abe-037010bf1999
 
-* Tests and checks
+** Tests and checks
 
-** Algorithm demonstration
+*** Algorithm demonstration
 
 #+BEGIN_SRC jupyter-python :exports both
 # synthetic ice mass array, dimesions [x=time, y=mass]
@@ -56,8 +67,8 @@ ice mass:  46.1 [ 5.  10.  10.  20.   1.1]
 water mass:  46.1 [ 5.  10.  10.  20.   1.1]
 #+end_example
 
-** Tests on real data
-*** Load a subset
+*** Tests on real data
+**** Load a subset
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
@@ -96,7 +107,7 @@ print(ds)
 :     mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
 
 
-*** Initial ice mass should equal final water mass
+**** Initial ice mass should equal final water mass
 
 #+BEGIN_SRC jupyter-python :exports both
 # flag the first time the iceberg appears
@@ -145,7 +156,7 @@ Greenland discharge was provided by Bamber et al. (2012) on a 5 × 5 km grid and
 
 So discharge should be ~1100*0.54 = 594 Gt/yr
 
-* Load data
+** Load data
 
 In addition to loading the public data from Marson (2024) http://doi.org/10.1029/2023jc020697 we need to add in the bergy bits (personal communication). Also, the provided mass is particles (groups of bergs) and needs to be scaled by Martin (2010) http://doi.org/10.1016/j.ocemod.2010.05.001 Table 1 to convert particle mass to ice mass.
 
@@ -196,7 +207,7 @@ Data variables:
     mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
 #+end_example
 
-** Compute mass loss
+*** Compute mass loss
 
 #+BEGIN_SRC jupyter-python :exports both
 # flag the first time the iceberg appears
@@ -233,7 +244,7 @@ Data variables:
 #+end_example
 
 
-** Save snapshot
+*** Save snapshot
 
 #+BEGIN_SRC jupyter-python :exports both
 comp = dict(zlib=True, complevel=2)
@@ -250,7 +261,7 @@ with ProgressBar():
 #+RESULTS:
 : [########################################] | 100% Completed | 86.61 s
 
-** Load snapshot
+*** Load snapshot
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
@@ -265,7 +276,7 @@ import pandas as pd
 : CPU times: user 17.1 s, sys: 1min 19s, total: 1min 37s
 : Wall time: 1min 38s
 
-*** Test
+**** Test
 #+BEGIN_SRC jupyter-python :exports both
 %time ice_mass = ds['mass'].values[ds['first'].values].sum()
 print('ice mass: ', ice_mass * 1E-12 / 16) # total kg over 16 years -> Gt/yr
@@ -287,9 +298,9 @@ Additional melting occurs in the fjord and must be handled if the model does not
 
 This product should be shared as one and several weighted masks that sum to 1, and then users can scale by their own estimated discharge.
 
-* Iceberg meltwater locations
+** Iceberg meltwater locations
 
-** Export each particle to file
+*** Export each particle to file
 
 + Warning: 34k files generated here.
 
@@ -309,9 +320,9 @@ for p in tqdm(range(ds['particle'].values.size)):
 : 100% 34025/34025 [02:17<00:00, 246.62it/s]
 
 
-** Ingest each track and organize by source
+*** Ingest each track and organize by source
 
-*** Set up domain
+**** Set up domain
 
 #+BEGIN_SRC bash :exports both :results verbatim
 [[ -e G_3413 ]] || grass -ec EPSG:3413 ./G_3413
@@ -320,7 +331,7 @@ g.mapset -c Marson_2024
 export GRASS_OVERWRITE=1
 #+END_SRC
 
-*** Load ice ROIs
+**** Load ice ROIs
 
 #+BEGIN_SRC bash :exports both :results verbatim
 ogr2ogr ./tmp/Mouginot.gpkg -t_srs "EPSG:3413" ${DATADIR}/Mouginot_2019/Greenland_Basins_PS_v1.4.2.shp
@@ -334,7 +345,7 @@ g.region vector=GL_all res=10000
 v.to.rast input=GL output=GL use=cat
 #+END_SRC
 
-*** Import each track and find closest ice ROI for initial location
+**** Import each track and find closest ice ROI for initial location
 
 #+BEGIN_SRC bash :exports both :results verbatim
 # reorder from "cat,id,lon,lat,ice mass,water mass" to lon,lat,water,id,time
@@ -464,4 +475,138 @@ o ./fig/GL_berg_melt.png
 #+END_SRC
 
 [[./fig/GL_berg_melt.png]]
+
+** Reproject from 3413 to 4326
+
+#+BEGIN_SRC bash :exports both :results verbatim
+grass ./G_4326/PERMANENT
+g.mapset -c Marson_2024
+
+g.region -pa res=0:15 s=-90 n=90 w=-180 e=180
+
+r.mapcalc "x = x()"
+r.mapcalc "y = y()"
+
+roi=NO # debug
+for roi in NO NE SE SW CW NW CE; do
+  echo "Processing ROI: ${roi}"
+  r.proj location=G_3413 mapset=Marson_2024 input=${roi} output=${roi} method=nearest
+  r.null map=${roi} setnull=0
+done
+#+END_SRC
+
+** Export to NetCDF
+
+#+BEGIN_SRC jupyter-python :exports both
+import numpy as np
+import xarray as xr
+import rioxarray as rxr
+from tqdm import tqdm
+
+from grass_session import Session
+from grass.script import core as gcore
+import grass.script as gscript
+# import grass.script.setup as gsetup
+# import grass python libraries
+from grass.pygrass.modules.shortcuts import general as g
+from grass.pygrass.modules.shortcuts import raster as r
+from grass.pygrass.modules.shortcuts import vector as v
+from grass.pygrass.modules.shortcuts import temporal as t
+from grass.script import array as garray
+
+S = Session()
+S.open(gisdb=".", location="G_3413", mapset="Marson_2024", create_opts=None)
+x = garray.array("x")[::-1,:]
+y = garray.array("y")[::-1,:]
+NO = garray.array("NO")[::-1,:]
+da = xr.DataArray(data = NO,
+                  dims = ['x','y'],
+                  coords = {'x':x[:,0], 'y':y[0,:]})
+ds = xr.Dataset({'NO':da})
+ds['NW'] = (('x','y'), garray.array("NW")[::-1,:])
+ds['NE'] = (('x','y'), garray.array("NE")[::-1,:])
+ds['CW'] = (('x','y'), garray.array("CW")[::-1,:])
+ds['CE'] = (('x','y'), garray.array("CE")[::-1,:])
+ds['SW'] = (('x','y'), garray.array("SW")[::-1,:])
+ds['SE'] = (('x','y'), garray.array("SE")[::-1,:])
+
+S.close() # Done with GRASS
+
+ds = ds.where(ds != 0) # 0 to NaN
+
+# Internal NetCDF compression
+comp = dict(zlib=True, complevel=2)
+encoding = {var: comp for var in ds.data_vars}
+
+ds.to_netcdf('GL_iceberg_melt_3413.nc', encoding=encoding)
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset>
+Dimensions:  (x: 205, y: 146)
+Coordinates:
+  ,* x        (x) float64 -1.688e+06 -1.688e+06 ... -1.688e+06 -1.688e+06
+  ,* y        (y) float64 -5.612e+06 -5.612e+06 ... -5.612e+06 -5.612e+06
+Data variables:
+    NO       (x, y) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+    NW       (x, y) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+    NE       (x, y) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+    CW       (x, y) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+    CE       (x, y) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+    SW       (x, y) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+    SE       (x, y) float64 nan nan nan nan nan nan ... nan nan nan nan nan nan
+#+end_example
+
+#+BEGIN_SRC jupyter-python :exports both
+
+# ids = np.sort(np.unique(ds['landice_ROI'].values))
+# ids = np.delete(ids, np.where(ids == 0))
+# ds['id'] = ids
+
+# ocean_ROI = np.zeros(np.append(ids.size, ds['landice_ROI'].shape))
+# ocean_ROI_weights = np.zeros_like(ocean_ROI)
+# for i,id in enumerate(tqdm(ids)):
+#     idstr = 'ocean_' + str(id).zfill(4)
+#     tmp = garray.array(idstr, null=0)[::-1,:]
+#     ocean_ROI[i,:,:] = tmp
+#     ocean_ROI_weights[i,:,:] = tmp/np.sum(tmp)
+
+# ds['ocean_ROI'] = (('id','lat','lon'), ocean_ROI)
+# ds['ocean_ROI_weights'] = (('id','lat','lon'), ocean_ROI_weights)
+    
+# ds = ds.rio.write_crs('epsg:4326')
+# ds = ds.rio.set_spatial_dims('lon','lat')
+
+# ds['lat'].attrs['long_name'] = 'latitude'
+# ds['lat'].attrs['units'] = 'degrees_north'
+# ds['lon'].attrs['long_name'] = 'longitude'
+# ds['lon'].attrs['units'] = 'degrees_east'
+
+# for var in ['lon','lat','ocean_ROI_weights']:
+#     ds[var] = ds[var].astype(np.float64)
+# for var in ['id','landice_ROI','ocean_ROI']:
+#     ds[var] = ds[var].astype(np.int32)
+
+# ds.to_netcdf('LIME_1x1p25.nc') # displays properly in Panoply
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+100% 32/32 [00:06<00:00,  4.80it/s]<xarray.Dataset>
+Dimensions:            (lon: 288, lat: 180, id: 32)
+Coordinates:
+  ,* lon                (lon) float64 -179.4 -178.1 -176.9 ... 176.9 178.1 179.4
+  ,* lat                (lat) float64 -89.0 -88.01 -87.01 ... 87.01 88.01 89.0
+  ,* id                 (id) int32 1 3 4 6 7 9 ... 2014 2015 2016 2017 2018 2019
+    spatial_ref        int64 0
+Data variables:
+    landice_ROI        (lat, lon) int32 2004 2004 2004 2004 2004 ... 0 0 0 0 0
+    ocean_ROI          (id, lat, lon) int32 0 0 0 0 0 0 0 0 ... 0 0 0 0 0 0 0 0
+    ocean_ROI_weights  (id, lat, lon) float64 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0
+
+#+end_example
+
 
