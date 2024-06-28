@@ -1,25 +1,25 @@
 
-* Table of contents                               :toc_4:noexport:
-- [[#ice-sheet-freshwater-forcing][Ice Sheet Freshwater Forcing]]
-  - [[#introduction][Introduction]]
-  - [[#workshop][Workshop]]
-  - [[#data-products][Data Products]]
-    - [[#antarctic][Antarctic]]
-      - [[#iceberg-melt][Iceberg melt]]
-      - [[#ice-shelf-melt][Ice shelf melt]]
-      - [[#surface-runoff][Surface runoff]]
-      - [[#basal-grounded-runoff][Basal (grounded) runoff]]
-    - [[#greenland][Greenland]]
-      - [[#surface-runoff-1][Surface runoff]]
-      - [[#basal-runoff][Basal runoff]]
-      - [[#glacier-termini][Glacier termini]]
-      - [[#iceberg-melt-locations][Iceberg melt locations]]
-    - [[#unused][Unused]]
-      - [[#antarctic-iceberg-days][Antarctic Iceberg Days]]
-
 * Ice Sheet Freshwater Forcing
 
-** Introduction
+* Table of contents                               :toc_4:noexport:
+- [[#ice-sheet-freshwater-forcing][Ice Sheet Freshwater Forcing]]
+- [[#introduction][Introduction]]
+- [[#workshop][Workshop]]
+- [[#data-products][Data Products]]
+  - [[#antarctic][Antarctic]]
+    - [[#iceberg-melt][Iceberg melt]]
+    - [[#ice-shelf-melt][Ice shelf melt]]
+    - [[#surface-runoff][Surface runoff]]
+    - [[#basal-grounded-runoff][Basal (grounded) runoff]]
+  - [[#greenland][Greenland]]
+    - [[#surface-runoff-1][Surface runoff]]
+    - [[#discharge][Discharge]]
+    - [[#iceberg-melt-locations][Iceberg melt locations]]
+    - [[#basal-runoff][Basal runoff]]
+  - [[#unused][Unused]]
+    - [[#antarctic-iceberg-days][Antarctic Iceberg Days]]
+
+* Introduction
 
 This repository contains discussions and workbooks (code) from a virtual workshop on Anomalous Freshwater Fluxes.
 
@@ -28,36 +28,46 @@ Included in this repository are:
 + Workbooks (code) used to build data products (e.g. Greenlandic and Antarctic freshwater from surface melt, ice shelf melt, basal melt, icebergs, etc.).
 + Examples of data product post-processing to aid modelers who want use the data.
 
-** Workshop
+* Workshop
 
 The virtual workshop on Anomalous Freshwater Fluxes aimed to capture freshwater fluxes from ice sheets and ice shelves for use in climate models that don't include interactive ice sheets. The workshop slides, videos, and discussion notes are archived at https://zenodo.org/doi/10.5281/zenodo.11127902.
  
 To stay up-to-date with existing and new discussions, click on the =watch= button near the top of this page and then select =All Activity= or =Custom > Discussions (and Issues)=. If you're new to GitHub, it can be used as a collaborative project management tool (in addition to a code repository). See Braga (2023) http://doi.org/10.1111/2041-210x.14108.
 
-** Data Products
+* Data Products
 
-*** Antarctic
+There are two types of data products provided here:
 
-**** Iceberg melt
+1. Freshwater volume flow rate [units: Gt/yr] with a geospatial component of where this freshwater enters the ocean. The geospatial component is usually a region of interest (ROI) such as `NE` or `SW` for Greenland, or sector number (1 through 18) for Antarctica.
 
-**** Ice shelf melt
-**** Surface runoff
-**** Basal (grounded) runoff
+2. Weighted freshwater distribution maps [unitless, sum to 1]. These are maps of where freshwater is distributed within a ROI if not at the coast, for example iceberg melt. These maps are provided in EPSG:4326 (lon,lat) projection.
 
-*** Greenland
+** Antarctic
 
-**** Surface runoff
+*** Iceberg melt
 
-This data product is MAR runoff distributed by Rignot (IMBIE) region, but processed at stream level by Mankoff (2020) http://doi.org/10.5194/essd-12-2811-2020. The data includes 'ice runoff' which comes from melted ice, snow, and rain on the ice sheet, and 'land runoff' which comes from melted snow and rain on land. Runoff is routed through individual streams (subglacial for ice, sub-aerial for land). Both ice-sourced and land-sourced runoff can enter the ocean either at the surface (from a terrestrial stream) or at depth subglacially. This value is estimated per stream. When summing by ROI, the minimum submarine discharge depth is provided for each ROI.
+*** Ice shelf melt
+*** Surface runoff
+*** Basal (grounded) runoff
+
+** Greenland
+
+| Term                    | Magnitude [Gt/yr] | Comment                             |
+|-------------------------+-------------------+-------------------------------------|
+| Surface runoff          |               450 | Some surface, some subglacial       |
+| Discharge               |               500 | 50 % submarine melt, 50 % calving   |
+| Frontal retreat (gross) |                50 | Should be added to "discharge"      |
+| Basal melt              |                20 | Should be added to "surface runoff" |
+| Grounding line retreat  |                 ? |                                     |
+
+*** Surface runoff
+
+This data product is MAR runoff distributed into Mouginot (2019) http://doi.org/10.7280/d1wt11 regions, but processed at stream level by Mankoff (2020) http://doi.org/10.5194/essd-12-2811-2020. The data includes 'ice runoff' which comes from melted ice, snow, and rain on the ice sheet, and 'land runoff' which comes from melted snow and rain on land. Runoff is routed through individual streams (subglacial for ice, sub-aerial for land). Both ice-sourced and land-sourced runoff can enter the ocean either at the surface (from a terrestrial stream) or at depth subglacially. This value is estimated per stream. When summing subglacial discharge by ROI, the minimum submarine discharge depth is provided for each ROI.
 
 + Workbook: [[./greenland_runoff.org]]
 + Data product: =GL_runoff.nc=
 
-**** Basal runoff
-
-See Karlsson (2023) http://doi.org/10.34194/geusb.v53.8338 
-
-**** Glacier termini
+*** Discharge
 
 This product is generated from flux gates ~5 km upstream of the terminus.
 
@@ -68,15 +78,7 @@ It lacks:
 + Workbook: [[./greenland_discharge.org]]
 + Data product: =GL_discharge.nc=
 
-***** Solid ice calving
-
-To do
-
-***** Submarine melt
-
-To do
-
-**** Iceberg melt locations
+*** Iceberg melt locations
 
 This dataset provides spatial maps of iceberg meltwater based on iceberg source. Maps are weighted masks where each region sums to one, plus one all-Greenland weighted map.
 
