@@ -123,21 +123,31 @@ popd
 import xarray as xr
 ds = xr.open_dataset('./greenland_discharge/MB_region.nc')
 
-# Limit to discharge 
-ds = ds[['D_ROI','D_ROI_err']]
+# Limit to discharge
+ds = ds[['D_ROI','D_ROI_err','D']]
 
 # Drop partial years
 this_yr = ds['time'].to_series().dt.year[-1]
 ds = ds.sel({'time':slice('1800',str(this_yr))})
 
+# Scale early values to annual
+ds.loc[{'time': slice('1840-01-01','1985-12-31')}] *= 365
+
 # Resample by year
 ds = ds.resample({'time':'YS'}).sum()
 
 # Prior to 1986 there is no regional resolution, just one value for all of Greenland.
+
+# Split into regions by taking the 1990s percent of discharge per region, and assuming the historical GIS-wide discharge maintained that distribution (even if magnitude changed).
+
+ds_ratio = ds['D_ROI'].loc[{'time': slice('1990-01-01','1999-12-31')}].sum(dim='time')
+ds_ratio = ds_ratio / sum(ds_ratio)
+# print(ds_ratio)
+
 for r in ds['region']:
     # Set regional values to the average of the first 5 years when there is regional resolution
     ds['D_ROI'].sel({'region':r}).loc[{'time': slice('1840-01-01','1985-12-31')}] = \
-        ds['D_ROI'].sel({'region':r}).loc[{'time': slice('1986-01-01','1990-12-31')}].mean()
+        ds['D'].loc[{'time': slice('1840-01-01','1985-12-31')}] * ds_ratio.sel(region=r.values).values
     # Set regional uncertainty to the full range of observed values
     errmax = ds['D_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).max()
     errmin = ds['D_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).min()
@@ -156,14 +166,17 @@ print(ds)
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
+/tmp/ipykernel_2658277/500651004.py:8: FutureWarning: Series.__getitem__ treating keys as positions is deprecated. In a future version, integer keys will always be treated as labels (consistent with DataFrame behavior). To access a value by position, use `ser.iloc[pos]`
+  this_yr = ds['time'].to_series().dt.year[-1]
+<xarray.Dataset> Size: 13kB
 Dimensions:    (time: 185, region: 7)
 Coordinates:
-  ,* region     (region) object 'NE' 'CE' 'SE' 'SW' 'CW' 'NW' 'NO'
-  ,* time       (time) datetime64[ns] 1840-01-01 1841-01-01 ... 2024-01-01
+  ,* region     (region) <U2 56B 'NE' 'CE' 'SE' 'SW' 'CW' 'NW' 'NO'
+  ,* time       (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2024-01-01
 Data variables:
-    discharge  (time, region) float32 22.37 71.81 136.6 ... 33.95 46.07 10.38
-    err        (time, region) float32 3.992 11.53 17.82 ... 7.341 9.919 1.912
+    discharge  (time, region) float32 5kB 20.41 64.75 119.1 ... 46.07 10.38
+    err        (time, region) float32 5kB 3.992 11.53 17.82 ... 9.919 1.912
+    D          (time) float32 740B 392.0 392.0 392.0 392.0 ... 514.5 501.7 203.3
 Attributes:
     featureType:      timeSeries
     title:            Greenland ice sheet mass balance from 1840 through next...
