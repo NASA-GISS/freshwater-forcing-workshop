@@ -366,7 +366,6 @@ Additional melting occurs in the fjord and must be handled if the model does not
 This product should be shared as one and several weighted masks that sum to 1, and then users can scale by their own estimated discharge.
 
 ** Iceberg meltwater locations
-
 *** Export each particle to file
 
 + Warning: 34k files generated here.
@@ -462,6 +461,8 @@ for roi in NO NE SE SW CW NW CE; do
 done
 #+END_SRC
 
+**** Sanity check: Gt/year/sector
+
 #+BEGIN_SRC bash :exports both :results verbatim
 tot=0
 for roi in CE CW NE NO NW SE SW; do
@@ -476,15 +477,15 @@ echo "total: " ${tot}
 #+END_SRC
 
 #+RESULTS:
-: [?2004lCE: 60.88001865521231664000
+: CE: 60.88001865521231664000
 : CW: 64.46425864166702496000
 : NE: 25.40014168772459318400
 : NO: 28.68058742930748950400
 : NW: 97.94160451838922336000
 : SE: 111.14793375478535664000
 : SW: 18.72428341325589532800
-: [?2004l
-: [?2004ltotal:  407.23882810034189961600
+: 
+: total:  407.23882810034189961600
 
 My estimates of discharge by ROI?
 
@@ -516,35 +517,48 @@ dd.to_dataframe()
 | SW       |     18.9477 |
 :END:
 
-Graphic
+**** Graphic
 
 #+BEGIN_SRC bash :exports both :results verbatim
-
 r.colors -g map=NO,NE,SE,SW,CW,NW,CE color=viridis # range all
 
 for roi in NO NE SE SW CE CW NW; do
   # r.colors -e map=${roi} color=viridis # range each (not all)
   # r.colors --q -g map=${roi} color=viridis # range each (not all)
   rm tmp/GL_berg_melt_${roi}.png
-  d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=204 width=148 --o
+  d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=400 width=300 --o
   d.vect --q GL color=gray fill_color=none
   cat=$(db.select -c sql="select cat from GL where SUBREGION1 = \"${roi}\"")
   d.vect --q GL color=gray fill_color=red cats=${cat}
   d.rast --q ${roi} values=1-1E15
+  [[ $roi == "CW" ]] && d.legend -l raster=NO range=1,1E15 label_values=1,10,100,1000,50000 title='kg/s' at=66,95,80,85 fontsize=12
   d.mon stop=png
 done
 
-convert -colorspace rgb +append tmp/GL_berg_melt_{NW,NO,NE}.png ./tmp/row1.png
-convert -colorspace rgb +append tmp/GL_berg_melt_{CW,CE}.png ./tmp/row2.png
-convert -colorspace rgb +append tmp/GL_berg_melt_{SW,SE}.png ./tmp/row3.png
-convert -append tmp/row{1,2,3}.png ./fig/GL_berg_melt.png
+roi=all
+rm tmp/GL_berg_melt_${roi}.png
+d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=400 width=300 --o
+d.vect --q GL color=gray fill_color=none
+r.mapcalc "roi_ALL = NO+NE+NW+CW+CE+SW+SE"
+r.colors -g map=roi_ALL color=viridis
+d.rast --q roi_ALL values=1-1E15
+# d.legend -l raster=roi_ALL range=1,1E15 label_values=1,10,100,1000,50000 title='kg/s' at=66,95,80,85 fontsize=9
+d.mon stop=png
+
+convert +append tmp/GL_berg_melt_{NW,NO,NE,CE}.png ./tmp/row1.png
+convert +append tmp/GL_berg_melt_{CW,SW,SE,all}.png ./tmp/row2.png
+convert -append tmp/row{1,2}.png ./fig/GL_berg_melt.png
 o ./fig/GL_berg_melt.png
 #+END_SRC
+
 
 [[./fig/GL_berg_melt.png]]
 
 ** Reproject from 3413 to 4326
 
++ Reprojecting raster values introduces scaling issues due to EPSG:4326 cell areas
++ Reprojecting vectors and then binning solves this
+  
 #+BEGIN_SRC bash :exports both :results verbatim
 grass ./G_4326/PERMANENT
 g.mapset -c Marson_2024
@@ -555,13 +569,80 @@ g.region -pa s=-90 n=90 w=-180 e=180 cols=3600 rows=1800
 r.mapcalc "x = x()"
 r.mapcalc "y = y()"
 
+v.proj project=G_3413 mapset=Marson_2024 input=bergs output=bergs
+db.select table=bergs|head
+
+# convert to raster, binned by melt per cell (a.k.a density or heat or quilt map)
 roi=NO # debug
+# this loop takes a few minutes per ROI. Could use GNU parallel.
 for roi in NO NE SE SW CW NW CE; do
   echo "Processing ROI: ${roi}"
-  r.proj location=G_3413 mapset=Marson_2024 input=${roi} output=${roi} method=nearest
-  r.null map=${roi} setnull=0
+  v.out.ascii input=bergs output=- format=point columns=water where="region == \"${roi}\"" \
+    | r.in.xyz input=- z=4 output=${roi} method=sum
+  r.colors -g map=${roi} color=viridis
+  
+  # Convert from kg/16 years to kg/s
+  r.mapcalc "${roi} = ${roi} / 16 / 365 / 86400" 
 done
 #+END_SRC
+
+*** Sanity check: Gt/year/sector
+
+#+BEGIN_SRC bash :exports both :results verbatim
+tot=0
+for roi in CE CW NE NO NW SE SW; do
+  eval $(r.univar -g ${roi})
+  # convert from kg/s to Gt/year
+  roi_gt=$(echo "${sum} * 86400 * 365 * 10^(-12)" | bc -l)
+  echo "${roi}: ${roi_gt}"
+  tot=$(echo "${tot} + ${roi_gt}" | bc -l)
+done
+echo ""
+echo "total: " ${tot}
+#+END_SRC
+
+#+RESULTS:
+: CE: 60.88002141716420976000
+: CW: 64.46424022458436800000
+: NE: 25.40014088972705308800
+: NO: 28.68057180232560158400
+: NW: 97.94161052406375120000
+: SE: 111.14793509124540096000
+: SW: 18.72428329165102948800
+: 
+: total:  407.23880324076141408000
+
+My estimates of discharge by ROI?
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+dd = xr.open_dataset('/home/kdm/data/Mankoff_2020/ice/latest/region.nc')\
+       .sel({'time':slice('2000-01-01','2019-12-31')})\
+       .resample({'time':'YS'})\
+       .mean()\
+       .mean(dim='time')\
+       ['discharge']
+
+print(dd.sum())
+dd.to_dataframe()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: <xarray.DataArray 'discharge' ()> Size: 8B
+: array(476.48053387)
+| region   |   discharge |
+|----------+-------------|
+| CE       |     77.8964 |
+| CW       |     86.1499 |
+| NE       |     25.9822 |
+| NO       |     25.329  |
+| NW       |    103.127  |
+| SE       |    139.048  |
+| SW       |     18.9477 |
+:END:
+
+
 
 ** Export to NetCDF
 
@@ -710,20 +791,45 @@ print(ds)
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
+<xarray.Dataset> Size: 415MB
 Dimensions:      (lat: 1800, lon: 3600)
 Coordinates:
-  ,* lat          (lat) float64 -89.95 -89.85 -89.75 -89.65 ... 89.75 89.85 89.95
-  ,* lon          (lon) float64 -179.9 -179.8 -179.8 -179.7 ... 179.7 179.8 179.9
-    spatial_ref  int64 0
+  ,* lat          (lat) float64 14kB -89.95 -89.85 -89.75 ... 89.75 89.85 89.95
+  ,* lon          (lon) float64 29kB -179.9 -179.8 -179.8 ... 179.7 179.8 179.9
+    spatial_ref  int64 8B 0
 Data variables:
-    NO           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
-    NW           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
-    NE           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
-    CW           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
-    CE           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
-    SW           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
-    SE           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
-    GL           (lat, lon) float64 nan nan nan nan nan ... nan nan nan nan nan
+    NO           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    NW           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    NE           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    CW           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    CE           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    SW           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    SE           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    GL           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
 #+end_example
+
+* Figure
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+
+fig, axs = plt.subplots(ncols=4, nrows=2)
+axs = axs.flatten()
+
+ds = xr.open_dataset('dat/GL_iceberg_melt_3413.nc')
+
+for i,d in enumerate(ds.data_vars):
+    if d == 'spatial_ref': continue
+    ax = axs[i]
+    cbar = False if d != 'GL' else True
+    g = np.log10(ds[d]).plot(ax=ax, add_colorbar=cbar)
+    ax.set_xlabel(' ')
+    ax.set_ylabel(' ')
+    if cbar: g.colorbar.set_label('')
+#+END_SRC
+
+#+RESULTS:
+[[file:./figs_tmp/a10b48d095a859ee4e37d967b1cc3168d883b48f.png]]
 
