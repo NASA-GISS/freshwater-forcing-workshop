@@ -6,18 +6,34 @@
 - [[#introduction][Introduction]]
 - [[#workshop][Workshop]]
 - [[#data-products][Data Products]]
-  - [[#antarctic][Antarctic]]
-    - [[#iceberg-melt][Iceberg melt]]
-    - [[#ice-shelf-melt][Ice shelf melt]]
-    - [[#surface-runoff][Surface runoff]]
-    - [[#basal-grounded-runoff][Basal (grounded) runoff]]
-  - [[#greenland][Greenland]]
-    - [[#surface-runoff-1][Surface runoff]]
-    - [[#discharge][Discharge]]
+  - [[#antarctica][Antarctica]]
+    - [[#sub-shelf-melt][Sub-shelf melt]]
+      - [[#background][Background]]
+      - [[#data][Data]]
+      - [[#graphic][Graphic]]
+    - [[#iceberg-calving][Iceberg calving]]
+      - [[#background-1][Background]]
+      - [[#data-1][Data]]
+      - [[#graphic-1][Graphic]]
     - [[#iceberg-melt-locations][Iceberg melt locations]]
+      - [[#background-2][Background]]
+      - [[#data-2][Data]]
+      - [[#graphic-2][Graphic]]
+    - [[#notdone-surface-runoff][NOTDONE Surface runoff]]
+    - [[#notdone-basal-grounded-runoff][NOTDONE Basal (grounded) runoff]]
+  - [[#greenland][Greenland]]
+    - [[#surface-runoff][Surface runoff]]
+      - [[#background-3][Background]]
+      - [[#data-3][Data]]
+      - [[#graphic-3][Graphic]]
+    - [[#discharge][Discharge]]
+      - [[#data-4][Data]]
+      - [[#graphic-4][Graphic]]
+    - [[#iceberg-melt-locations-1][Iceberg melt locations]]
     - [[#basal-runoff][Basal runoff]]
-  - [[#unused][Unused]]
-    - [[#antarctic-iceberg-days][Antarctic Iceberg Days]]
+      - [[#data-5][Data]]
+      - [[#graphic-5][Graphic]]
+  - [[#regions-name--id][Regions (Name & ID)]]
 
 * Introduction
 
@@ -38,34 +54,234 @@ To stay up-to-date with existing and new discussions, click on the =watch= butto
 
 There are two types of data products provided here:
 
-1. Freshwater volume flow rate [units: Gt/yr] with a geospatial component of where this freshwater enters the ocean. The geospatial component is usually a region of interest (ROI) such as `NE` or `SW` for Greenland, or sector number (1 through 18) for Antarctica.
+1. Freshwater volume flow rate [units: Gt/yr or m^3/s] with a geospatial component of where this freshwater enters the ocean. The geospatial component is a region of interest (ROI) such as `NE` or `SW` for Greenland, or sector number (1 through 18) for Antarctica.
 
-2. Weighted freshwater distribution maps [unitless, sum to 1]. These are maps of where freshwater is distributed within a ROI if not at the coast, for example iceberg melt. These maps are provided in EPSG:4326 (lon,lat) projection.
+2. Weighted freshwater distribution maps [units: m^{-2}]. These are maps of where freshwater is distributed within a ROI if not at the coast, for example iceberg melt. These maps are provided in EPSG:4326 (lon,lat) projection.
 
-** Antarctic
+| Filename            | Dimensions   | Description                                                 |
+|---------------------+--------------+-------------------------------------------------------------|
+| AQ_calving.nc       | region, time | Antarctic ice shelf calving                                 |
+| AQ_subshelf_melt.nc | region, time | Antarctic ice shelf basal melting                           |
+| AQ_iceberg_melt.nc  | lon, lat     | Antarctic iceberg melt by location and magnitude            |
+|---------------------+--------------+-------------------------------------------------------------|
+| GL_discharge.nc     | region, time | Greenland ice sheet  discharge upstream from grounding line |
+| GL_runoff.nc        | region, time | Greenland ice sheet and non-ice grounded liquid runoff      |
+| GL_basal_melt.nc    | region       | Greenland grounded ice basal melt by region                 |
+| GL_iceberg_melt.nc  | lon, lat     | Greenland iceberg melt by location and magnitude            |
 
-*** Iceberg melt
+** Antarctica
 
-*** Ice shelf melt
-*** Surface runoff
-*** Basal (grounded) runoff
+All products below are split by the Rignot (2017) regions a.k.a. IMBIE 2 regions.
+
+*** Sub-shelf melt
+
+**** Background
+
++ Workbook: [[./AQ_subshelf_melt.org]]
+
+Average of sub-shelf melt estimates from Davison (2023) and Paolo (2024; dataset)
+
+**** Data
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_subshelf_melt.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 5kB
+Dimensions:      (time: 31, region: 18)
+Coordinates:
+  ,* time         (time) datetime64[ns] 248B 1991-07-01 1992-07-01 ... 2021-07-01
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+Data variables:
+    melt         (region, time) float64 4kB ...
+    region_name  (region) <U5 360B ...
+Attributes:
+    description:   Antarctic region sub-shelf melt
+    date_created:  20241031T231731Z
+    title:         Subshelf melt per region
+    history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
+    Conventions:   CF-1.8
+#+end_example
+
+**** Graphic
+
+[[./fig/AQ_subshelf_melt.png]]
+
+*** Iceberg calving
+
+**** Background
+
++ Workbook: [[./AQ_calving.org]]
+
+Antarctic iceberg calving estimates from Davison (2023)
+
+**** Data
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_calving.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 8kB
+Dimensions:      (basin: 18, time: 25)
+Coordinates:
+  ,* time         (time) datetime64[ns] 200B 1997-07-01 1998-07-01 ... 2021-07-01
+  ,* basin        (basin) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+Data variables:
+    calving      (basin, time) float64 4kB ...
+    uncertainty  (basin, time) float64 4kB ...
+    basin_name   (basin) <U5 360B ...
+Attributes:
+    description:   Antarctic basin ice shelf calving rate
+    date_created:  20241031T232134Z
+    title:         Calving per basin
+    history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    source:        doi:10.5281/ZENODO.8052519
+    Conventions:   CF-1.8
+#+end_example
+
+**** Graphic
+
+[[./fig/AQ_calving.png]]
+
+*** Iceberg melt locations
+
+**** Background
+
+Normalized iceberg melt patterns per basin of origin, i.e. for calving in 18 Antarctic-IMBIE2 basins. From a circum-Antarctic 0.25° simulation forced by the recommended normal year of JRA55 repeated 30 years after spin up. The simulation only covers south of 52.25°S, so a part of the melt pattern is missing (11% missing based on Mathiot and Jourdain 2023).
+
+**** Data
+
+#+BEGIN_SRC bash :exports none
+cp ~/data/Mathiot_2023/AQ_iceberg_melt.nc ./dat/
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_iceberg_melt.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 20MB
+Dimensions:      (region: 18, latitude: 359, longitude: 719)
+Coordinates:
+  ,* longitude    (longitude) float32 3kB -179.8 -179.2 -178.8 ... 178.8 179.2
+  ,* latitude     (latitude) float32 1kB -89.5 -89.0 -88.5 ... 88.5 89.0 89.5
+  ,* region       (region) int64 144B 1 2 3 4 5 6 7 8 ... 11 12 13 14 15 16 17 18
+Data variables:
+    melt         (region, latitude, longitude) float32 19MB ...
+    spatial_ref  int8 1B ...
+    msk_nemo     (latitude, longitude) float32 1MB ...
+    region_name  (region) <U5 360B ...
+Attributes:
+    description:         Annual JRA55 climatology
+    original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
+    script_used:         remap_per_basin.py
+    processed_by:        Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alp...
+    geospatial_lat_min:  -89.5
+    geospatial_lat_max:  89.5
+    geospatial_lon_min:  -179.75
+    geospatial_lon_max:  179.25
+    date_created:        20241031T225303Z
+    title:               Normalised iceberg melt climatology in the Southern ...
+    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    Conventions:         CF-1.8
+#+end_example
+
+**** Graphic
+
+#+BEGIN_SRC jupyter-python :exports results :file ./fig/AQ_iceberg_melt.png
+import rioxarray as rxr
+import xarray as xr
+import numpy as np
+import cartopy.crs as ccrs
+
+ds = xr.open_dataset('./dat/AQ_iceberg_melt.nc')
+ds = ds.rio.write_crs('epsg:4326')
+g = np.log10(ds['melt']).plot(x='longitude',
+                              y='latitude',
+                              vmin = -18, vmax=-12,
+                              col='region', col_wrap=6)
+
+for ax in g.axs.flatten():
+     ax.set_title(ax.title.get_text(), fontsize=20)
+    
+g.cbar.ax.tick_params(labelsize=20)
+g.cbar.set_label(label='Melt [m$^{-2}$]', fontsize=20)
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: /home/kdm/local/mambaforge/envs/ds/lib/python3.10/site-packages/xarray/core/computation.py:825: RuntimeWarning: divide by zero encountered in log10
+:   result_data = func(*input_data)
+[[./fig/AQ_iceberg_melt.png]]
+:END:
+
+
+*** NOTDONE Surface runoff
+
++ Minimal and only on the peninsula. Not done as part of this work.
+
+*** NOTDONE Basal (grounded) runoff
+
++ Small term (~70 Gt yr^{-1} per van Liefferinge (2013), not done as part of this work.
 
 ** Greenland
 
+All products below are split by the Rignot (2019) regions
+
 | Term                    | Magnitude [Gt/yr] | Comment                             |
 |-------------------------+-------------------+-------------------------------------|
-| Surface runoff          |               450 | Some surface, some subglacial       |
-| Discharge               |               500 | 50 % submarine melt, 50 % calving   |
+| Surface runoff          |               450 | ~50 % surface, ~50 % subglacial     |
+| Discharge               |               500 | ~50 % submarine melt, ~50 % calving |
 | Frontal retreat (gross) |                50 | Should be added to "discharge"      |
-| Basal melt              |                20 | Should be added to "surface runoff" |
+| Basal melt (grounded)   |                20 | Should be added to "surface runoff" |
 | Grounding line retreat  |                 ? |                                     |
 
 *** Surface runoff
 
+**** Background
+
 This data product is MAR runoff distributed into Mouginot (2019) http://doi.org/10.7280/d1wt11 regions, but processed at stream level by Mankoff (2020) http://doi.org/10.5194/essd-12-2811-2020. The data includes 'ice runoff' which comes from melted ice, snow, and rain on the ice sheet, and 'land runoff' which comes from melted snow and rain on land. Runoff is routed through individual streams (subglacial for ice, sub-aerial for land). Both ice-sourced and land-sourced runoff can enter the ocean either at the surface (from a terrestrial stream) or at depth subglacially. This value is estimated per stream. When summing subglacial discharge by ROI, the minimum submarine discharge depth is provided for each ROI.
 
-+ Workbook: [[./greenland_runoff.org]]
++ Workbook: [[./GL_runoff.org]]
 + Data product: =GL_runoff.nc=
+
+**** Data
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_runoff.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 203kB
+Dimensions:                         (basin: 7, time: 876)
+Coordinates:
+  ,* basin                           (basin) int32 28B 1 2 3 4 5 6 7
+  ,* time                            (time) datetime64[ns] 7kB 1950-01-01 ... ...
+Data variables:
+    subglacial_discharge_from_land  (basin, time) float64 49kB ...
+    surface_runoff_from_land        (basin, time) float64 49kB ...
+    subglacial_discharge_from_ice   (basin, time) float64 49kB ...
+    surface_runoff_from_ice         (basin, time) float64 49kB ...
+    min_discharge_depth             (basin) float32 28B ...
+    basin_name                      (basin) <U2 56B ...
+Attributes:
+    title:        Ice sheet runoff by Mougniot basin
+    history:      TBD
+    Conventions:  CF-1.8
+#+end_example
+
+**** Graphic
+
+[[./fig/GL_runoff.png]]
 
 *** Discharge
 
@@ -73,31 +289,102 @@ This product is generated from flux gates ~5 km upstream of the terminus.
 
 It lacks:
 + Terminus retreat, which should add ~10 % over the last two decades
-+ Splitting output between icebergs and submarine melt, which is ~50 % +- 40 %
++ Splitting output between icebergs and submarine melt, which is ~50 % +- 40 % (Enderlin 2013)
 
-+ Workbook: [[./greenland_discharge.org]]
++ Workbook: [[./GL_discharge.org]]
 + Data product: =GL_discharge.nc=
+
+
+**** Data
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_discharge.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 12kB
+Dimensions:      (region: 7, time: 185)
+Coordinates:
+  ,* region       (region) int32 28B 1 2 3 4 5 6 7
+  ,* time         (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2024-01-01
+Data variables:
+    discharge    (region, time) float32 5kB ...
+    err          (region, time) float32 5kB ...
+    region_name  (region) <U3 84B ...
+Attributes: (12/13)
+    featureType:      timeSeries
+    title:            Greenland ice sheet discharge by Mougniot region
+    summary:          Greenland ice shet discharge by Mougnito region
+    keywords:         Greenland; Mass; Mass balance
+    source:           git commit: 20af941
+    creator_name:     Ken Mankoff
+    ...               ...
+    creator_url:      http://kenmankoff.com
+    institution:      NASA GISS
+    references:       TBD
+    product_version:  1.0
+    history:          TBD
+    Conventions:      CF-1.8
+#+end_example
+
+**** Graphic
+
+[[./fig/GL_discharge.png]]
+
 
 *** Iceberg melt locations
 
 This dataset provides spatial maps of iceberg meltwater based on iceberg source. Maps are weighted masks where each region sums to one, plus one all-Greenland weighted map.
 
-+ Workbook: [[./greenland_iceberg_melt.org]]
-+ Data product: =GL_iceberg_melt_{3413,4326}.nc=
++ Workbook: [[./GL_iceberg_melt.org]]
++ Data product: =GL_iceberg_melt.nc=
 
-
-*** Basal runoff
+  
+*** TODO Basal runoff
 
 This product splits basal melt from Karlsson (2021) http://doi.org/10.1038/s41467-021-23739-z into regions, with two products per region: Water that enters fjords at their surface from sub-aerial streams, and water that enters subglacially.
 
-+ Workbook: [[./greenland_basal_melt.org]]
-+ Data product: =GL_basal_melt_3413.nc=
++ Workbook: [[./GL_basal_melt.org]]
++ Data product: =GL_basal_melt.nc=
 
-** Unused
-*** Antarctic Iceberg Days
+**** Data
 
-This data product is not meltwater from icebergs, but instead days and locations where icebergs are observed. The raw data comes from Budge (2018) http://doi.org/10.1109/jstars.2017.2784186 and is then binned in (lon,lat) bins where the values shows the number of days icebergs spend in each in. 18 maps are generated, one per Rignot (IMBIE) basin, where icebergs are assigned to the basin nearest their first recorded location.
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_iceberg_melt.nc')
+#+END_SRC
 
-+ Workbook: [[./iceberg_days.org]]
-+ Data product: =iceberg_days.nc=
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 17MB
+Dimensions:       (region: 7, longitude: 720, latitude: 360, lon: 360, lat: 720)
+Coordinates:
+  ,* region        (region) int8 7B 1 2 3 4 5 6 7
+  ,* longitude     (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
+  ,* latitude      (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
+Dimensions without coordinates: lon, lat
+Data variables:
+    melt          (region, latitude, longitude) float64 15MB ...
+    region_map    (lon, lat) float64 2MB ...
+    region_names  (region) <U2 56B ...
+    spatial_ref   int8 1B ...
+Attributes:
+    geospatial_lat_min:  -89.75
+    geospatial_lat_max:  89.75
+    geospatial_lon_min:  -179.75
+    geospatial_lon_max:  179.75
+    date_created:        20241101T013919Z
+    title:               Normalised iceberg melt climatology per region of ca...
+    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    Conventions:         CF-1.8
+#+end_example
+
+**** Graphic
+[[./fig/GL_berg_melt.png]]  
+
+** Regions (Name & ID)
+
+[[./fig/greenland.png]]
+
+[[./fig/antarctica.png]]
 

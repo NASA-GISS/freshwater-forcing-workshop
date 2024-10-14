@@ -1,0 +1,491 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session nsidc_0792
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#graphic][Graphic]]
+    - [[#subshelf-melt-by-region][Subshelf melt by region]]
+- [[#processing][Processing]]
+  - [[#nsidc-0792-1992----2017][NSIDC 0792 (1992 -- 2017)]]
+  - [[#davison-2023-1997----2021][Davison 2023 (1997 -- 2021)]]
+    - [[#uncertainty][Uncertainty]]
+  - [[#notdone-adusumilli-2020][NOTDONE Adusumilli 2020]]
+  - [[#merge-paolo--davison][Merge Paolo & Davison]]
+
+* Introduction
+
+** Data example
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports both :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_subshelf_melt.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 5kB
+Dimensions:      (time: 31, region: 18)
+Coordinates:
+  ,* time         (time) datetime64[ns] 248B 1991-07-01 1992-07-01 ... 2021-07-01
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+Data variables:
+    melt         (region, time) float64 4kB ...
+    region_name  (region) <U5 360B ...
+Attributes:
+    description:   Antarctic region sub-shelf melt
+    date_created:  20241031T231731Z
+    title:         Subshelf melt per region
+    history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
+    Conventions:   CF-1.8
+#+end_example
+
+*** Graphic
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_subshelf_melt.png
+import xarray as xr
+ds = xr.open_dataset('./dat/AQ_subshelf_melt.nc')
+df = ds.sum(dim='region')['melt'].to_dataframe()
+ax = df['melt'].plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Subshelf melt [Gt yr$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[./fig/AQ_subshelf_melt.png]]
+
+
+*** Subshelf melt by region
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge_ROI.png
+import xarray as xr
+import matplotlib.pyplot as plt
+
+ds = xr.open_dataset('dat/AQ_subshelf_melt.nc')
+# ds = ds.assign_coords(region=[_[0] + ' ['+str(_[1])+']' for _ in zip(ds['region_name'].values,ds['region'].values)])
+df = ds['melt'].to_dataframe()
+df = df['melt'].unstack().T
+df.index = [_[0:10] for _ in df.index.astype(str)]
+df.round()
+#+END_SRC
+
+#+RESULTS:
+|            |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |    9 |   10 |   11 |   12 |   13 |   14 |   15 |   16 |   17 |   18 |
+|------------+-----+-----+-----+-----+-----+-----+-----+-----+------+------+------+------+------+------+------+------+------+------|
+| 1991-07-01 |  77 |  37 | -17 | -11 | 107 |  27 |   9 |  27 |  118 |  187 |  221 |  114 |   96 |   53 |    7 |   80 |   41 |   28 |
+| 1992-07-01 |  82 |  13 | -46 |   9 | 100 |  14 |  11 | 143 |  180 |  192 |  253 |   66 |  104 |  176 |   57 |  122 |   54 |   74 |
+| 1993-07-01 |  32 |  33 | -25 | -21 |  84 |  36 |  22 |  25 |   87 |  144 |  208 |   65 |  105 |   52 |    0 |   45 |  -36 |  -19 |
+| 1994-07-01 |   3 |   6 |  17 |  20 |  63 |   9 |  21 |  70 |  129 |  152 |  227 |   41 |   52 |   54 |    4 |  104 |  -13 |   93 |
+| 1995-07-01 | -49 |  16 |  23 |  37 |  71 |  20 |  18 |   1 |  -83 |  124 |  257 |   38 |  141 |   39 |   17 | -123 |   16 |   52 |
+| 1996-07-01 |  86 |  32 |  44 |  14 | 102 |  11 |  -1 |  -5 |   52 |  170 |  202 |   31 |  154 |  -38 |   -9 | -190 |   42 |   36 |
+| 1997-07-01 |  83 |  35 |  17 |  43 |  80 |  27 |  10 | -11 |    9 |  149 |  280 |   56 |   90 |   40 |   15 |  -17 |  -15 |  -15 |
+| 1998-07-01 |  98 |  33 |  15 |  31 |  82 |  24 |   2 |  50 |   71 |  148 |  274 |   64 |  110 |   20 |   24 |  -17 |    8 |   51 |
+| 1999-07-01 |  68 |  29 |  33 |  18 |  87 |  20 |  17 | -28 |   39 |  134 |  268 |   71 |   89 |    4 |    6 |  163 |   60 |   43 |
+| 2000-07-01 |  39 |  25 |  13 |  29 |  68 |  22 |  12 |  24 |   63 |  141 |  286 |   80 |   82 |    3 |    2 | -116 |  -45 |  -40 |
+| 2001-07-01 |  52 |  19 |  20 | 102 |  66 |  24 |   0 | -30 |   82 |  105 |  256 |   68 |  103 |   27 |   12 |   42 |   -7 |   40 |
+| 2002-07-01 |  72 |  21 |  63 |  74 |  81 |  27 |  11 |   1 |    2 |  130 |  268 |   82 |  123 |   48 |    9 |  149 |   31 |    6 |
+| 2003-07-01 |  89 |  18 |  85 |  76 |  88 |  21 |  22 |  22 |   77 |  147 |  298 |   74 |   98 |   -7 |    5 |  304 |   20 |   25 |
+| 2004-07-01 |  84 |  27 |  79 |  96 |  96 |  22 |   5 |  -5 |  -62 |  127 |  280 |   53 |  129 |    5 |    9 |  -77 |  -10 |    7 |
+| 2005-07-01 |  49 |  28 |  65 | 103 | 117 |  11 |  11 |  50 |   24 |  164 |  308 |   78 |   86 |   74 |   18 |   43 |    3 |   19 |
+| 2006-07-01 |  12 |   9 |  17 |  63 |  80 |  27 |  10 | -31 |   20 |  160 |  296 |   62 |  123 |   65 |   20 |  -28 |    3 |   24 |
+| 2007-07-01 |  23 |   8 |  45 |  41 |  91 |  33 |  13 |  15 |   15 |  145 |  334 |   81 |   97 |   63 |   14 |  140 |   23 |   48 |
+| 2008-07-01 |  -2 |  12 |   5 |  52 |  85 |  10 |  14 |  44 |   39 |  150 |  306 |   80 |  117 |   56 |   18 |   42 |   13 |   63 |
+| 2009-07-01 | -32 |   9 |  31 |  74 |  97 |  13 |  12 | -69 | -101 |  126 |  265 |   73 |  137 |  -42 |   12 |  149 |   10 |   37 |
+| 2010-07-01 |  17 |  22 |   1 |  49 |  96 |  18 |  16 | -14 |  -94 |  118 |  259 |   31 |  108 |    8 |   25 |   35 |   -7 |   71 |
+| 2011-07-01 |  64 |  19 | -12 |  49 | 103 |   9 |  10 | -31 |  -11 |  161 |  242 |   75 |  116 |  -22 |   31 |   94 |   37 |   46 |
+| 2012-07-01 |  71 |  24 |  20 |  81 |  84 |   7 |  16 |  55 |   -6 |  135 |  190 |   73 |   98 |   14 |   29 |   70 |   23 |   18 |
+| 2013-07-01 |  54 |  25 |  32 |  58 |  67 |  12 |  22 |   6 |   77 |  167 |  213 |   78 |  128 |   14 |   43 |  217 |   78 |   29 |
+| 2014-07-01 |  49 |  26 |  35 |  27 |  84 |  10 |  20 |  24 |   42 |  136 |  189 |   65 |  100 |    1 |    7 |  -73 |    6 |    5 |
+| 2015-07-01 |  46 |  30 |   7 |   5 |  75 |  11 |  16 |  40 |  -68 |  128 |  173 |   66 |   86 |   12 |   18 |   63 |   -1 |   -3 |
+| 2016-07-01 |  62 |  30 |  45 |   6 |  88 |   9 |  19 |   1 |   89 |  126 |  181 |   81 |  142 |   17 |   22 |   34 |    5 |   20 |
+| 2017-07-01 |  50 |  26 |  25 |  25 |  87 |   8 |  17 |  24 |   38 |  112 |  166 |   66 |  131 |    2 |   14 |   45 |    5 |   21 |
+| 2018-07-01 |  63 |  30 |  -9 |  27 |  94 |  10 |  16 |  17 |  -27 |  147 |  244 |   87 |  184 |   15 |   20 |   42 |   -5 |   11 |
+| 2019-07-01 |  79 |  29 | -12 |  44 |  94 |   7 |  16 |  11 |  -26 |  152 |  249 |   98 |  184 |   24 |   22 |   23 |  -10 |   21 |
+| 2020-07-01 |  77 |  25 | -23 |  57 |  95 |   8 |  19 |  21 |  -30 |  159 |  253 |  109 |  179 |   36 |   22 |   22 |   -6 |   22 |
+| 2021-07-01 |  62 |  29 | -35 |  65 |  94 |   8 |  24 |  -3 | -116 |  172 |  254 |  129 |  187 |   54 |   21 |    9 |   -2 |   23 |
+
+
+* Processing
+
++ Antarctic ice shelf melt is from NSIDC 0792 (Paolo, 2024) and Davison (2023)
+
+** NSIDC 0792 (1992 -- 2017)
+
+Unit check:
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+root = "~/data/NSIDC/NSIDC-0792.001/1992.03.17"
+ds = xr.open_dataset(root + '/NSIDC-0792_19920317-20171216_V01.0.nc', chunks='auto')
+ds = ds['melt']
+
+# convert from m/year ice on 1920x1920 grid to Gt/year water
+ds = ds * 1920 * 1920 * 0.917 / 1E9
+ds = ds.sum(dim=['x','y'])
+ds = ds.resample({'time':'YS-JUL'}).mean()
+df = ds.to_dataframe()
+df
+#+END_SRC
+
+#+RESULTS:
+| time                |      melt |
+|---------------------+-----------|
+| 1991-07-01 00:00:00 | -1199.32  |
+| 1992-07-01 00:00:00 | -1605.41  |
+| 1993-07-01 00:00:00 |  -836.263 |
+| 1994-07-01 00:00:00 | -1052.61  |
+| 1995-07-01 00:00:00 |  -613.902 |
+| 1996-07-01 00:00:00 |  -732.728 |
+| 1997-07-01 00:00:00 |  -717.547 |
+| 1998-07-01 00:00:00 | -1108.82  |
+| 1999-07-01 00:00:00 | -1213.66  |
+| 2000-07-01 00:00:00 |  -330.797 |
+| 2001-07-01 00:00:00 |  -845.425 |
+| 2002-07-01 00:00:00 | -1153.3   |
+| 2003-07-01 00:00:00 | -1778.67  |
+| 2004-07-01 00:00:00 |  -458.056 |
+| 2005-07-01 00:00:00 | -1230.67  |
+| 2006-07-01 00:00:00 |  -613.852 |
+| 2007-07-01 00:00:00 | -1306.97  |
+| 2008-07-01 00:00:00 | -1055.59  |
+| 2009-07-01 00:00:00 |  -738.313 |
+| 2010-07-01 00:00:00 |  -641.088 |
+| 2011-07-01 00:00:00 |  -916.554 |
+| 2012-07-01 00:00:00 |  -863.636 |
+| 2013-07-01 00:00:00 | -1512.85  |
+| 2014-07-01 00:00:00 |  -390.767 |
+| 2015-07-01 00:00:00 |  -311.896 |
+| 2016-07-01 00:00:00 |  -918.112 |
+| 2017-07-01 00:00:00 |  -742.674 |
+
+#+begin_src jupyter-python :exports both
+import numpy as np
+import pandas as pd
+import geopandas as gpd
+import flox # faster groupby
+import flox.xarray
+import xarray as xr
+from shapely.geometry import Point
+
+root = "~/data/NSIDC/NSIDC-0792.001/1992.03.17"
+ds = xr.open_dataset(root + '/NSIDC-0792_19920317-20171216_V01.0.nc', chunks='auto')
+ds = ds[['melt','melt_mean','melt_err','ID']]
+
+# ds['melt'] = ds['melt'] # + ds['melt_mean']
+# ds = ds.drop_vars(['melt_mean'])
+#print("annual averages...")
+#ds = ds.resample({'time':'YS'}).sum()
+
+# shelf name with longitude and latitude
+df = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx",
+                   sheet_name = 'Total mass changes',
+                   usecols = (1,2,3), index_col = 0, skiprows = 4)
+df = df.dropna()
+shelf = gpd.GeoDataFrame(
+    geometry=gpd.points_from_xy(df.longitude, df.latitude, crs="EPSG:4326"),
+    data=df)
+shelf = shelf.to_crs('EPSG:3031')
+# region name
+region = gpd.read_file("~/data//IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp")
+region = region[region['Regions'] != 'Islands']
+# find regions nearest each shelf
+shelf_region = gpd.sjoin_nearest(shelf,region)\
+                  .drop(columns=['index_right','latitude','longitude','Regions'])
+
+
+# Want groupby mean so need these as vars not just coords
+ds['xx'] = (('x'), ds['x'].values)
+ds['yy'] = (('y'), ds['y'].values)
+
+ds['melt_err'] = ds['melt_err']**2
+ds_xy = xr.merge([
+    flox.xarray.xarray_reduce(ds[["xx","yy"]],
+                              ds['ID'],
+                              func="mean",
+                              expected_groups=np.unique(ds['ID'].values)),
+    flox.xarray.xarray_reduce(ds[["melt","melt_err"]],
+                              ds['ID'],
+                              func="sum",
+                              expected_groups=np.unique(ds['ID'].values)),
+])
+ds_xy = ds_xy.rename_vars({'xx':'x', 'yy':'y'})
+ds_xy['melt_err'] = ds_xy['melt_err']**0.5
+
+# Convert the xarray dataset's coordinates to a GeoDataFrame
+points = [Point(x,y) for x,y in
+          zip(ds_xy['x'].values.flatten(),
+              ds_xy['y'].values.flatten())]
+gdf_ds_xy = gpd.GeoDataFrame(geometry=points, crs='EPSG:3031')
+
+# find region nearest each NSIDC 0792 x,y coordinate
+xy_region = gpd.sjoin_nearest(gdf_ds_xy, shelf_region)
+
+ds_xy['region'] = (('ID'), xy_region['Subregion'].values)
+ds = ds_xy.groupby('region').sum().drop_vars(['x','y'])
+
+ds['time'] = [pd.to_datetime(_.astype(str)[0:10]) for _ in ds['time'].values]
+ds = ds.resample({'time':'YS-JUL'}).mean()
+
+# convert from m/year ice on 1920x1920 grid to Gt/year water per sector
+ds = -1 * ds * 1920 * 1920 * 0.917 / 1E9
+
+delayed_obj = ds.to_netcdf('tmp/aq_paolo_2024.nc', compute=False)
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    results = delayed_obj.compute()
+#+end_src
+
+#+RESULTS:
+: [########################################] | 100% Completed | 34.59 s
+
+** Davison 2023 (1997 -- 2021)
+
+#+begin_src jupyter-python :exports both
+import numpy as np
+import pandas as pd
+import geopandas as gpd
+import xarray as xr
+
+# shelf name with longitude and latitude
+df = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx",
+                   sheet_name = 'Total mass changes',
+                   usecols = (1,2,3), index_col = 0, skiprows = 4)
+df = df.dropna()
+shelf = gpd.GeoDataFrame(
+    geometry=gpd.points_from_xy(df.longitude, df.latitude, crs="EPSG:4326"), data=df)
+shelf = shelf.to_crs('EPSG:3031')
+
+# region name
+region = gpd.read_file("~/data//IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp")
+region = region[region['Regions'] != 'Islands']
+
+# find regions nearest each shelf
+shelf_region = gpd.sjoin_nearest(shelf,region)
+shelf_region = shelf_region.drop(columns=['index_right','latitude','longitude','Regions'])
+
+# load melt time series per shelf
+melt = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx",
+                     sheet_name = 'Melt', index_col = 1, skiprows = 3, header = (0,1))
+melt = melt.T.dropna().drop(columns=['Antarctic Ice Shelves'])
+
+obs = melt.xs('observed', level='Ice shelf')
+obs.index.name = 'date'
+obs.index = pd.to_datetime(obs.index.astype(int).astype(str)+'-07-01', format="%Y-%m-%d")
+
+# unc = melt.drop('observed', level=1, axis=0).reset_index().set_index('level_0').drop(columns=['ice shelf'])
+unc = melt.xs('uncertainty', level='Ice shelf')
+unc.index.name = 'date'
+unc.index = obs.index
+
+
+# # add steady state to time series
+# melt_dot = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx", sheet_name = 'Steady-state', index_col = 0, skiprows = 5, usecols=(1,4,5))
+# melt_dot.columns = [_.split('.')[0] for _ in melt_dot.columns]
+# melt_dot = melt_dot.T
+# obs_dot = melt_dot.loc['observed'].T
+# unc_dot = melt_dot.loc['uncertainty'].T
+# obs = obs + obs_dot
+# unc = unc + unc_dot
+
+da_obs = xr.DataArray(data = obs.values,
+                      dims = ['date','shelf'],
+                      coords = {'date':obs.index.values, 'shelf':obs.columns})
+
+ds = xr.Dataset({'melt': da_obs})
+ds['uncertainty'] = (('date','shelf'), unc)
+ds = ds.where(ds['shelf'] != 'Antarctic Ice Shelves', drop=True)
+ds['region'] = (('shelf'), shelf_region['Subregion'])
+
+# ds = ds.groupby('region').sum() # Want to agg() with different functions per column...
+
+# uncertainty is sqrt of sum of squares. Not sure how to do this in-place in Xarray.
+ds['unc2'] = ds['uncertainty']**2
+ds2 = xr.merge([
+    ds[['melt','region']].groupby('region').sum(),
+    ds[['unc2','region']].groupby('region').sum(),
+])
+ds2['uncertainty'] = ds2['unc2']**0.5
+ds2 = ds2.drop_vars('unc2')
+# uncertainty for all of AQ as (sum(u**2))**0.5 matches Davison 2023 sheet "Melt" row 168 "Antarctic Ice Shelves"
+
+# need to calculate AQ-wide uncertainty at shelf resolution because step-aggregating is not commutative
+ds2['uncertainty_AQ'] = np.sqrt(ds['unc2'].sum(dim='shelf'))
+
+ds = ds2
+
+!rm tmp/aq_davison_2023.nc
+delayed_obj = ds.to_netcdf('tmp/aq_davison_2023.nc', compute=False)
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    results = delayed_obj.compute()
+#+end_src
+
+#+RESULTS:
+: [########################################] | 100% Completed | 102.91 ms
+
+*** Uncertainty
+
+Antarctic wide mean uncertainty from Davison (2023) is ~20 %
+
+#+begin_src jupyter-python :exports both
+obs_aq = obs.sum(axis='columns')
+unc_aq = (unc**2).sum(axis='columns')**0.5 # matches Davison 2023 sheet "Melt" row 168 "Antarctic Ice Shelves"
+
+# unc_aq.T # matches 
+err_pct = unc_aq / obs_aq * 100
+err_pct.describe()
+#+end_src
+
+#+RESULTS:
+: count    25.000000
+: mean     21.621548
+: std      10.183245
+: min      10.978453
+: 25%      12.683884
+: 50%      17.040673
+: 75%      30.864864
+: max      37.599188
+: dtype: float64
+
+** NOTDONE Adusumilli 2020
+
++ citet:adusumilli_2020_data
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import h5py
+
+root = "/home/kdm/data/Adusumilli_2020"
+fname = root + '/' + 'bb0448974g_3_1.h5'
+hdf5file = root + '/' + fname
+
+# import netCDF4
+# ncf = netCDF4.Dataset(fname, diskless=True, persist=False)
+# nch = ncf.groups.get('hdf5-name')
+# xds = xr.open_dataset(xr.backends.NetCDF4DataStore(nch))
+
+h5 = h5py.File(fname,'r')
+w_b = h5['w_b'][:,:]
+w_b_interp = h5['w_b_interp'][:,:]
+w_b_uncert = h5['w_b_uncert'][:,:]
+x = h5['x'][:,0]
+y = h5['y'][:,0]
+h5.close()
+
+ds = xr.Dataset({
+    'w_b': xr.DataArray(data=w_b, dims=['y','x'], coords={'x':x,'y':y},
+                        attrs = {'_FillValue': -999.9, 'units':'m/yr'}),
+    'w_b_inter': xr.DataArray(data=w_b_interp, dims=['y','x'], coords={'x':x,'y':y},
+                        attrs = {'_FillValue': -999.9, 'units':'m/yr'}),
+    'w_b_uncert': xr.DataArray(data=w_b_uncert, dims=['y','x'], coords={'x':x,'y':y},
+                        attrs = {'_FillValue': -999.9, 'units':'m/yr'})})
+
+ds = ds.where(ds < 3)
+
+delayed_obj = ds.to_netcdf('./tmp/aq_adusumilli_2020.nc', compute=False)
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    results = delayed_obj.compute()
+
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+[########################################] | 100% Completed | 7.44 s
+<xarray.Dataset> Size: 3GB
+Dimensions:     (y: 10229, x: 10941)
+Coordinates:
+  ,* x           (x) float64 88kB -2.736e+06 -2.736e+06 ... 2.734e+06 2.734e+06
+  ,* y           (y) float64 82kB -2.374e+06 -2.374e+06 ... 2.74e+06 2.74e+06
+Data variables:
+    w_b         (y, x) float64 895MB nan nan nan nan nan ... nan nan nan nan nan
+    w_b_inter   (y, x) float64 895MB nan nan nan nan nan ... nan nan nan nan nan
+    w_b_uncert  (y, x) float64 895MB nan nan nan nan nan ... nan nan nan nan nan
+#+end_example
+
+
+** Merge Paolo & Davison
+
+#+begin_src jupyter-python :exports both
+import xarray as xr
+import datetime
+import numpy as np
+
+p = xr.open_dataset('./tmp/aq_paolo_2024.nc')\
+      .rename({'melt':'melt_paolo',
+               'melt_err':'melt_err_paolo'})
+d = xr.open_dataset('./tmp/aq_davison_2023.nc')\
+      .rename({'date':'time',
+               'melt':'melt_davison',
+               'uncertainty':'melt_err_davison'})
+
+m = xr.merge([p,d])
+
+m['region_name'] = m['region']
+m['region'] = np.arange(18).astype(np.int32) + 1
+m['melt_mean'] = xr.concat([m['melt_paolo'],
+                            m['melt_davison']],
+                           dim='new_dim')\
+                   .mean(dim='new_dim', skipna=True)
+
+ds = xr.Dataset()
+ds['time'] = m['time']
+ds['region'] = m['region'].values
+
+ds['melt'] = m['melt_mean'].T
+ds['region_name'] = m['region_name']
+
+ds.attrs['description'] = 'Antarctic region sub-shelf melt'
+ds['melt'].attrs['units'] = 'Gt m-2 yr-1'
+ds['melt'].attrs['long_name'] = 'Sub shelf melt'
+ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_land_ice'
+ds['time'].attrs['standard_name'] = 'time'
+ds['region'].attrs['long_name'] = 'IMBIE region'
+ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+ds.attrs['title'] = 'Subshelf melt per region'
+ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
+ds.attrs['source'] = 'doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519'
+ds.attrs['Conventions'] = 'CF-1.8'
+
+comp = dict(zlib=True, complevel=5)
+encoding = {var: comp for var in ['melt']}
+encoding['time'] = {'dtype': 'i4'}
+
+!rm ./dat/AQ_subshelf_melt.nc
+ds.to_netcdf('./dat/AQ_subshelf_melt.nc', encoding=encoding)
+!ncdump -h ./dat/AQ_subshelf_melt.nc
+#+end_src
+
+#+RESULTS:
+#+begin_example
+netcdf AQ_subshelf_melt {
+dimensions:
+	time = 31 ;
+	region = 18 ;
+variables:
+	int time(time) ;
+		time:standard_name = "time" ;
+		time:units = "days since 1991-07-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+	int region(region) ;
+		region:long_name = "IMBIE region" ;
+	double melt(region, time) ;
+		melt:_FillValue = NaN ;
+		melt:units = "Gt m-2 yr-1" ;
+		melt:long_name = "Sub shelf melt" ;
+		melt:standard_name = "water_flux_into_sea_water_from_land_ice" ;
+	string region_name(region) ;
+
+// global attributes:
+		:description = "Antarctic region sub-shelf melt" ;
+		:date_created = "20241031T231731Z" ;
+		:title = "Subshelf melt per region" ;
+		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
+		:source = "doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519" ;
+		:Conventions = "CF-1.8" ;
+}
+#+end_example
+
+

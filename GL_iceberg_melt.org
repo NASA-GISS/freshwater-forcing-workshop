@@ -4,80 +4,112 @@
 
 * Introduction
 
+
 ** Data
 
 *** Printout
 
-#+BEGIN_SRC bash :exports both :results verbatim
-ncdump -h ./dat/GL_iceberg_melt_4326.nc | grep -vE 'coordinates|_Fill|spatial_ref'
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_iceberg_melt.nc')
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-netcdf GL_iceberg_melt_4326 {
-dimensions:
-	lat = 1800 ;
-	lon = 3600 ;
-variables:
-	double NO(lat, lon) ;
-	double NW(lat, lon) ;
-	double NE(lat, lon) ;
-	double CW(lat, lon) ;
-	double CE(lat, lon) ;
-	double SW(lat, lon) ;
-	double SE(lat, lon) ;
-	double GL(lat, lon) ;
-	double lat(lat) ;
-		lat:long_name = "latitude" ;
-		lat:units = "degrees_north" ;
-	double lon(lon) ;
-		lon:long_name = "longitude" ;
-		lon:units = "degrees_east" ;
-}
+<xarray.Dataset> Size: 17MB
+Dimensions:       (region: 7, longitude: 720, latitude: 360, lon: 360, lat: 720)
+Coordinates:
+  ,* region        (region) int8 7B 1 2 3 4 5 6 7
+  ,* longitude     (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
+  ,* latitude      (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
+Dimensions without coordinates: lon, lat
+Data variables:
+    melt          (region, latitude, longitude) float64 15MB ...
+    region_map    (lon, lat) float64 2MB ...
+    region_names  (region) <U2 56B ...
+    spatial_ref   int8 1B ...
+Attributes:
+    geospatial_lat_min:  -89.75
+    geospatial_lat_max:  89.75
+    geospatial_lon_min:  -179.75
+    geospatial_lon_max:  179.75
+    date_created:        20241101T013919Z
+    title:               Normalised iceberg melt climatology per region of ca...
+    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    Conventions:         CF-1.8
 #+end_example
 
-#+BEGIN_SRC bash :exports both :results verbatim
-ncdump -h ./dat/GL_iceberg_melt_3413.nc | grep -vE 'coordinates|_Fill|spatial_ref'
-#+END_SRC
-
-#+RESULTS:
-#+begin_example
-netcdf GL_iceberg_melt_3413 {
-dimensions:
-	y = 205 ;
-	x = 146 ;
-variables:
-	double NO(y, x) ;
-	double NW(y, x) ;
-	double NE(y, x) ;
-	double CW(y, x) ;
-	double CE(y, x) ;
-	double SW(y, x) ;
-	double SE(y, x) ;
-	double GL(y, x) ;
-	double x(x) ;
-		x:long_name = "projection_x_coordinate" ;
-		x:units = "meters" ;
-	double y(y) ;
-		y:long_name = "projection_y_coordinate" ;
-		y:units = "meters" ;
-}
-#+end_example
-
-*** Description
-
-=GL_iceberg_melt_4326.nc= contains weighted masks of where iceberg melt enters the ocean. Projection is EPSG:4326 (lon,lat). Spatial resolution is 0.1 degree (1800 x 3600). Fields =NO=, =NW=, =NE=, etc. represent icebergs that are sourced from the North, Northwest, Northeast, etc. sectors of Greenland. The =GL= mask is the sum of all masks. Each mask sums to 1.
+*** Information
 
 #+BEGIN_QUOTE
 [!WARNING]
-Iceberg tracks come from Marson (2024) http://doi.org/10.1029/2023jc020697. The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, your mask will not sum to 1. Rescaling the mask so it sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the mask by increasing only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
+Iceberg tracks come from Marson (2024) http://doi.org/10.1029/2023jc020697. The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, you may lose large melt inputs. Rescaling the melt so melt*area sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the melt by increasing only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
 #+END_QUOTE
 
-*** Graphic
+*** Figure
 
-The dataset contains one additional array for all of Greenland combined.
+#+begin_src jupyter-python :exports results :file ./fig/GL_berg_melt.png
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+import geopandas as gpd
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+# gdf = gpd.read_file('~/data/Mouginot_2019/Greenland_Basins_PS_v1.4.2.shp')
+gdf = gpd.read_file('~/data/Mouginot_2019/GL_regions.gpkg')
+gdf = gdf.to_crs('EPSG:4326')
+# gdf = gdf.dissolve(by='label')
+
+# # expand and simplify polygons
+# polys = gpd.GeoSeries(gdf.dropna()["geometry"].apply(lambda g: g._geom).explode())
+# polys = polys.simplify(10000)
+
+# # Drop islands
+# gdf = (
+#     gpd.GeoDataFrame(data={"area": polys.area / 10**6}, geometry=polys, crs=polys.crs)
+#     .sort_values("area", ascending=0)
+#     .loc[lambda d: d["area"].gt(100000)]  # filter by size of polygon
+#     .reset_index()
+# )
+gdf = gdf.set_index('label')
+# # gdf = gdf.unary_union()
+
+
+# fig, axs = plt.subplots(ncols=4, nrows=2,
+#                         sharex=True, sharey=True,
+#                         layout='constrained')
+# fig.set_figwidth(12); fig.set_figheight(8)
+# axs = axs.flatten()
+
+# plt.subplots_adjust(wspace=0.001, hspace=0.001)
+
+ds = xr.open_dataset('dat/GL_iceberg_melt.nc')
+
+ds = ds.sel({'latitude':slice(40,90), 'longitude':slice(-100,15)}, drop=True)
+
+g = np.log10(ds['melt']).plot(x='longitude', y='latitude',
+                              col='basin', col_wrap=3,
+                              vmin = -7, vmax = -5,
+                              cbar_kwargs={"label": "[log$_{10}$ kg m$^{-2}$ yr$^{-1}$]"},
+                              cmap=plt.cm.viridis)
+
+
+basins = ['NO','NE','CE','SE','SW','CW','NW']
+for i, ax in enumerate(g.axs.flat):
+    # ice sheet regions
+    if i >= 7: continue
+    gdf.boundary.plot(ax=ax, color='k', linewidth=1)
+    ax.set_title(basins[i])
+
+plt.draw()
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+: /home/kdm/local/mambaforge/envs/ds/lib/python3.10/site-packages/xarray/core/computation.py:825: RuntimeWarning: divide by zero encountered in log10
+:   result_data = func(*input_data)
 [[./fig/GL_berg_melt.png]]
+:END:
+
 
 * Processing
 ** Provenance
@@ -222,6 +254,16 @@ Greenland discharge was provided by Bamber et al. (2012) on a 5 × 5 km grid and
 #+END_QUOTE
 
 So discharge should be ~1100*0.54 = 594 Gt/yr
+
+** Greenland ROIs
+
+#+BEGIN_SRC bash :exports both :results verbatim
+g.mapset PERMANENT
+v.import input=${DATADIR}/Mouginot_2019/GL_regions.gpkg output=ROIs
+v.db.select map=ROIs
+v.to.rast input=ROIs output=ROIs use=attr attribute_column=cat_
+#+END_SRC
+
 
 ** Load data
 
@@ -401,14 +443,10 @@ export GRASS_OVERWRITE=1
 
 #+BEGIN_SRC bash :exports both :results verbatim
 ogr2ogr ./tmp/Mouginot.gpkg -t_srs "EPSG:3413" ${DATADIR}/Mouginot_2019/Greenland_Basins_PS_v1.4.2.shp
-v.import input=./tmp/Mouginot.gpkg output=GL_all
-# clean
-v.db.droprow input=GL_all where='NAME like "ICE_CAPS_%"' output=nocaps
-v.dissolve input=nocaps column=SUBREGION1 output=GL_dirty
-v.clean input=GL_dirty tool=rmarea thresh=1000 output=GL
-
-g.region vector=GL_all res=10000
-v.to.rast input=GL output=GL use=cat
+v.import input=${DATADIR}/Mouginot_2019/GL_regions.gpkg output=GL
+v.db.select map=GL
+g.region vector=GL res=10000 -pa
+v.to.rast input=GL output=GL use=attr attribute_column=cat_
 #+END_SRC
 
 **** Import each track and find closest ice ROI for initial location
@@ -428,14 +466,15 @@ g.region save=iceberg_region
 
 r.mapcalc "x = x()"
 r.mapcalc "y = y()"
+r.mapcalc "area = area()"
 
 # Record nearest region at all times, by finding the region nearest the 1st time
 v.db.addcolumn map=bergs columns="region VARCHAR(3)"
 
 v.extract input=bergs where='(time == 1)' output=t0
-v.distance from=t0 to=GL upload=to_attr to_column=SUBREGION1 column=region
-db.select table=t0|head
-db.select table=bergs|head
+v.distance from=t0 to=GL upload=to_attr to_column=label column=region
+db.select table=t0|head| column -s"|" -t
+db.select table=bergs|head| column -s"|" -t
 
 roi=NO # debug
 for roi in NO NE SE SW CW NW CE; do
@@ -477,7 +516,7 @@ echo "total: " ${tot}
 #+END_SRC
 
 #+RESULTS:
-: CE: 60.88001865521231664000
+: CE: 60.88001865521231664000
 : CW: 64.46425864166702496000
 : NE: 25.40014168772459318400
 : NO: 28.68058742930748950400
@@ -485,7 +524,7 @@ echo "total: " ${tot}
 : SE: 111.14793375478535664000
 : SW: 18.72428341325589532800
 : 
-: total:  407.23882810034189961600
+: total:  407.23882810034189961600
 
 My estimates of discharge by ROI?
 
@@ -504,7 +543,7 @@ dd.to_dataframe()
 
 #+RESULTS:
 :RESULTS:
-: <xarray.DataArray 'discharge' ()>
+: <xarray.DataArray 'discharge' ()> Size: 8B
 : array(476.48053387)
 | region   |   discharge |
 |----------+-------------|
@@ -517,43 +556,6 @@ dd.to_dataframe()
 | SW       |     18.9477 |
 :END:
 
-**** Graphic
-
-#+BEGIN_SRC bash :exports both :results verbatim
-r.colors -g map=NO,NE,SE,SW,CW,NW,CE color=viridis # range all
-
-for roi in NO NE SE SW CE CW NW; do
-  # r.colors -e map=${roi} color=viridis # range each (not all)
-  # r.colors --q -g map=${roi} color=viridis # range each (not all)
-  rm tmp/GL_berg_melt_${roi}.png
-  d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=400 width=300 --o
-  d.vect --q GL color=gray fill_color=none
-  cat=$(db.select -c sql="select cat from GL where SUBREGION1 = \"${roi}\"")
-  d.vect --q GL color=gray fill_color=red cats=${cat}
-  d.rast --q ${roi} values=1-1E15
-  [[ $roi == "CW" ]] && d.legend -l raster=NO range=1,1E15 label_values=1,10,100,1000,50000 title='kg/s' at=66,95,80,85 fontsize=12
-  d.mon stop=png
-done
-
-roi=all
-rm tmp/GL_berg_melt_${roi}.png
-d.mon start=png output=tmp/GL_berg_melt_${roi}.png height=400 width=300 --o
-d.vect --q GL color=gray fill_color=none
-r.mapcalc "roi_ALL = NO+NE+NW+CW+CE+SW+SE"
-r.colors -g map=roi_ALL color=viridis
-d.rast --q roi_ALL values=1-1E15
-# d.legend -l raster=roi_ALL range=1,1E15 label_values=1,10,100,1000,50000 title='kg/s' at=66,95,80,85 fontsize=9
-d.mon stop=png
-
-convert +append tmp/GL_berg_melt_{NW,NO,NE,CE}.png ./tmp/row1.png
-convert +append tmp/GL_berg_melt_{CW,SW,SE,all}.png ./tmp/row2.png
-convert -append tmp/row{1,2}.png ./fig/GL_berg_melt.png
-o ./fig/GL_berg_melt.png
-#+END_SRC
-
-
-[[./fig/GL_berg_melt.png]]
-
 ** Reproject from 3413 to 4326
 
 + Reprojecting raster values introduces scaling issues due to EPSG:4326 cell areas
@@ -562,12 +564,13 @@ o ./fig/GL_berg_melt.png
 #+BEGIN_SRC bash :exports both :results verbatim
 grass ./G_4326/PERMANENT
 g.mapset -c Marson_2024
-
+export GRASS_OVERWRITE=1
 # g.region -pa res=0:15 s=-90 n=90 w=-180 e=180
-g.region -pa s=-90 n=90 w=-180 e=180 cols=3600 rows=1800
+g.region -pa s=-90 n=90 w=-180 e=180 res=0.5
 
 r.mapcalc "x = x()"
 r.mapcalc "y = y()"
+r.mapcalc "area = area()"
 
 v.proj project=G_3413 mapset=Marson_2024 input=bergs output=bergs
 db.select table=bergs|head
@@ -602,138 +605,24 @@ echo "total: " ${tot}
 #+END_SRC
 
 #+RESULTS:
-: CE: 60.88002141716420976000
-: CW: 64.46424022458436800000
-: NE: 25.40014088972705308800
-: NO: 28.68057180232560158400
-: NW: 97.94161052406375120000
-: SE: 111.14793509124540096000
-: SW: 18.72428329165102948800
+: CE: 60.88
+: CW: 64.46
+: NE: 25.40
+: NO: 28.68
+: NW: 97.94
+: SE: 111.14
+: SW: 18.72
 : 
-: total:  407.23880324076141408000
-
-My estimates of discharge by ROI?
-
-#+BEGIN_SRC jupyter-python :exports both
-import xarray as xr
-dd = xr.open_dataset('/home/kdm/data/Mankoff_2020/ice/latest/region.nc')\
-       .sel({'time':slice('2000-01-01','2019-12-31')})\
-       .resample({'time':'YS'})\
-       .mean()\
-       .mean(dim='time')\
-       ['discharge']
-
-print(dd.sum())
-dd.to_dataframe()
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: <xarray.DataArray 'discharge' ()> Size: 8B
-: array(476.48053387)
-| region   |   discharge |
-|----------+-------------|
-| CE       |     77.8964 |
-| CW       |     86.1499 |
-| NE       |     25.9822 |
-| NO       |     25.329  |
-| NW       |    103.127  |
-| SE       |    139.048  |
-| SW       |     18.9477 |
-:END:
-
-
+: total:  407.23
 
 ** Export to NetCDF
 
-*** Greenland 3413 projection
-
-#+BEGIN_SRC jupyter-python :exports both
+#+begin_src jupyter-python :exports both
 import numpy as np
 import xarray as xr
 import rioxarray as rxr
 from tqdm import tqdm
-
-from grass_session import Session
-from grass.script import core as gcore
-import grass.script as gscript
-# import grass.script.setup as gsetup
-# import grass python libraries
-from grass.pygrass.modules.shortcuts import general as g
-from grass.pygrass.modules.shortcuts import raster as r
-from grass.pygrass.modules.shortcuts import vector as v
-from grass.pygrass.modules.shortcuts import temporal as t
-from grass.script import array as garray
-
-S = Session()
-S.open(gisdb=".", location="G_3413", mapset="Marson_2024", create_opts=None)
-x = garray.array("x")[::-1,:]
-y = garray.array("y")[::-1,:]
-NO = garray.array("NO")[::-1,:]
-da = xr.DataArray(data = NO,
-                  dims = ['y','x'],
-                  coords = {'x':x[0,:], 'y':y[:,0]})
-ds = xr.Dataset({'NO':da})
-ds['NW'] = (('y','x'), garray.array("NW")[::-1,:])
-ds['NE'] = (('y','x'), garray.array("NE")[::-1,:])
-ds['CW'] = (('y','x'), garray.array("CW")[::-1,:])
-ds['CE'] = (('y','x'), garray.array("CE")[::-1,:])
-ds['SW'] = (('y','x'), garray.array("SW")[::-1,:])
-ds['SE'] = (('y','x'), garray.array("SE")[::-1,:])
-
-S.close() # Done with GRASS
-
-# one mask for all of Greenland
-ds['GL'] = ds['NO'] + ds['NW'] + ds['NE'] + ds['CW'] \
-    + ds['CE'] + ds['SW'] + ds['SE']
-
-# Normalize all masks
-for d in ds.data_vars:
-    ds[d] = ds[d] / ds[d].sum()
-    
-ds = ds.where(ds != 0) # 0 to NaN
-
-ds = ds.rio.write_crs('epsg:3413')
-ds = ds.rio.set_spatial_dims('x','y')
-
-ds['y'].attrs['long_name'] = 'projection_y_coordinate'
-ds['y'].attrs['units'] = 'meters'
-ds['x'].attrs['long_name'] = 'projection_x_coordinate'
-ds['x'].attrs['units'] = 'meters'
-
-comp = dict(zlib=True, complevel=2) # Internal NetCDF compression
-encoding = {var: comp for var in ds.data_vars}
-
-ds.to_netcdf('./dat/GL_iceberg_melt_3413.nc', encoding=encoding)
-print(ds)
-#+END_SRC
-
-#+RESULTS:
-#+begin_example
-<xarray.Dataset>
-Dimensions:      (y: 205, x: 146)
-Coordinates:
-  ,* x            (x) float64 -1.688e+06 -1.662e+06 ... 1.912e+06 1.938e+06
-  ,* y            (y) float64 -5.612e+06 -5.588e+06 ... -5.375e+05 -5.125e+05
-    spatial_ref  int64 0
-Data variables:
-    NO           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    NW           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    NE           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    CW           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    CE           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    SW           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    SE           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-    GL           (y, x) float64 nan nan nan nan nan nan ... nan nan nan nan nan
-#+end_example
-
-*** Global 4326 projection
-
-#+BEGIN_SRC jupyter-python :exports both
-import numpy as np
-import xarray as xr
-import rioxarray as rxr
-from tqdm import tqdm
+import datetime
 
 from grass_session import Session
 from grass.script import core as gcore
@@ -750,86 +639,93 @@ S = Session()
 S.open(gisdb=".", location="G_4326", mapset="Marson_2024", create_opts=None)
 lon = garray.array("x")[::-1,:]
 lat = garray.array("y")[::-1,:]
-NO = garray.array("NO")[::-1,:]
-da = xr.DataArray(data = NO,
-                  dims = ['lat','lon'],
-                  coords = {'lat':lat[:,0], 'lon':lon[0,:]})
-ds = xr.Dataset({'NO':da})
-ds['NW'] = (('lat','lon'), garray.array("NW")[::-1,:])
-ds['NE'] = (('lat','lon'), garray.array("NE")[::-1,:])
-ds['CW'] = (('lat','lon'), garray.array("CW")[::-1,:])
-ds['CE'] = (('lat','lon'), garray.array("CE")[::-1,:])
-ds['SW'] = (('lat','lon'), garray.array("SW")[::-1,:])
-ds['SE'] = (('lat','lon'), garray.array("SE")[::-1,:])
+
+melt = np.zeros((7, lon.shape[0], lat.shape[1]))
+melt[0,:,:] = garray.array("CE")[::-1,:]
+melt[1,:,:] = garray.array("CW")[::-1,:]
+melt[2,:,:] = garray.array("NE")[::-1,:]
+melt[3,:,:] = garray.array("NO")[::-1,:]
+melt[4,:,:] = garray.array("NW")[::-1,:]
+melt[5,:,:] = garray.array("SE")[::-1,:]
+melt[6,:,:] = garray.array("SW")[::-1,:]
+
+area = garray.array("area")[::-1,:]
+melt = melt / area
+
+ds = xr.Dataset({
+    'melt': xr.DataArray(data = melt,
+                         dims = ['region','latitude','longitude'],
+                         coords = {'region':np.arange(7).astype(np.int8)+1,
+                                   'longitude':lon[0,:],
+                                   'latitude':lat[:,0]})})
+
+ROIs = garray.array("ROIs")[::-1,:]
+ds['region_map'] = (('lon','lat'), ROIs)
 
 S.close() # Done with GRASS
 
-# one mask for all of Greenland
-ds['GL'] = ds['NO'] + ds['NW'] + ds['NE'] + ds['CW'] \
-    + ds['CE'] + ds['SW'] + ds['SE']
+ds['region_names'] = (('region'), ['CE','CW','NE','NE','NW','SE','SW'])
 
-# Normalize all masks
-for d in ds.data_vars:
-    ds[d] = ds[d] / ds[d].sum()
-    
-ds = ds.where(ds != 0) # 0 to NaN
+# ds = ds.where(ds != 0) # 0 to NaN
 
 ds = ds.rio.write_crs('epsg:4326')
-ds = ds.rio.set_spatial_dims('lon','lat')
+ds['spatial_ref'] = ds['spatial_ref'].astype(np.byte)
+ds = ds.rio.set_spatial_dims('longitude','latitude')
 
-ds['lat'].attrs['long_name'] = 'latitude'
-ds['lat'].attrs['units'] = 'degrees_north'
-ds['lon'].attrs['long_name'] = 'longitude'
-ds['lon'].attrs['units'] = 'degrees_east'
+ds['latitude'].attrs['long_name'] = 'latitude'
+ds['latitude'].attrs['axis'] = 'Y'
+ds['latitude'].attrs['units'] = 'degrees_north'
+ds['longitude'].attrs['long_name'] = 'longitude'
+ds['longitude'].attrs['axis'] = 'X'
+ds['longitude'].attrs['units'] = 'degrees_east'
+
+ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
+ds['melt'].attrs['units'] = 'm-2'
+
+ds['region'].attrs['long_name'] = 'Mouginot (2019) region'
+ds['region_map'].attrs['long_name'] = 'Region IDs'
+
+ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
+
+ds.attrs['geospatial_lat_min'] = ds['latitude'].values.min()
+ds.attrs['geospatial_lat_max'] = ds['latitude'].values.max()
+ds.attrs['geospatial_lon_min'] = ds['longitude'].values.min()
+ds.attrs['geospatial_lon_max'] = ds['longitude'].values.max()
+ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+ds.attrs['title'] = 'Normalised iceberg melt climatology per region of calving from Marson (2024)'
+ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
+ds.attrs['Conventions'] = 'CF-1.8'
 
 comp = dict(zlib=True, complevel=2) # Internal NetCDF compression
-encoding = {var: comp for var in ds.data_vars}
+encoding = {var: comp for var in ['melt']}
 
-ds.to_netcdf('./dat/GL_iceberg_melt_4326.nc', encoding=encoding)
+!rm ./dat/GL_iceberg_melt.nc
+ds.to_netcdf('./dat/GL_iceberg_melt.nc', encoding=encoding)
 print(ds)
-#+END_SRC
+#+end_src
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 415MB
-Dimensions:      (lat: 1800, lon: 3600)
+<xarray.Dataset> Size: 17MB
+Dimensions:       (region: 7, longitude: 720, latitude: 360, lon: 360, lat: 720)
 Coordinates:
-  ,* lat          (lat) float64 14kB -89.95 -89.85 -89.75 ... 89.75 89.85 89.95
-  ,* lon          (lon) float64 29kB -179.9 -179.8 -179.8 ... 179.7 179.8 179.9
-    spatial_ref  int64 8B 0
+  ,* region        (region) int8 7B 1 2 3 4 5 6 7
+  ,* longitude     (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
+  ,* latitude      (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
+    spatial_ref   int8 1B 0
+Dimensions without coordinates: lon, lat
 Data variables:
-    NO           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
-    NW           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
-    NE           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
-    CW           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
-    CE           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
-    SW           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
-    SE           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
-    GL           (lat, lon) float64 52MB nan nan nan nan nan ... nan nan nan nan
+    melt          (region, latitude, longitude) float64 15MB 0.0 0.0 ... 0.0 0.0
+    region_map    (lon, lat) float64 2MB 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+    region_names  (region) <U2 56B 'CE' 'CW' 'NE' 'NE' 'NW' 'SE' 'SW'
+Attributes:
+    geospatial_lat_min:  -89.75
+    geospatial_lat_max:  89.75
+    geospatial_lon_min:  -179.75
+    geospatial_lon_max:  179.75
+    date_created:        20241101T013919Z
+    title:               Normalised iceberg melt climatology per region of ca...
+    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    Conventions:         CF-1.8
 #+end_example
-
-* Figure
-
-#+BEGIN_SRC jupyter-python :exports both
-import xarray as xr
-import numpy as np
-import matplotlib.pyplot as plt
-
-fig, axs = plt.subplots(ncols=4, nrows=2)
-axs = axs.flatten()
-
-ds = xr.open_dataset('dat/GL_iceberg_melt_3413.nc')
-
-for i,d in enumerate(ds.data_vars):
-    if d == 'spatial_ref': continue
-    ax = axs[i]
-    cbar = False if d != 'GL' else True
-    g = np.log10(ds[d]).plot(ax=ax, add_colorbar=cbar)
-    ax.set_xlabel(' ')
-    ax.set_ylabel(' ')
-    if cbar: g.colorbar.set_label('')
-#+END_SRC
-
-#+RESULTS:
-[[file:./figs_tmp/a10b48d095a859ee4e37d967b1cc3168d883b48f.png]]
 

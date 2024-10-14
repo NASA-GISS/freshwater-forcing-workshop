@@ -1,0 +1,347 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session mankoff_2020_liquid
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#minimum-runoff-depth-per-roi][Minimum runoff depth per ROI]]
+    - [[#plots][Plots]]
+    - [[#table-annual-ice-only-runoff-per-region-for-greenland][Table: Annual ice-only runoff per region for Greenland]]
+- [[#fetch-data][Fetch data]]
+- [[#combine-land-and-ice-runoff-and-bin-by-roi][Combine land and ice runoff and bin by ROI]]
+
+* Introduction
+
+Greenland surface runoff is repackaged from:
++ Paper: Mankoff (2020) http://doi.org/10.5194/essd-12-2811-2020.
++ Code (original): https://github.com/GEUS-Glaciology-and-Climate/freshwater
++ Data: http://doi.org/10.22008/promice/freshwater
+
+** Data example
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_runoff.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 203kB
+Dimensions:                         (region: 7, time: 876)
+Coordinates:
+  ,* region                          (region) int32 28B 1 2 3 4 5 6 7
+  ,* time                            (time) datetime64[ns] 7kB 1950-01-01 ... ...
+Data variables:
+    subglacial_discharge_from_land  (region, time) float64 49kB ...
+    surface_runoff_from_land        (region, time) float64 49kB ...
+    subglacial_discharge_from_ice   (region, time) float64 49kB ...
+    surface_runoff_from_ice         (region, time) float64 49kB ...
+    min_discharge_depth             (region) float32 28B ...
+    region_name                     (region) <U2 56B ...
+Attributes:
+    title:        Ice sheet runoff by Mougniot region
+    history:      TBD
+    Conventions:  CF-1.8
+#+end_example
+
+*** Minimum runoff depth per ROI
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/GL_runoff.nc')
+ds['min_discharge_depth'].to_dataframe()
+#+END_SRC
+
+#+RESULTS:
+|   region |   min_discharge_depth |
+|----------+-----------------------|
+|        1 |                  -661 |
+|        2 |                  -824 |
+|        3 |                 -1341 |
+|        4 |                 -1094 |
+|        5 |                 -1158 |
+|        6 |                  -643 |
+|        7 |                  -243 |
+
+*** Plots
+
+**** Annual runoff by type for all of Greenland
+
+Example showing annual data for
++ Land runoff that enters the ocean subglacially (at depth)
++ Land runoff that enters the ocean at the surface
++ Ice runoff that enters the ocean subglacially
++ Ice runoff that enters the ocean at the surface
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff.png
+import xarray as xr
+ds = xr.open_dataset('dat/GL_runoff.nc').load()
+df = ds.sum(dim='region')\
+       .drop_vars(['min_discharge_depth'])\
+       .sel({'time':slice('1950-01-01','2021-01-01')})\
+       .resample({'time':'YS'})\
+       .sum()\
+       .to_dataframe()
+
+df = df * 86400 / 1E9 # convert from m^3/s -> ~ Gt/year
+ax = df.plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Runoff [Gt$^{3}$ year^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[./fig/GL_runoff.png]]
+
+**** Region runoff for some years
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_runoff_region.png
+import xarray as xr
+ds = xr.open_dataset('dat/GL_runoff.nc')
+df = ds.drop_vars(['min_discharge_depth'])\
+       .sel({'time':slice('2017-01-01','2021-01-01')})\
+       ['subglacial_discharge_from_ice']\
+       .to_dataframe()['subglacial_discharge_from_ice']
+
+df = df.unstack().T
+df.columns = ds['region_name'].values
+ax = df.plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Runoff [m$^{3}$ s$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[./fig/GL_runoff_region.png]]
+
+*** Table: Annual ice-only runoff per region for Greenland
+
+#+begin_src jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/GL_runoff.nc').load()
+df = ds\
+    .drop_vars(['min_discharge_depth'])\
+    .sel({'time':slice('2000-01-01','2099-12-31')})\
+    .resample({'time':'YS'})\
+    .sum()\
+    .to_dataframe()
+
+df = df[['subglacial_discharge_from_ice','surface_runoff_from_ice']].sum(axis='columns')
+df = df * 86400 / 1E9 # convert from m^3/s -> ~ Gt/year
+df = df.unstack()
+df.columns = [str(_[0]) + ' ['+_[1]+']' for _ in zip(ds['region'].values, ds['region_name'].values)]
+df['GL'] = df.sum(axis='columns')
+df.index = [str(_)[0:4] for _ in df.index]
+df.round(-1)
+#+end_src
+
+#+RESULTS:
+|      |   1 [CE] |   2 [CW] |   3 [NE] |   4 [NO] |   5 [NW] |   6 [SE] |   7 [SW] |   GL |
+|------+----------+----------+----------+----------+----------+----------+----------+------|
+| 2000 |       50 |       40 |       40 |       30 |       40 |       70 |      130 |  400 |
+| 2001 |       40 |       40 |       40 |       40 |       50 |       70 |      100 |  380 |
+| 2002 |       70 |       40 |       70 |       50 |       40 |       70 |      110 |  450 |
+| 2003 |       60 |       50 |       80 |       60 |       70 |       80 |      170 |  560 |
+| 2004 |       70 |       50 |       50 |       30 |       40 |       80 |      130 |  450 |
+| 2005 |       60 |       50 |       70 |       60 |       60 |      100 |      120 |  510 |
+| 2006 |       50 |       40 |       40 |       30 |       50 |       80 |      120 |  410 |
+| 2007 |       60 |       60 |       50 |       30 |       60 |       80 |      160 |  510 |
+| 2008 |       70 |       40 |       80 |       70 |       70 |       80 |      110 |  520 |
+| 2009 |       50 |       40 |       60 |       50 |       50 |       60 |       80 |  400 |
+| 2010 |       90 |       70 |       60 |       50 |       70 |      130 |      200 |  670 |
+| 2011 |       50 |       60 |       60 |       60 |       80 |       70 |      140 |  510 |
+| 2012 |       70 |       90 |       90 |       80 |      100 |      110 |      250 |  790 |
+| 2013 |       50 |       40 |       50 |       30 |       40 |       60 |       90 |  360 |
+| 2014 |       60 |       50 |       50 |       50 |       60 |       90 |      140 |  500 |
+| 2015 |       50 |       40 |       70 |       70 |       70 |       60 |       90 |  460 |
+| 2016 |       70 |       60 |       80 |       60 |       60 |       90 |      160 |  590 |
+| 2017 |       60 |       40 |       70 |       40 |       40 |       80 |      120 |  450 |
+| 2018 |       50 |       40 |       30 |       30 |       40 |       70 |      100 |  360 |
+| 2019 |       80 |       80 |      100 |       90 |       90 |       90 |      170 |  710 |
+| 2020 |       60 |       40 |       80 |       80 |       50 |       80 |      140 |  530 |
+| 2021 |       80 |       50 |       70 |       50 |       70 |      110 |      160 |  590 |
+| 2022 |       50 |       50 |       50 |       50 |       60 |       90 |      150 |  490 |
+
+#+begin_src jupyter-python :exports both :file ./fig/GL_runoff_month.png
+df.describe().round()
+#+end_src
+
+#+RESULTS:
+|       |   1 [CE] |   2 [CW] |   3 [NE] |   4 [NO] |   5 [NW] |   6 [SE] |   7 [SW] |   GL |
+|-------+----------+----------+----------+----------+----------+----------+----------+------|
+| count |       23 |       23 |       23 |       23 |       23 |       23 |       23 |   23 |
+| mean  |       62 |       50 |       61 |       52 |       59 |       83 |      137 |  504 |
+| std   |       12 |       14 |       18 |       18 |       16 |       17 |       39 |  111 |
+| min   |       37 |       36 |       34 |       28 |       37 |       58 |       84 |  363 |
+| 25%   |       53 |       39 |       49 |       37 |       47 |       73 |      109 |  429 |
+| 50%   |       59 |       45 |       58 |       49 |       58 |       83 |      128 |  502 |
+| 75%   |       70 |       55 |       74 |       64 |       66 |       91 |      158 |  546 |
+| max   |       85 |       86 |      104 |       90 |      100 |      128 |      254 |  794 |
+
+
+* Fetch data
+
++ Warning: ~20 GB
+
+#+BEGIN_SRC bash :exports both :results verbatim
+mkdir -p tmp/greenland_runoff
+pushd tmp/greenland_runoff
+wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/FK2/XKQVL7"
+popd
+#+END_SRC
+
+* Combine land and ice runoff and bin by ROI
+
+Create one dataset that includes
++ Land runoff (melted snow, and rain on land)
++ Ice runoff (melted snow, melted ice, and rain on the ice sheet that does not refreeze)
+
+Note that land runoff can enter fjords via streams at their surface, or route subglacially and then mix with subglacial discharge at depth in fjords at the grounding line of marine-terminating glaciers. Ice runoff can also enter fjords at depth at the grounding line of marine-terminating glaciers, or at the surface from sub-aerial streams from land terminating glaciers. Metadata will be used to track each of these sources and destinations.
+
+Runoff will be binned by Mouginot regions in Greenland. See Mouginot (2019) https://doi.org/10.7280/d1wt11. This metadata is already include in the product downloaded above.
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+
+ds_land = xr.open_mfdataset('tmp/greenland_runoff/freshwater/land/MAR.nc', chunks='auto')
+ds_ice = xr.open_mfdataset('tmp/greenland_runoff/freshwater/ice/MAR.nc', chunks='auto')
+
+ds_land = ds_land.reset_coords('alt')
+ds_ice = ds_ice.reset_coords('alt')
+
+# Land runoff by destination (use alt metadata = BedMachine depth at outlet location)
+land_sub = ds_land.where(ds_land['alt'] < 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+land_surf = ds_land.where(ds_land['alt'] >= 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+
+# Max depth of discharge within each region    
+sub_depth = ds_land.where(ds_land['alt'] < 0).groupby('M2019_region').min()['alt']
+
+# Ice runoff by destination
+ice_sub = ds_ice.where(ds_ice['coast_alt'] < 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+ice_surf = ds_ice.where(ds_ice['coast_alt'] >= 0).groupby('M2019_region').sum()['discharge'].resample({'time':'MS'}).sum()
+
+ds = xr.Dataset({'subglacial_discharge_from_land':land_sub,
+                 'surface_runoff_from_land':land_surf,
+                 'subglacial_discharge_from_ice':ice_sub,
+                 'surface_runoff_from_ice':ice_surf,
+                 'min_discharge_depth':sub_depth})
+
+# # scale from m^3/s -> km^3/sample_period
+# scale = 86400 / 1E9
+# # /1E9:  m^3 -> km^3
+# # 86400: nuber of seconds in a day. Because sum() used above, works for month or year or any resample period
+# scale_items = ['subglacial_discharge_from_land','surface_runoff_from_land',
+#                'subglacial_discharge_from_ice','surface_runoff_from_ice']
+# ds[scale_items] = ds[scale_items] * scale                 
+
+print(ds)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 203kB
+Dimensions:                         (M2019_region: 7, time: 876)
+Coordinates:
+  ,* M2019_region                    (M2019_region) object 56B 'CE' 'CW' ... 'SW'
+  ,* time                            (time) datetime64[ns] 7kB 1950-01-01 ... ...
+Data variables:
+    subglacial_discharge_from_land  (M2019_region, time) float64 49kB dask.array<chunksize=(7, 19), meta=np.ndarray>
+    surface_runoff_from_land        (M2019_region, time) float64 49kB dask.array<chunksize=(7, 19), meta=np.ndarray>
+    subglacial_discharge_from_ice   (M2019_region, time) float64 49kB dask.array<chunksize=(7, 46), meta=np.ndarray>
+    surface_runoff_from_ice         (M2019_region, time) float64 49kB dask.array<chunksize=(7, 46), meta=np.ndarray>
+    min_discharge_depth             (M2019_region) float32 28B dask.array<chunksize=(7,), meta=np.ndarray>
+#+end_example
+
+Write it out using Dask so it works on lightweight machines. This takes a few hours.
+
+#+BEGIN_SRC jupyter-python :exports both
+delayed_obj = ds.to_netcdf('tmp/GL_runoff.nc', compute=False)
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    results = delayed_obj.compute()
+#+END_SRC
+
+#+RESULTS:
+: [########################################] | 100% Completed | 110.26 s
+
+Add metadata, extend back to 1840, etc.
+
+#+begin_src jupyter-python :exports both
+ds = xr.open_dataset('tmp/GL_runoff.nc')
+
+ds = ds.rename({'M2019_region':'region'})
+ds['region_name'] = ds['region']
+ds['region'] = np.arange(7).astype(np.int32) + 1
+
+items = ['subglacial_discharge_from_land','surface_runoff_from_land',
+         'subglacial_discharge_from_ice','surface_runoff_from_ice']
+for i in items:
+    ds[i].attrs['standard_name'] = 'water_volume_transport_into_sea_water_from_rivers'
+    ds[i].attrs['units'] = 'm3 s-1'
+
+ds['time'].attrs['long_name'] = 'time'
+ds['region'].attrs['long_name'] = 'Mougniot (2019) region'
+
+ds.attrs['title'] = 'Ice sheet runoff by Mougniot region'
+ds.attrs['history'] = 'TBD'
+ds.attrs['Conventions'] = 'CF-1.8'
+
+    
+comp = dict(zlib=True, complevel=5)
+encoding = {var: comp for var in items}
+encoding['time'] = {'dtype': 'i4'}
+
+!rm dat/GL_runoff.nc    
+ds.to_netcdf('dat/GL_runoff.nc', encoding=encoding)
+!ncdump -h dat/GL_runoff.nc
+#+end_src
+
+#+RESULTS:
+#+begin_example
+netcdf GL_runoff {
+dimensions:
+	region = 7 ;
+	time = 876 ;
+variables:
+	int region(region) ;
+		region:long_name = "Mougniot (2019) region" ;
+	int time(time) ;
+		time:long_name = "time" ;
+		time:units = "days since 1950-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+	double subglacial_discharge_from_land(region, time) ;
+		subglacial_discharge_from_land:_FillValue = NaN ;
+		subglacial_discharge_from_land:long_name = "MAR discharge" ;
+		subglacial_discharge_from_land:standard_name = "water_volume_transport_into_sea_water_from_rivers" ;
+		subglacial_discharge_from_land:units = "m3 s-1" ;
+	double surface_runoff_from_land(region, time) ;
+		surface_runoff_from_land:_FillValue = NaN ;
+		surface_runoff_from_land:long_name = "MAR discharge" ;
+		surface_runoff_from_land:standard_name = "water_volume_transport_into_sea_water_from_rivers" ;
+		surface_runoff_from_land:units = "m3 s-1" ;
+	double subglacial_discharge_from_ice(region, time) ;
+		subglacial_discharge_from_ice:_FillValue = NaN ;
+		subglacial_discharge_from_ice:long_name = "MAR discharge" ;
+		subglacial_discharge_from_ice:standard_name = "water_volume_transport_into_sea_water_from_rivers" ;
+		subglacial_discharge_from_ice:units = "m3 s-1" ;
+	double surface_runoff_from_ice(region, time) ;
+		surface_runoff_from_ice:_FillValue = NaN ;
+		surface_runoff_from_ice:long_name = "MAR discharge" ;
+		surface_runoff_from_ice:standard_name = "water_volume_transport_into_sea_water_from_rivers" ;
+		surface_runoff_from_ice:units = "m3 s-1" ;
+	float min_discharge_depth(region) ;
+		min_discharge_depth:_FillValue = NaNf ;
+		min_discharge_depth:long_name = "height_above_mean_sea_level" ;
+		min_discharge_depth:standard_name = "altitude" ;
+		min_discharge_depth:units = "m" ;
+		min_discharge_depth:positive = "up" ;
+		min_discharge_depth:axis = "Z" ;
+	string region_name(region) ;
+
+// global attributes:
+		:title = "Ice sheet runoff by Mougniot region" ;
+		:history = "TBD" ;
+		:Conventions = "CF-1.8" ;
+}
+#+end_example
+
+

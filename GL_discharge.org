@@ -1,0 +1,435 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session mankoff_2020_solid
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#warning][WARNING]]
+  - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#plot-annual-discharge-per-region][Plot: Annual discharge per region]]
+    - [[#table-annual-discharge-per-region][Table: Annual discharge per region]]
+- [[#fetch-data][Fetch data]]
+- [[#reprocess][Reprocess]]
+
+* Introduction
+
+Greenland discharge is repackaged from:
++ Paper: Mankoff (2020) http://doi.org/10.5194/essd-12-1367-2020 
++ Code (original): https://github.com/GEUS-Glaciology-and-Climate/ice_discharge
++ Data: https://doi.org/10.22008/promice/data/ice_discharge/d/v02
+
+** WARNING
+
+This product is generated from flux gates ~5 km upstream of the terminus.
+
+It lacks
++ Terminus retreat, which should add ~10 % over the last two decades
+  + Greene (2024) http://doi.org/10.1038/s41586-023-06863-2
+  + Kochtitzky (2023) http://doi.org/10.1029/2023gl104095 
++ Splitting output between icebergs and submarine melt, which is ~50 % +- 40 %
+  + Enderlin (2013) http://doi.org/10.3189/2013JoG12J049 
+
+** Data example
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_discharge.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 12kB
+Dimensions:      (region: 7, time: 185)
+Coordinates:
+  ,* region       (region) int32 28B 1 2 3 4 5 6 7
+  ,* time         (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2024-01-01
+Data variables:
+    discharge    (region, time) float32 5kB ...
+    err          (region, time) float32 5kB ...
+    region_name  (region) <U3 84B ...
+Attributes: (12/13)
+    featureType:      timeSeries
+    title:            Greenland ice sheet discharge by Mougniot region
+    summary:          Greenland ice shet discharge by Mougnito region
+    keywords:         Greenland; Mass; Mass balance
+    source:           git commit: 20af941
+    creator_name:     Ken Mankoff
+    ...               ...
+    creator_url:      http://kenmankoff.com
+    institution:      NASA GISS
+    references:       TBD
+    product_version:  1.0
+    history:          TBD
+    Conventions:      CF-1.8
+#+end_example
+
+*** Plot: Annual discharge per region
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge.png
+import xarray as xr
+ds = xr.open_dataset('dat/GL_discharge.nc')
+df = ds['discharge'].to_dataframe()['discharge']
+
+df = df.unstack().T
+df.columns = ds['region_name'].values
+ax = df.plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[./fig/GL_discharge.png]]
+
+*** Table: Annual discharge per region
+
+#+begin_src jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/GL_discharge.nc')
+ds = ds.sel({'time': slice('1800-01-01','2013-12-31')})
+df = ds['discharge'].to_dataframe()['discharge']
+df = df.unstack().T
+df.columns = [str(_[0]) + ' ['+_[1]+']' for _ in zip(ds['region'].values, ds['region_name'].values)]
+df['GL'] = df.sum(axis='columns')
+df.index = [str(_)[0:4] for _ in df.index]
+df.round()
+#+end_src
+
+#+RESULTS:
+|      |   1 [CE] |   2 [CW] |   3 [NE] |   4 [NO] |   5 [NW] |   6 [ SE] |   7 [ SW] |   GL |
+|------+----------+----------+----------+----------+----------+-----------+-----------+------|
+| 1840 |       20 |       65 |      119 |       18 |       62 |        86 |        22 |  392 |
+| 1841 |       20 |       65 |      119 |       18 |       62 |        86 |        22 |  392 |
+| 1842 |       20 |       65 |      119 |       18 |       62 |        86 |        22 |  392 |
+| 1843 |       20 |       65 |      119 |       18 |       62 |        86 |        22 |  392 |
+| 1844 |       20 |       65 |      119 |       18 |       62 |        86 |        22 |  392 |
+| 1845 |       21 |       66 |      122 |       18 |       63 |        88 |        22 |  401 |
+| 1846 |       21 |       66 |      121 |       18 |       63 |        88 |        22 |  398 |
+| 1847 |       21 |       66 |      121 |       18 |       63 |        88 |        22 |  399 |
+| 1848 |       21 |       67 |      124 |       18 |       65 |        90 |        23 |  408 |
+| 1849 |       21 |       67 |      123 |       18 |       64 |        90 |        23 |  406 |
+| 1850 |       21 |       67 |      124 |       18 |       64 |        90 |        23 |  408 |
+| 1851 |       21 |       66 |      122 |       18 |       63 |        88 |        22 |  401 |
+| 1852 |       21 |       68 |      125 |       19 |       65 |        91 |        23 |  412 |
+| 1853 |       22 |       69 |      128 |       19 |       66 |        93 |        23 |  421 |
+| 1854 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  418 |
+| 1855 |       22 |       69 |      126 |       19 |       66 |        92 |        23 |  416 |
+| 1856 |       22 |       68 |      126 |       19 |       66 |        91 |        23 |  415 |
+| 1857 |       22 |       70 |      128 |       19 |       67 |        93 |        23 |  423 |
+| 1858 |       22 |       69 |      128 |       19 |       66 |        93 |        23 |  420 |
+| 1859 |       22 |       68 |      126 |       19 |       65 |        91 |        23 |  413 |
+| 1860 |       21 |       68 |      125 |       19 |       65 |        91 |        23 |  411 |
+| 1861 |       21 |       68 |      124 |       18 |       65 |        90 |        23 |  409 |
+| 1862 |       21 |       67 |      123 |       18 |       64 |        89 |        22 |  404 |
+| 1863 |       20 |       64 |      118 |       17 |       61 |        86 |        22 |  388 |
+| 1864 |       20 |       63 |      115 |       17 |       60 |        84 |        21 |  379 |
+| 1865 |       20 |       62 |      115 |       17 |       60 |        83 |        21 |  378 |
+| 1866 |       19 |       61 |      113 |       17 |       59 |        82 |        21 |  372 |
+| 1867 |       20 |       63 |      115 |       17 |       60 |        84 |        21 |  380 |
+| 1868 |       20 |       62 |      114 |       17 |       60 |        83 |        21 |  377 |
+| 1869 |       20 |       63 |      116 |       17 |       61 |        84 |        21 |  383 |
+| 1870 |       20 |       64 |      118 |       17 |       61 |        86 |        22 |  388 |
+| 1871 |       21 |       66 |      121 |       18 |       63 |        88 |        22 |  398 |
+| 1872 |       21 |       68 |      124 |       18 |       65 |        90 |        23 |  409 |
+| 1873 |       21 |       67 |      123 |       18 |       64 |        89 |        22 |  404 |
+| 1874 |       21 |       68 |      125 |       19 |       65 |        91 |        23 |  411 |
+| 1875 |       21 |       68 |      125 |       18 |       65 |        91 |        23 |  411 |
+| 1876 |       21 |       68 |      125 |       18 |       65 |        90 |        23 |  410 |
+| 1877 |       21 |       68 |      125 |       19 |       65 |        91 |        23 |  412 |
+| 1878 |       21 |       67 |      123 |       18 |       64 |        89 |        22 |  404 |
+| 1879 |       21 |       67 |      124 |       18 |       64 |        90 |        23 |  408 |
+| 1880 |       21 |       68 |      124 |       18 |       65 |        90 |        23 |  409 |
+| 1881 |       21 |       68 |      125 |       18 |       65 |        90 |        23 |  410 |
+| 1882 |       21 |       68 |      125 |       18 |       65 |        90 |        23 |  410 |
+| 1883 |       21 |       67 |      123 |       18 |       64 |        89 |        22 |  405 |
+| 1884 |       21 |       66 |      122 |       18 |       63 |        88 |        22 |  401 |
+| 1885 |       21 |       66 |      122 |       18 |       63 |        88 |        22 |  400 |
+| 1886 |       21 |       66 |      121 |       18 |       63 |        88 |        22 |  398 |
+| 1887 |       21 |       66 |      121 |       18 |       63 |        88 |        22 |  398 |
+| 1888 |       21 |       68 |      124 |       18 |       65 |        90 |        23 |  409 |
+| 1889 |       21 |       67 |      123 |       18 |       64 |        90 |        23 |  406 |
+| 1890 |       21 |       68 |      124 |       18 |       65 |        90 |        23 |  410 |
+| 1891 |       22 |       68 |      126 |       19 |       65 |        91 |        23 |  413 |
+| 1892 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  418 |
+| 1893 |       22 |       70 |      128 |       19 |       67 |        93 |        23 |  423 |
+| 1894 |       22 |       68 |      126 |       19 |       65 |        91 |        23 |  413 |
+| 1895 |       22 |       69 |      126 |       19 |       66 |        92 |        23 |  416 |
+| 1896 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  417 |
+| 1897 |       22 |       69 |      126 |       19 |       66 |        92 |        23 |  416 |
+| 1898 |       21 |       68 |      125 |       18 |       65 |        90 |        23 |  410 |
+| 1899 |       21 |       67 |      124 |       18 |       65 |        90 |        23 |  409 |
+| 1900 |       22 |       69 |      127 |       19 |       66 |        93 |        23 |  420 |
+| 1901 |       22 |       69 |      126 |       19 |       66 |        92 |        23 |  416 |
+| 1902 |       22 |       70 |      128 |       19 |       67 |        93 |        23 |  422 |
+| 1903 |       22 |       70 |      128 |       19 |       67 |        93 |        23 |  421 |
+| 1904 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  430 |
+| 1905 |       22 |       71 |      130 |       19 |       68 |        95 |        24 |  429 |
+| 1906 |       22 |       70 |      129 |       19 |       67 |        94 |        24 |  424 |
+| 1907 |       22 |       71 |      130 |       19 |       68 |        95 |        24 |  429 |
+| 1908 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  430 |
+| 1909 |       23 |       72 |      132 |       20 |       69 |        96 |        24 |  434 |
+| 1910 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  430 |
+| 1911 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  432 |
+| 1912 |       23 |       71 |      131 |       19 |       68 |        95 |        24 |  433 |
+| 1913 |       23 |       71 |      131 |       19 |       68 |        95 |        24 |  432 |
+| 1914 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  419 |
+| 1915 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  419 |
+| 1916 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  418 |
+| 1917 |       22 |       69 |      128 |       19 |       66 |        93 |        23 |  420 |
+| 1918 |       21 |       68 |      125 |       19 |       65 |        91 |        23 |  412 |
+| 1919 |       21 |       67 |      124 |       18 |       64 |        90 |        23 |  408 |
+| 1920 |       22 |       68 |      126 |       19 |       65 |        91 |        23 |  413 |
+| 1921 |       21 |       68 |      125 |       18 |       65 |        91 |        23 |  410 |
+| 1922 |       21 |       67 |      123 |       18 |       64 |        89 |        22 |  404 |
+| 1923 |       21 |       67 |      123 |       18 |       64 |        89 |        23 |  406 |
+| 1924 |       22 |       68 |      125 |       19 |       65 |        91 |        23 |  413 |
+| 1925 |       22 |       68 |      126 |       19 |       65 |        91 |        23 |  414 |
+| 1926 |       22 |       70 |      129 |       19 |       67 |        93 |        24 |  424 |
+| 1927 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  431 |
+| 1928 |       23 |       74 |      137 |       20 |       71 |        99 |        25 |  450 |
+| 1929 |       24 |       75 |      137 |       20 |       71 |       100 |        25 |  452 |
+| 1930 |       24 |       75 |      138 |       20 |       72 |       100 |        25 |  453 |
+| 1931 |       25 |       78 |      144 |       21 |       75 |       104 |        26 |  473 |
+| 1932 |       25 |       78 |      143 |       21 |       75 |       104 |        26 |  471 |
+| 1933 |       25 |       78 |      144 |       21 |       75 |       104 |        26 |  473 |
+| 1934 |       24 |       77 |      141 |       21 |       74 |       103 |        26 |  465 |
+| 1935 |       24 |       77 |      142 |       21 |       74 |       103 |        26 |  467 |
+| 1936 |       25 |       78 |      143 |       21 |       75 |       104 |        26 |  472 |
+| 1937 |       24 |       76 |      140 |       21 |       73 |       101 |        26 |  460 |
+| 1938 |       24 |       75 |      138 |       20 |       72 |       100 |        25 |  455 |
+| 1939 |       24 |       75 |      139 |       21 |       72 |       101 |        25 |  457 |
+| 1940 |       24 |       75 |      138 |       20 |       72 |       100 |        25 |  453 |
+| 1941 |       24 |       75 |      137 |       20 |       71 |       100 |        25 |  451 |
+| 1942 |       23 |       74 |      135 |       20 |       70 |        98 |        25 |  446 |
+| 1943 |       23 |       73 |      135 |       20 |       70 |        98 |        25 |  445 |
+| 1944 |       23 |       74 |      135 |       20 |       70 |        98 |        25 |  445 |
+| 1945 |       23 |       72 |      133 |       20 |       69 |        96 |        24 |  437 |
+| 1946 |       23 |       72 |      133 |       20 |       69 |        96 |        24 |  437 |
+| 1947 |       23 |       72 |      132 |       20 |       69 |        96 |        24 |  433 |
+| 1948 |       23 |       72 |      133 |       20 |       69 |        97 |        24 |  438 |
+| 1949 |       23 |       73 |      134 |       20 |       70 |        98 |        25 |  443 |
+| 1950 |       23 |       74 |      136 |       20 |       71 |        99 |        25 |  447 |
+| 1951 |       24 |       75 |      137 |       20 |       71 |       100 |        25 |  452 |
+| 1952 |       24 |       75 |      139 |       21 |       72 |       101 |        25 |  456 |
+| 1953 |       24 |       75 |      138 |       21 |       72 |       100 |        25 |  456 |
+| 1954 |       23 |       74 |      136 |       20 |       71 |        99 |        25 |  449 |
+| 1955 |       23 |       73 |      134 |       20 |       70 |        97 |        24 |  440 |
+| 1956 |       23 |       72 |      132 |       20 |       69 |        96 |        24 |  434 |
+| 1957 |       23 |       72 |      133 |       20 |       69 |        97 |        24 |  438 |
+| 1958 |       23 |       73 |      133 |       20 |       69 |        97 |        24 |  439 |
+| 1959 |       23 |       72 |      133 |       20 |       69 |        97 |        24 |  438 |
+| 1960 |       23 |       74 |      136 |       20 |       71 |        99 |        25 |  448 |
+| 1961 |       24 |       75 |      138 |       20 |       72 |       100 |        25 |  455 |
+| 1962 |       24 |       76 |      140 |       21 |       73 |       101 |        26 |  460 |
+| 1963 |       23 |       74 |      137 |       20 |       71 |        99 |        25 |  450 |
+| 1964 |       23 |       73 |      134 |       20 |       70 |        97 |        25 |  442 |
+| 1965 |       23 |       73 |      135 |       20 |       70 |        98 |        25 |  444 |
+| 1966 |       23 |       72 |      133 |       20 |       69 |        96 |        24 |  436 |
+| 1967 |       23 |       71 |      131 |       19 |       68 |        95 |        24 |  432 |
+| 1968 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  432 |
+| 1969 |       23 |       71 |      131 |       19 |       68 |        95 |        24 |  433 |
+| 1970 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  430 |
+| 1971 |       22 |       71 |      130 |       19 |       68 |        95 |        24 |  430 |
+| 1972 |       22 |       69 |      127 |       19 |       66 |        93 |        23 |  420 |
+| 1973 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  417 |
+| 1974 |       22 |       69 |      126 |       19 |       66 |        92 |        23 |  415 |
+| 1975 |       22 |       69 |      127 |       19 |       66 |        92 |        23 |  417 |
+| 1976 |       22 |       70 |      128 |       19 |       67 |        93 |        23 |  421 |
+| 1977 |       22 |       70 |      128 |       19 |       67 |        93 |        23 |  422 |
+| 1978 |       22 |       71 |      131 |       19 |       68 |        95 |        24 |  431 |
+| 1979 |       23 |       72 |      132 |       20 |       69 |        96 |        24 |  434 |
+| 1980 |       23 |       72 |      132 |       19 |       68 |        95 |        24 |  433 |
+| 1981 |       23 |       72 |      132 |       20 |       69 |        96 |        24 |  434 |
+| 1982 |       23 |       72 |      132 |       20 |       69 |        96 |        24 |  435 |
+| 1983 |       22 |       70 |      129 |       19 |       67 |        94 |        24 |  426 |
+| 1984 |       22 |       70 |      129 |       19 |       67 |        94 |        24 |  424 |
+| 1985 |       22 |       71 |      130 |       19 |       68 |        95 |        24 |  430 |
+| 1986 |       23 |       69 |      145 |       21 |       72 |        96 |        24 |  449 |
+| 1987 |       23 |       70 |      146 |       20 |       71 |        93 |        24 |  448 |
+| 1988 |       22 |       72 |      135 |       21 |       70 |        95 |        24 |  439 |
+| 1989 |       22 |       73 |      128 |       21 |       71 |       102 |        24 |  441 |
+| 1990 |       22 |       75 |      129 |       22 |       68 |       105 |        23 |  444 |
+| 1991 |       23 |       75 |      130 |       22 |       68 |       100 |        23 |  442 |
+| 1992 |       24 |       78 |      132 |       21 |       68 |        98 |        23 |  445 |
+| 1993 |       25 |       77 |      132 |       19 |       68 |        99 |        24 |  444 |
+| 1994 |       24 |       71 |      136 |       18 |       68 |        97 |        25 |  440 |
+| 1995 |       22 |       66 |      135 |       18 |       65 |        94 |        26 |  427 |
+| 1996 |       22 |       68 |      135 |       19 |       67 |        93 |        26 |  430 |
+| 1997 |       21 |       70 |      133 |       20 |       69 |        92 |        23 |  427 |
+| 1998 |       22 |       70 |      130 |       19 |       73 |        92 |        22 |  429 |
+| 1999 |       22 |       70 |      132 |       18 |       74 |        91 |        26 |  434 |
+| 2000 |       23 |       69 |      130 |       20 |       79 |        92 |        25 |  437 |
+| 2001 |       24 |       70 |      125 |       19 |       80 |        90 |        23 |  431 |
+| 2002 |       26 |       72 |      132 |       19 |       81 |        92 |        23 |  444 |
+| 2003 |       25 |       75 |      138 |       19 |       83 |        94 |        23 |  458 |
+| 2004 |       24 |       79 |      144 |       20 |       83 |        98 |        24 |  471 |
+| 2005 |       24 |       85 |      145 |       20 |       83 |        99 |        24 |  480 |
+| 2006 |       25 |       85 |      138 |       20 |       85 |        97 |        25 |  474 |
+| 2007 |       24 |       81 |      135 |       19 |       85 |        97 |        26 |  467 |
+| 2008 |       25 |       79 |      139 |       18 |       87 |        99 |        26 |  474 |
+| 2009 |       24 |       78 |      142 |       18 |       89 |       102 |        24 |  477 |
+| 2010 |       25 |       77 |      143 |       17 |       89 |       102 |        27 |  481 |
+| 2011 |       26 |       79 |      142 |       19 |       89 |       106 |        25 |  487 |
+| 2012 |       26 |       79 |      139 |       19 |       93 |       105 |        25 |  486 |
+| 2013 |       26 |       79 |      140 |       20 |       95 |       109 |        25 |  493 |
+
+#+begin_src jupyter-python :exports both :file ./fig/runoff_GL_month.png
+df.describe().round()
+#+end_src
+
+#+RESULTS:
+|       |   1 [NE] |   2 [CE] |   3 [SE] |   4 [SW] |   5 [CW] |   6 [NW] |   7 [NO] |   GL |
+|-------+----------+----------+----------+----------+----------+----------+----------+------|
+| count |      185 |      185 |      185 |      185 |      185 |      185 |      185 |  185 |
+| mean  |       23 |       71 |      130 |       19 |       69 |       95 |       24 |  430 |
+| std   |        2 |        6 |        9 |        1 |        8 |        8 |        2 |   33 |
+| min   |       12 |       34 |       59 |        8 |       34 |       46 |       10 |  203 |
+| 25%   |       21 |       68 |      125 |       18 |       65 |       91 |       23 |  411 |
+| 50%   |       22 |       70 |      130 |       19 |       68 |       94 |       24 |  430 |
+| 75%   |       23 |       74 |      135 |       20 |       71 |       98 |       25 |  446 |
+| max   |       31 |       89 |      153 |       22 |       95 |      116 |       28 |  517 |
+
+* Fetch data
+
+#+BEGIN_SRC bash :exports both :results verbatim :wrap src json
+export SERVER_URL=https://dataverse.geus.dk
+export PERSISTENT_IDENTIFIER=doi:10.22008/FK2/OHI23Z
+export METADATA_FORMAT=dataverse_json # ddi dataverse_json schema.org Datacite oai_datacite
+curl "$SERVER_URL/api/datasets/export?exporter=$METADATA_FORMAT&persistentId=$PERSISTENT_IDENTIFIER" | jq .datasetVersion.versionNumber
+#+END_SRC
+
+#+RESULTS:
+#+begin_src json
+875
+#+end_src
+
+#+BEGIN_SRC bash :exports both :results verbatim
+mkdir -p tmp/greenland_discharge
+pushd tmp/greenland_discharge
+wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/FK2/OHI23Z"
+# wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/promice/data/ice_discharge/d/v02"
+popd
+#+END_SRC
+
+* Reprocess
+
++ Annual discharge
++ Group by ROI
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+
+ds = xr.open_dataset('./tmp/greenland_discharge/MB_region.nc')
+
+# Limit to discharge
+ds = ds[['D_ROI','D_ROI_err','D']]
+
+# Drop partial years
+this_yr = ds['time'].to_series().iloc[-1].year
+ds = ds.sel({'time':slice('1800',str(this_yr))})
+
+# Scale early values to annual
+ds.loc[{'time': slice('1840-01-01','1985-12-31')}] *= 365
+
+# Resample by year
+ds = ds.resample({'time':'YS'}).sum()
+
+# Prior to 1986 there is no regional resolution, just one value for all of Greenland.
+
+# Split into regions by taking the 1990s percent of discharge per region, and assuming the historical GIS-wide discharge maintained that distribution (even if magnitude changed).
+
+ds_ratio = ds['D_ROI'].loc[{'time': slice('1990-01-01','1999-12-31')}].sum(dim='time')
+ds_ratio = ds_ratio / sum(ds_ratio)
+# print(ds_ratio)
+
+for r in ds['region']:
+    # Set regional values to the average of the first 5 years when there is regional resolution
+    ds['D_ROI'].sel({'region':r}).loc[{'time': slice('1840-01-01','1985-12-31')}] = \
+        ds['D'].loc[{'time': slice('1840-01-01','1985-12-31')}] * ds_ratio.sel(region=r.values).values
+    # Set regional uncertainty to the full range of observed values
+    errmax = ds['D_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).max()
+    errmin = ds['D_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).min()
+    ds['D_ROI_err'].sel({'region':r}).loc[{'time': slice('1840-01-01','1985-12-31')}] = (errmax-errmin)
+
+ds = ds.transpose()
+
+ds = ds.rename({'D_ROI':'discharge','D_ROI_err':'err'})
+ds = ds.drop_vars('D')
+
+ds['discharge'].attrs['units'] = 'Gt yr-1'
+ds['err'].attrs['units'] = 'Gt yr-1'
+
+ds['discharge'].attrs['long_name'] = 'Marine discharge. Includes both calving and submarine melt. Some calvinvg is equivalent to submarine melt if using at fjord mouth'
+
+ds['region'] = np.arange(7).astype(np.int32) + 1
+ds['region_name'] = (('region'), ['CE', 'CW', 'NE', 'NO', 'NW',' SE',' SW'])
+
+# for i in items:
+ds['discharge'].attrs['standard_name'] = 'tendency_of_land_ice_mass_due_to_calving'
+ds['discharge'].attrs['units'] = 'Gt yr-1'
+ds['err'].attrs['standard_name'] = 'tendency_of_land_ice_mass_due_to_calving'
+
+ds['time'].attrs['long_name'] = 'time'
+ds['region'].attrs['long_name'] = 'Mougniot (2019) region'
+
+ds.attrs['title'] = 'Greenland ice sheet discharge by Mougniot region'
+ds.attrs['history'] = 'TBD'
+ds.attrs['Conventions'] = 'CF-1.8'
+
+ds.attrs['summary'] = 'Greenland ice shet discharge by Mougnito region'
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
+ds.attrs['references'] = 'TBD'
+    
+comp = dict(zlib=True, complevel=5)
+encoding = {} # var: comp for var in items}
+encoding['time'] = {'dtype': 'i4'}
+
+!rm ./dat/GL_discharge.nc
+ds.to_netcdf('./dat/GL_discharge.nc', encoding=encoding)
+!ncdump -h ./dat/GL_discharge.nc
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+netcdf GL_discharge {
+dimensions:
+	region = 7 ;
+	time = 185 ;
+variables:
+	float discharge(region, time) ;
+		discharge:_FillValue = NaNf ;
+		discharge:long_name = "Marine discharge. Includes both calving and submarine melt. Some calvinvg is equivalent to submarine melt if using at fjord mouth" ;
+		discharge:standard_name = "tendency_of_land_ice_mass_due_to_calving" ;
+		discharge:units = "Gt yr-1" ;
+	float err(region, time) ;
+		err:_FillValue = NaNf ;
+		err:long_name = "Marine mass balance uncertainty" ;
+		err:standard_name = "tendency_of_land_ice_mass_due_to_calving" ;
+		err:units = "Gt yr-1" ;
+	int region(region) ;
+		region:long_name = "Mougniot (2019) region" ;
+	int time(time) ;
+		time:long_name = "time" ;
+		time:units = "days since 1840-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+	string region_name(region) ;
+
+// global attributes:
+		:featureType = "timeSeries" ;
+		:title = "Greenland ice sheet discharge by Mougniot region" ;
+		:summary = "Greenland ice shet discharge by Mougnito region" ;
+		:keywords = "Greenland; Mass; Mass balance" ;
+		:source = "git commit: 20af941" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
+		:creator_url = "http://kenmankoff.com" ;
+		:institution = "NASA GISS" ;
+		:references = "TBD" ;
+		:product_version = 1. ;
+		:history = "TBD" ;
+		:Conventions = "CF-1.8" ;
+}
+#+end_example
+
