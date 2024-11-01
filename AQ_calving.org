@@ -6,7 +6,7 @@
   - [[#data-example][Data example]]
     - [[#printout][Printout]]
     - [[#graphic][Graphic]]
-    - [[#subshelf-melt-by-basin][Subshelf melt by basin]]
+    - [[#subshelf-melt-by-region][Subshelf melt by region]]
 - [[#processing][Processing]]
 
 * Introduction
@@ -26,18 +26,18 @@ xr.open_dataset('./dat/AQ_calving.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 8kB
-Dimensions:      (basin: 18, time: 25)
+Dimensions:      (region: 18, time: 25)
 Coordinates:
   ,* time         (time) datetime64[ns] 200B 1997-07-01 1998-07-01 ... 2021-07-01
-  ,* basin        (basin) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
-    calving      (basin, time) float64 4kB ...
-    uncertainty  (basin, time) float64 4kB ...
-    basin_name   (basin) <U5 360B ...
+    calving      (region, time) float64 4kB ...
+    uncertainty  (region, time) float64 4kB ...
+    region_name  (region) <U5 360B ...
 Attributes:
-    description:   Antarctic basin ice shelf calving rate
-    date_created:  20241101T045552Z
-    title:         Calving per basin
+    description:   Antarctic region ice shelf calving rate
+    date_created:  20241101T153743Z
+    title:         Calving per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5281/ZENODO.8052519
     Conventions:   CF-1.8
@@ -49,10 +49,10 @@ Attributes:
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_calving.png
 import xarray as xr
 ds = xr.open_dataset('./dat/AQ_calving.nc')
-df = ds.sum(dim='basin')['calving'].to_dataframe()
+df = ds.sum(dim='region')['calving'].to_dataframe()
 ax = df['calving'].plot(drawstyle='steps-post')
 
-unc = (((ds['uncertainty']**2).sum(dim='basin'))**0.5).to_dataframe()
+unc = (((ds['uncertainty']**2).sum(dim='region'))**0.5).to_dataframe()
 unc.plot(drawstyle='steps-post', ax=ax)
 _ = ax.set_ylabel('Calving [Gt yr$^{-1}$]')
 #+END_SRC
@@ -60,14 +60,14 @@ _ = ax.set_ylabel('Calving [Gt yr$^{-1}$]')
 #+RESULTS:
 [[./fig/AQ_calving.png]]
 
-*** Subshelf melt by basin
+*** Subshelf melt by region
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
 import matplotlib.pyplot as plt
 
 ds = xr.open_dataset('dat/AQ_calving.nc')
-# ds = ds.assign_coords(basin=[_[0] + ' ['+str(_[1])+']' for _ in zip(ds['basin_name'].values,ds['basin'].values)])
+# ds = ds.assign_coords(region=[_[0] + ' ['+str(_[1])+']' for _ in zip(ds['region_name'].values,ds['region'].values)])
 df = ds['calving'].to_dataframe()
 df = df['calving'].unstack().T
 df['AQ'] = df.sum(axis='columns')
@@ -122,12 +122,12 @@ shelf = gpd.GeoDataFrame(
     geometry=gpd.points_from_xy(df.longitude, df.latitude, crs="EPSG:4326"), data=df)
 shelf = shelf.to_crs('EPSG:3031')
 
-# basin name
-basin = gpd.read_file("~/data//IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp")
-basin = basin[basin['Regions'] != 'Islands']
+# region name
+region = gpd.read_file("~/data//IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp")
+region = region[region['Regions'] != 'Islands']
 
-# find basins nearest each shelf
-shelf_region = gpd.sjoin_nearest(shelf,basin)
+# find regions nearest each shelf
+shelf_region = gpd.sjoin_nearest(shelf,region)
 shelf_region = shelf_region.drop(columns=['index_right','latitude','longitude','Regions'])
 
 # load calving time series per shelf
@@ -170,23 +170,15 @@ ds2 = ds2.drop_vars('unc2')
 
 ds = ds2
 
-
-
-ds['calving'] = ds['calving']\
-    .assign_coords(region=(np.arange(18)+1).astype(np.int32))\
-    .rename({'region':'basin'})
-ds['uncertainty'] = ds['uncertainty']\
-    .assign_coords(region=ds['basin'].values)\
-    .rename({'region':'basin'})
-ds = ds.drop_vars('region')
 ds = ds.rename({'date':'time'})
+ds['region'] = np.arange(18).astype(np.int32) + 1
 
-ds['basin_name'] = (('basin'), ['A-Ap', 'Ap-B', 'B-C', 'C-Cp', 'Cp-D',
+ds['region_name'] = (('region'), ['A-Ap', 'Ap-B', 'B-C', 'C-Cp', 'Cp-D',
                                 'D-Dp', 'Dp-E', 'E-Ep', 'Ep-F', 'F-G',
                                 'G-H', 'H-Hp', 'Hp-I', 'I-Ipp', 'Ipp-J',
                                 'J-Jpp', 'Jpp-K', 'K-A'])
 
-ds.attrs['description'] = 'Antarctic basin ice shelf calving rate'
+ds.attrs['description'] = 'Antarctic region ice shelf calving rate'
 ds['calving'].attrs['units'] = 'Gt yr-1'
 ds['calving'].attrs['long_name'] = 'Shelf calving'
 
@@ -196,9 +188,9 @@ ds['calving'].attrs['standard_name'] = 'ice_transport_across_line'
 
 ds['uncertainty'].attrs['long_name'] = 'Uncertainty of shelf calving'
 ds['time'].attrs['standard_name'] = 'time'
-ds['basin'].attrs['long_name'] = 'IMBIE basin'
+ds['region'].attrs['long_name'] = 'IMBIE region'
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-ds.attrs['title'] = 'Calving per basin'
+ds.attrs['title'] = 'Calving per region'
 ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
 ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
 ds.attrs['Conventions'] = 'CF-1.8'
@@ -217,10 +209,10 @@ ds.to_netcdf('./dat/AQ_calving.nc', encoding=encoding)
 #+begin_example
 netcdf AQ_calving {
 dimensions:
-	basin = 18 ;
+	region = 18 ;
 	time = 25 ;
 variables:
-	double calving(basin, time) ;
+	double calving(region, time) ;
 		calving:_FillValue = NaN ;
 		calving:units = "Gt yr-1" ;
 		calving:long_name = "Shelf calving" ;
@@ -229,17 +221,17 @@ variables:
 		time:standard_name = "time" ;
 		time:units = "days since 1997-07-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
-	double uncertainty(basin, time) ;
+	int region(region) ;
+		region:long_name = "IMBIE region" ;
+	double uncertainty(region, time) ;
 		uncertainty:_FillValue = NaN ;
 		uncertainty:long_name = "Uncertainty of shelf calving" ;
-	int basin(basin) ;
-		basin:long_name = "IMBIE basin" ;
-	string basin_name(basin) ;
+	string region_name(region) ;
 
 // global attributes:
-		:description = "Antarctic basin ice shelf calving rate" ;
-		:date_created = "20241101T045552Z" ;
-		:title = "Calving per basin" ;
+		:description = "Antarctic region ice shelf calving rate" ;
+		:date_created = "20241101T153743Z" ;
+		:title = "Calving per region" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:source = "doi:10.5281/ZENODO.8052519" ;
 		:Conventions = "CF-1.8" ;

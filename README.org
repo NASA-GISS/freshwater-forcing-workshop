@@ -128,18 +128,18 @@ xr.open_dataset('./dat/AQ_calving.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 8kB
-Dimensions:      (basin: 18, time: 25)
+Dimensions:      (region: 18, time: 25)
 Coordinates:
   ,* time         (time) datetime64[ns] 200B 1997-07-01 1998-07-01 ... 2021-07-01
-  ,* basin        (basin) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
-    calving      (basin, time) float64 4kB ...
-    uncertainty  (basin, time) float64 4kB ...
-    basin_name   (basin) <U5 360B ...
+    calving      (region, time) float64 4kB ...
+    uncertainty  (region, time) float64 4kB ...
+    region_name  (region) <U5 360B ...
 Attributes:
-    description:   Antarctic basin ice shelf calving rate
-    date_created:  20241101T045552Z
-    title:         Calving per basin
+    description:   Antarctic region ice shelf calving rate
+    date_created:  20241101T153743Z
+    title:         Calving per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5281/ZENODO.8052519
     Conventions:   CF-1.8
@@ -154,7 +154,7 @@ Attributes:
 
 **** Background
 
-Normalized iceberg melt patterns per basin of origin, i.e. for calving in 18 Antarctic-IMBIE2 basins. From a circum-Antarctic 0.25° simulation forced by the recommended normal year of JRA55 repeated 30 years after spin up. The simulation only covers south of 52.25°S, so a part of the melt pattern is missing (11% missing based on Mathiot and Jourdain 2023).
+Normalized iceberg melt patterns per region of origin, i.e. for calving in 18 Antarctic-IMBIE2 regions. From a circum-Antarctic 0.25° simulation forced by the recommended normal year of JRA55 repeated 30 years after spin up. The simulation only covers south of 52.25°S, so a part of the melt pattern is missing (11% missing based on Mathiot and Jourdain 2023).
 
 **** Data
 
