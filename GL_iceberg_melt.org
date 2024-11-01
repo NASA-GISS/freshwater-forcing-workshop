@@ -453,9 +453,9 @@ v.to.rast input=GL output=GL use=attr attribute_column=cat_
 
 #+BEGIN_SRC bash :exports both :results verbatim
 # reorder from "cat,id,lon,lat,ice mass,water mass" to lon,lat,water,id,time
-cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$6,$2,$1}' > tracks.csv
+cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$6,$2,$1}' > tmp/tracks.csv
 
-cat tracks.csv \
+cat tmp/tracks.csv \
   | m.proj -i input=- separator=comma \
   | tr ' ' ',' \
   | v.in.ascii -n input=- output=bergs sep=, \

@@ -30,9 +30,9 @@
       - [[#data-4][Data]]
       - [[#graphic-4][Graphic]]
     - [[#iceberg-melt-locations-1][Iceberg melt locations]]
-    - [[#basal-runoff][Basal runoff]]
       - [[#data-5][Data]]
       - [[#graphic-5][Graphic]]
+    - [[#basal-runoff][Basal runoff]]
   - [[#regions-name--id][Regions (Name & ID)]]
 
 * Introduction
@@ -173,12 +173,13 @@ Dimensions:      (region: 18, latitude: 359, longitude: 719)
 Coordinates:
   ,* longitude    (longitude) float32 3kB -179.8 -179.2 -178.8 ... 178.8 179.2
   ,* latitude     (latitude) float32 1kB -89.5 -89.0 -88.5 ... 88.5 89.0 89.5
-  ,* region       (region) int64 144B 1 2 3 4 5 6 7 8 ... 11 12 13 14 15 16 17 18
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
     melt         (region, latitude, longitude) float32 19MB ...
     spatial_ref  int8 1B ...
     msk_nemo     (latitude, longitude) float32 1MB ...
     region_name  (region) <U5 360B ...
+    region_map   (latitude, longitude) int16 516kB ...
 Attributes:
     description:         Annual JRA55 climatology
     original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
@@ -188,7 +189,7 @@ Attributes:
     geospatial_lat_max:  89.5
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.25
-    date_created:        20241031T225303Z
+    date_created:        20241101T041340Z
     title:               Normalised iceberg melt climatology in the Southern ...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -234,15 +235,15 @@ g.cbar.set_label(label='Melt [m$^{-2}$]', fontsize=20)
 
 ** Greenland
 
-All products below are split by the Rignot (2019) regions
+All products below are split by the Mouginot (2019) regions
 
-| Term                    | Magnitude [Gt/yr] | Comment                             |
-|-------------------------+-------------------+-------------------------------------|
-| Surface runoff          |               450 | ~50 % surface, ~50 % subglacial     |
-| Discharge               |               500 | ~50 % submarine melt, ~50 % calving |
-| Frontal retreat (gross) |                50 | Should be added to "discharge"      |
-| Basal melt (grounded)   |                20 | Should be added to "surface runoff" |
-| Grounding line retreat  |                 ? |                                     |
+# | Term                    | Magnitude [Gt/yr] | Comment                             |
+# |-------------------------+-------------------+-------------------------------------|
+# | Surface runoff          |               500 | ~50 % surface, ~50 % subglacial     |
+# | Discharge               |               500 | ~50 % submarine melt, ~50 % calving |
+# | Frontal retreat (gross) |                50 | Should be added to "discharge"      |
+# | Basal melt (grounded)   |                20 | Should be added to "surface runoff" |
+# | Grounding line retreat  |                 ? |                                     |
 
 *** Surface runoff
 
@@ -340,14 +341,6 @@ This dataset provides spatial maps of iceberg meltwater based on iceberg source.
 + Workbook: [[./GL_iceberg_melt.org]]
 + Data product: =GL_iceberg_melt.nc=
 
-  
-*** TODO Basal runoff
-
-This product splits basal melt from Karlsson (2021) http://doi.org/10.1038/s41467-021-23739-z into regions, with two products per region: Water that enters fjords at their surface from sub-aerial streams, and water that enters subglacially.
-
-+ Workbook: [[./GL_basal_melt.org]]
-+ Data product: =GL_basal_melt.nc=
-
 **** Data
 
 #+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
@@ -381,6 +374,14 @@ Attributes:
 
 **** Graphic
 [[./fig/GL_berg_melt.png]]  
+
+*** TODO Basal runoff
+
+This product splits basal melt from Karlsson (2021) http://doi.org/10.1038/s41467-021-23739-z into regions, with two products per region: Water that enters fjords at their surface from sub-aerial streams, and water that enters subglacially.
+
++ Workbook: [[./GL_basal_melt.org]]
++ Data product: =GL_basal_melt.nc=
+
 
 ** Regions (Name & ID)
 
