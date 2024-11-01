@@ -439,7 +439,7 @@ ds['melt'] = m['melt_mean'].T
 ds['region_name'] = m['region_name']
 
 ds.attrs['description'] = 'Antarctic region sub-shelf melt'
-ds['melt'].attrs['units'] = 'Gt m-2 yr-1'
+ds['melt'].attrs['units'] = 'Gt yr-1'
 ds['melt'].attrs['long_name'] = 'Sub shelf melt'
 ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_land_ice'
 ds['time'].attrs['standard_name'] = 'time'
@@ -475,14 +475,14 @@ variables:
 		region:long_name = "IMBIE region" ;
 	double melt(region, time) ;
 		melt:_FillValue = NaN ;
-		melt:units = "Gt m-2 yr-1" ;
+		melt:units = "Gt yr-1" ;
 		melt:long_name = "Sub shelf melt" ;
 		melt:standard_name = "water_flux_into_sea_water_from_land_ice" ;
 	string region_name(region) ;
 
 // global attributes:
 		:description = "Antarctic region sub-shelf melt" ;
-		:date_created = "20241101T045557Z" ;
+		:date_created = "20241101T050531Z" ;
 		:title = "Subshelf melt per region" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:source = "doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519" ;
