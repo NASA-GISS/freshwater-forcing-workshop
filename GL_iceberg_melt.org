@@ -16,15 +16,14 @@ xr.open_dataset('./dat/GL_iceberg_melt.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 17MB
-Dimensions:       (region: 7, longitude: 720, latitude: 360, lon: 360, lat: 720)
+Dimensions:       (region: 7, longitude: 720, latitude: 360)
 Coordinates:
   ,* region        (region) int8 7B 1 2 3 4 5 6 7
   ,* longitude     (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
   ,* latitude      (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
-Dimensions without coordinates: lon, lat
 Data variables:
     melt          (region, latitude, longitude) float64 15MB ...
-    region_map    (lon, lat) float64 2MB ...
+    region_map    (latitude, longitude) float64 2MB ...
     region_names  (region) <U2 56B ...
     spatial_ref   int8 1B ...
 Attributes:
@@ -32,7 +31,7 @@ Attributes:
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T154520Z
+    date_created:        20241101T220211Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -636,7 +635,7 @@ ds = xr.Dataset({
                                    'latitude':lat[:,0]})})
 
 ROIs = garray.array("ROIs")[::-1,:]
-ds['region_map'] = (('lon','lat'), ROIs)
+ds['region_map'] = (('latitude','longitude'), ROIs)
 
 S.close() # Done with GRASS
 
@@ -649,9 +648,11 @@ ds = ds.rio.set_spatial_dims('longitude','latitude')
 ds['latitude'].attrs['long_name'] = 'latitude'
 ds['latitude'].attrs['axis'] = 'Y'
 ds['latitude'].attrs['units'] = 'degrees_north'
+ds['latitude'].attrs['standard_name'] = 'latitude'
 ds['longitude'].attrs['long_name'] = 'longitude'
 ds['longitude'].attrs['axis'] = 'X'
 ds['longitude'].attrs['units'] = 'degrees_east'
+ds['longitude'].attrs['standard_name'] = 'longitude'
 
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
 ds['melt'].attrs['units'] = 'm-2'
@@ -682,23 +683,22 @@ print(ds)
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 17MB
-Dimensions:       (region: 7, longitude: 720, latitude: 360, lon: 360, lat: 720)
+Dimensions:       (region: 7, longitude: 720, latitude: 360)
 Coordinates:
   ,* region        (region) int8 7B 1 2 3 4 5 6 7
   ,* longitude     (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
   ,* latitude      (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
     spatial_ref   int8 1B 0
-Dimensions without coordinates: lon, lat
 Data variables:
     melt          (region, latitude, longitude) float64 15MB 0.0 0.0 ... 0.0 0.0
-    region_map    (lon, lat) float64 2MB 0.0 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+    region_map    (latitude, longitude) float64 2MB 0.0 0.0 0.0 ... 0.0 0.0 0.0
     region_names  (region) <U2 56B 'CE' 'CW' 'NE' 'NE' 'NW' 'SE' 'SW'
 Attributes:
     geospatial_lat_min:  -89.75
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T154520Z
+    date_created:        20241101T220211Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
