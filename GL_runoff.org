@@ -44,6 +44,7 @@ Attributes:
     title:        Ice sheet runoff by Mougniot region
     history:      TBD
     Conventions:  CF-1.8
+    DOI:          https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 *** Minimum runoff depth per ROI
@@ -284,7 +285,7 @@ ds['region'].attrs['long_name'] = 'Mougniot (2019) region'
 ds.attrs['title'] = 'Ice sheet runoff by Mougniot region'
 ds.attrs['history'] = 'TBD'
 ds.attrs['Conventions'] = 'CF-1.8'
-
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
     
 comp = dict(zlib=True, complevel=5)
 encoding = {var: comp for var in items}
@@ -341,6 +342,7 @@ variables:
 		:title = "Ice sheet runoff by Mougniot region" ;
 		:history = "TBD" ;
 		:Conventions = "CF-1.8" ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
 }
 #+end_example
 

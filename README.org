@@ -99,11 +99,12 @@ Data variables:
     region_name  (region) <U5 360B ...
 Attributes:
     description:   Antarctic region sub-shelf melt
-    date_created:  20241031T231731Z
+    date_created:  20241101T045557Z
     title:         Subshelf melt per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
     Conventions:   CF-1.8
+    DOI:           https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 **** Graphic
@@ -137,11 +138,12 @@ Data variables:
     basin_name   (basin) <U5 360B ...
 Attributes:
     description:   Antarctic basin ice shelf calving rate
-    date_created:  20241031T232134Z
+    date_created:  20241101T045552Z
     title:         Calving per basin
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5281/ZENODO.8052519
     Conventions:   CF-1.8
+    DOI:           https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 **** Graphic
@@ -180,19 +182,20 @@ Data variables:
     msk_nemo     (latitude, longitude) float32 1MB ...
     region_name  (region) <U5 360B ...
     region_map   (latitude, longitude) int16 516kB ...
-Attributes:
+Attributes: (12/13)
     description:         Annual JRA55 climatology
     original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
     script_used:         remap_per_basin.py
     processed_by:        Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alp...
     geospatial_lat_min:  -89.5
     geospatial_lat_max:  89.5
-    geospatial_lon_min:  -179.75
+    ...                  ...
     geospatial_lon_max:  179.25
-    date_created:        20241101T041340Z
+    date_created:        20241101T045919Z
     title:               Normalised iceberg melt climatology in the Southern ...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
+    DOI:                 https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 **** Graphic
@@ -263,21 +266,22 @@ xr.open_dataset('./dat/GL_runoff.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 203kB
-Dimensions:                         (basin: 7, time: 876)
+Dimensions:                         (region: 7, time: 876)
 Coordinates:
-  ,* basin                           (basin) int32 28B 1 2 3 4 5 6 7
+  ,* region                          (region) int32 28B 1 2 3 4 5 6 7
   ,* time                            (time) datetime64[ns] 7kB 1950-01-01 ... ...
 Data variables:
-    subglacial_discharge_from_land  (basin, time) float64 49kB ...
-    surface_runoff_from_land        (basin, time) float64 49kB ...
-    subglacial_discharge_from_ice   (basin, time) float64 49kB ...
-    surface_runoff_from_ice         (basin, time) float64 49kB ...
-    min_discharge_depth             (basin) float32 28B ...
-    basin_name                      (basin) <U2 56B ...
+    subglacial_discharge_from_land  (region, time) float64 49kB ...
+    surface_runoff_from_land        (region, time) float64 49kB ...
+    subglacial_discharge_from_ice   (region, time) float64 49kB ...
+    surface_runoff_from_ice         (region, time) float64 49kB ...
+    min_discharge_depth             (region) float32 28B ...
+    region_name                     (region) <U2 56B ...
 Attributes:
-    title:        Ice sheet runoff by Mougniot basin
+    title:        Ice sheet runoff by Mougniot region
     history:      TBD
     Conventions:  CF-1.8
+    DOI:          https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 **** Graphic
@@ -313,7 +317,7 @@ Data variables:
     discharge    (region, time) float32 5kB ...
     err          (region, time) float32 5kB ...
     region_name  (region) <U3 84B ...
-Attributes: (12/13)
+Attributes: (12/14)
     featureType:      timeSeries
     title:            Greenland ice sheet discharge by Mougniot region
     summary:          Greenland ice shet discharge by Mougnito region
@@ -321,12 +325,12 @@ Attributes: (12/13)
     source:           git commit: 20af941
     creator_name:     Ken Mankoff
     ...               ...
-    creator_url:      http://kenmankoff.com
     institution:      NASA GISS
     references:       TBD
     product_version:  1.0
     history:          TBD
     Conventions:      CF-1.8
+    DOI:              https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 **** Graphic
@@ -366,10 +370,11 @@ Attributes:
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T013919Z
+    date_created:        20241101T045814Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
+    DOI:                 https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 **** Graphic

@@ -44,9 +44,6 @@ variables:
 	string region(region) ;
 		region:long_name = "Mouginot 2019 regions" ;
 	int64 time(time) ;
-		time:cf_role = "timeseries_id" ;
-		time:standard_name = "time" ;
-		time:axis = "T" ;
 		time:units = "days since 1840-01-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
 
@@ -62,6 +59,7 @@ variables:
 		:institution = "GEUS" ;
 		:references = "10.22008/promice/mass_balance" ;
 		:product_version = 1. ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
 }
 #+end_example
 
@@ -98,13 +96,13 @@ popd
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
-ds = xr.open_dataset('./greenland_discharge/MB_region.nc')
+ds = xr.open_dataset('./tmp/greenland_discharge/MB_region.nc')
 
 # Limit to discharge 
 ds = ds[['D_ROI','D_ROI_err']]
 
 # Drop partial years
-this_yr = ds['time'].to_series().dt.year[-1]
+this_yr = ds['time'].to_series().iloc[-1].year
 ds = ds.sel({'time':slice('1800',str(this_yr))})
 
 # Resample by year
@@ -126,21 +124,23 @@ ds['discharge'].attrs['units'] = 'Gt yr-1'
 ds['err'].attrs['units'] = 'Gt yr-1'
 
 ds['discharge'].attrs['long_name'] = 'Marine discharge. Includes both calving and submarine melt. Some calvinvg is equivalent to submarine melt if using at fjord mouth'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
 
+!rm './dat/GL_discharge.nc'
 ds.to_netcdf('./dat/GL_discharge.nc')
 print(ds)
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
+<xarray.Dataset> Size: 12kB
 Dimensions:    (time: 185, region: 7)
 Coordinates:
-  ,* region     (region) object 'NE' 'CE' 'SE' 'SW' 'CW' 'NW' 'NO'
-  ,* time       (time) datetime64[ns] 1840-01-01 1841-01-01 ... 2024-01-01
+  ,* region     (region) <U2 56B 'NE' 'CE' 'SE' 'SW' 'CW' 'NW' 'NO'
+  ,* time       (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2024-01-01
 Data variables:
-    discharge  (time, region) float32 22.37 71.81 136.6 ... 33.95 46.07 10.38
-    err        (time, region) float32 3.992 11.53 17.82 ... 7.341 9.919 1.912
+    discharge  (time, region) float32 5kB 22.37 71.81 136.6 ... 46.07 10.38
+    err        (time, region) float32 5kB 3.992 11.53 17.82 ... 9.919 1.912
 Attributes:
     featureType:      timeSeries
     title:            Greenland ice sheet mass balance from 1840 through next...
@@ -153,5 +153,6 @@ Attributes:
     institution:      GEUS
     references:       10.22008/promice/mass_balance
     product_version:  1.0
+    DOI:              https://doi.org/10.5281/zenodo.14020895
 #+end_example
 

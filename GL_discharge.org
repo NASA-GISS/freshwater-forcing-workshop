@@ -48,7 +48,7 @@ Data variables:
     discharge    (region, time) float32 5kB ...
     err          (region, time) float32 5kB ...
     region_name  (region) <U3 84B ...
-Attributes: (12/13)
+Attributes: (12/14)
     featureType:      timeSeries
     title:            Greenland ice sheet discharge by Mougniot region
     summary:          Greenland ice shet discharge by Mougnito region
@@ -56,12 +56,12 @@ Attributes: (12/13)
     source:           git commit: 20af941
     creator_name:     Ken Mankoff
     ...               ...
-    creator_url:      http://kenmankoff.com
     institution:      NASA GISS
     references:       TBD
     product_version:  1.0
     history:          TBD
     Conventions:      CF-1.8
+    DOI:              https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 *** Plot: Annual discharge per region
@@ -381,7 +381,8 @@ ds.attrs['creator_name'] = 'Ken Mankoff'
 ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
 ds.attrs['institution'] = 'NASA GISS'
 ds.attrs['references'] = 'TBD'
-    
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+
 comp = dict(zlib=True, complevel=5)
 encoding = {} # var: comp for var in items}
 encoding['time'] = {'dtype': 'i4'}
@@ -430,6 +431,7 @@ variables:
 		:product_version = 1. ;
 		:history = "TBD" ;
 		:Conventions = "CF-1.8" ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
 }
 #+end_example
 

@@ -36,11 +36,12 @@ Data variables:
     region_name  (region) <U5 360B ...
 Attributes:
     description:   Antarctic region sub-shelf melt
-    date_created:  20241031T231731Z
+    date_created:  20241101T045557Z
     title:         Subshelf melt per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
     Conventions:   CF-1.8
+    DOI:           https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 *** Graphic
@@ -448,6 +449,7 @@ ds.attrs['title'] = 'Subshelf melt per region'
 ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
 ds.attrs['source'] = 'doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519'
 ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {var: comp for var in ['melt']}
@@ -480,11 +482,12 @@ variables:
 
 // global attributes:
 		:description = "Antarctic region sub-shelf melt" ;
-		:date_created = "20241031T231731Z" ;
+		:date_created = "20241101T045557Z" ;
 		:title = "Subshelf melt per region" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:source = "doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519" ;
 		:Conventions = "CF-1.8" ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
 }
 #+end_example
 

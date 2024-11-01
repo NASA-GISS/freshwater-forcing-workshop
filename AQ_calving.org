@@ -36,11 +36,12 @@ Data variables:
     basin_name   (basin) <U5 360B ...
 Attributes:
     description:   Antarctic basin ice shelf calving rate
-    date_created:  20241031T232134Z
+    date_created:  20241101T045552Z
     title:         Calving per basin
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5281/ZENODO.8052519
     Conventions:   CF-1.8
+    DOI:           https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 *** Graphic
@@ -201,6 +202,7 @@ ds.attrs['title'] = 'Calving per basin'
 ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
 ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
 ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {}
@@ -236,11 +238,12 @@ variables:
 
 // global attributes:
 		:description = "Antarctic basin ice shelf calving rate" ;
-		:date_created = "20241031T232134Z" ;
+		:date_created = "20241101T045552Z" ;
 		:title = "Calving per basin" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:source = "doi:10.5281/ZENODO.8052519" ;
 		:Conventions = "CF-1.8" ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
 }
 #+end_example
 

@@ -32,10 +32,11 @@ Attributes:
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T013919Z
+    date_created:        20241101T045814Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
+    DOI:                 https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
 *** Information
@@ -695,6 +696,7 @@ ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime
 ds.attrs['title'] = 'Normalised iceberg melt climatology per region of calving from Marson (2024)'
 ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
 ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
 
 comp = dict(zlib=True, complevel=2) # Internal NetCDF compression
 encoding = {var: comp for var in ['melt']}
@@ -723,9 +725,10 @@ Attributes:
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T013919Z
+    date_created:        20241101T045814Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
+    DOI:                 https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
