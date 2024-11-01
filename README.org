@@ -370,7 +370,7 @@ Attributes:
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T045814Z
+    date_created:        20241101T154520Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8

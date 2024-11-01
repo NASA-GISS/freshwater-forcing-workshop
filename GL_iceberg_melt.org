@@ -32,7 +32,7 @@ Attributes:
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T045814Z
+    date_created:        20241101T154520Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -58,40 +58,17 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 # gdf = gpd.read_file('~/data/Mouginot_2019/Greenland_Basins_PS_v1.4.2.shp')
 gdf = gpd.read_file('~/data/Mouginot_2019/GL_regions.gpkg')
 gdf = gdf.to_crs('EPSG:4326')
-# gdf = gdf.dissolve(by='label')
-
-# # expand and simplify polygons
-# polys = gpd.GeoSeries(gdf.dropna()["geometry"].apply(lambda g: g._geom).explode())
-# polys = polys.simplify(10000)
-
-# # Drop islands
-# gdf = (
-#     gpd.GeoDataFrame(data={"area": polys.area / 10**6}, geometry=polys, crs=polys.crs)
-#     .sort_values("area", ascending=0)
-#     .loc[lambda d: d["area"].gt(100000)]  # filter by size of polygon
-#     .reset_index()
-# )
 gdf = gdf.set_index('label')
-# # gdf = gdf.unary_union()
-
-
-# fig, axs = plt.subplots(ncols=4, nrows=2,
-#                         sharex=True, sharey=True,
-#                         layout='constrained')
-# fig.set_figwidth(12); fig.set_figheight(8)
-# axs = axs.flatten()
-
-# plt.subplots_adjust(wspace=0.001, hspace=0.001)
 
 ds = xr.open_dataset('dat/GL_iceberg_melt.nc')
-
 ds = ds.sel({'latitude':slice(40,90), 'longitude':slice(-100,15)}, drop=True)
+ds['melt'] = ds['melt'].where(ds['melt'] != 0) # set 0 to NaN
 
-g = np.log10(ds['melt']).plot(x='longitude', y='latitude',
-                              col='basin', col_wrap=3,
-                              vmin = -7, vmax = -5,
-                              cbar_kwargs={"label": "[log$_{10}$ kg m$^{-2}$ yr$^{-1}$]"},
-                              cmap=plt.cm.viridis)
+g = ds['melt'].plot(x='longitude', y='latitude',
+                    col='region', col_wrap=3,
+                    # vmin = -7, vmax = -5,
+                    cbar_kwargs={"label": "Melt [m$^{-2}$]"},
+                    cmap=plt.cm.viridis)
 
 
 basins = ['NO','NE','CE','SE','SW','CW','NW']
@@ -105,11 +82,7 @@ plt.draw()
 #+end_src
 
 #+RESULTS:
-:RESULTS:
-: /home/kdm/local/mambaforge/envs/ds/lib/python3.10/site-packages/xarray/core/computation.py:825: RuntimeWarning: divide by zero encountered in log10
-:   result_data = func(*input_data)
 [[./fig/GL_berg_melt.png]]
-:END:
 
 
 * Processing
@@ -651,7 +624,9 @@ melt[5,:,:] = garray.array("SE")[::-1,:]
 melt[6,:,:] = garray.array("SW")[::-1,:]
 
 area = garray.array("area")[::-1,:]
-melt = melt / area
+for i in range(7):
+    melt[i,:,:] = melt[i,:,:] / melt[i,:,:].sum() # Normalize (sum-to-1)
+    melt[i,:,:] = melt[i,:,:] / area # Make units /m^2
 
 ds = xr.Dataset({
     'melt': xr.DataArray(data = melt,
@@ -666,8 +641,6 @@ ds['region_map'] = (('lon','lat'), ROIs)
 S.close() # Done with GRASS
 
 ds['region_names'] = (('region'), ['CE','CW','NE','NE','NW','SE','SW'])
-
-# ds = ds.where(ds != 0) # 0 to NaN
 
 ds = ds.rio.write_crs('epsg:4326')
 ds['spatial_ref'] = ds['spatial_ref'].astype(np.byte)
@@ -725,7 +698,7 @@ Attributes:
     geospatial_lat_max:  89.75
     geospatial_lon_min:  -179.75
     geospatial_lon_max:  179.75
-    date_created:        20241101T045814Z
+    date_created:        20241101T154520Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
