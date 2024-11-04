@@ -6,7 +6,7 @@
   - [[#data-example][Data example]]
     - [[#printout][Printout]]
     - [[#graphic][Graphic]]
-    - [[#subshelf-melt-by-region][Subshelf melt by region]]
+    - [[#calving-by-region][Calving by region]]
 - [[#processing][Processing]]
 
 * Introduction
@@ -60,7 +60,7 @@ _ = ax.set_ylabel('Calving [Gt yr$^{-1}$]')
 #+RESULTS:
 [[./fig/AQ_calving.png]]
 
-*** Subshelf melt by region
+*** Calving by region
 
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
