@@ -2,6 +2,29 @@
 #+PROPERTY: header-args:jupyter-python+ :session marson_2024
 #+PROPERTY: header-args:bash+ :session (concat "*" (nth 1 (reverse (split-string default-directory "/"))) "-shell*")
 
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data][Data]]
+    - [[#printout][Printout]]
+    - [[#information][Information]]
+    - [[#figure][Figure]]
+- [[#processing][Processing]]
+  - [[#provenance][Provenance]]
+  - [[#tests-and-checks][Tests and checks]]
+    - [[#algorithm-demonstration][Algorithm demonstration]]
+    - [[#tests-on-real-data][Tests on real data]]
+  - [[#greenland-rois][Greenland ROIs]]
+  - [[#load-data][Load data]]
+    - [[#compute-mass-loss][Compute mass loss]]
+    - [[#save-snapshot][Save snapshot]]
+    - [[#load-snapshot][Load snapshot]]
+  - [[#iceberg-meltwater-locations][Iceberg meltwater locations]]
+    - [[#export-each-particle-to-file][Export each particle to file]]
+    - [[#ingest-each-track-and-organize-by-source][Ingest each track and organize by source]]
+  - [[#reproject-from-3413-to-4326][Reproject from 3413 to 4326]]
+    - [[#sanity-check-gtyearsector][Sanity check: Gt/year/sector]]
+  - [[#export-to-netcdf][Export to NetCDF]]
+
 * Introduction
 
 
@@ -638,7 +661,7 @@ ds = xr.Dataset({
 
 ds['melt_GL'] = (('latitude','longitude'), melt_GL)
 ROIs = garray.array("ROIs")[::-1,:]
-ds['region_map'] = (('latitude','longitude'), ROIs)
+ds['region_map'] = (('latitude','longitude'), ROIs.astype(np.byte))
 
 S.close() # Done with GRASS
 
@@ -667,10 +690,10 @@ ds['region_map'].attrs['long_name'] = 'Region IDs'
 
 ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
 
-ds.attrs['geospatial_lat_min'] = ds['latitude'].values.min()
-ds.attrs['geospatial_lat_max'] = ds['latitude'].values.max()
-ds.attrs['geospatial_lon_min'] = ds['longitude'].values.min()
-ds.attrs['geospatial_lon_max'] = ds['longitude'].values.max()
+ds.attrs['geospatial_lat_min'] = -90 # ds['latitude'].values.min()
+ds.attrs['geospatial_lat_max'] = 90 # ds['latitude'].values.max()
+ds.attrs['geospatial_lon_min'] = -180 # ds['longitude'].values.min()
+ds.attrs['geospatial_lon_max'] = 180 # ds['longitude'].values.max()
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 ds.attrs['title'] = 'Normalised iceberg melt climatology per region of calving from Marson (2024)'
 ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
@@ -696,14 +719,15 @@ Coordinates:
     spatial_ref   int8 1B 0
 Data variables:
     melt          (region, latitude, longitude) float64 15MB 0.0 0.0 ... 0.0 0.0
-    region_map    (latitude, longitude) float64 2MB 0.0 0.0 0.0 ... 0.0 0.0 0.0
+    melt_GL       (latitude, longitude) float64 2MB 0.0 0.0 0.0 ... 0.0 0.0 0.0
+    region_map    (latitude, longitude) int8 259kB 0 0 0 0 0 0 0 ... 0 0 0 0 0 0
     region_names  (region) <U2 56B 'CE' 'CW' 'NE' 'NE' 'NW' 'SE' 'SW'
 Attributes:
-    geospatial_lat_min:  -89.75
-    geospatial_lat_max:  89.75
-    geospatial_lon_min:  -179.75
-    geospatial_lon_max:  179.75
-    date_created:        20241101T220211Z
+    geospatial_lat_min:  -90
+    geospatial_lat_max:  90
+    geospatial_lon_min:  -180
+    geospatial_lon_max:  180
+    date_created:        20241105T205809Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
