@@ -623,6 +623,8 @@ melt[5,:,:] = garray.array("SE")[::-1,:]
 melt[6,:,:] = garray.array("SW")[::-1,:]
 
 area = garray.array("area")[::-1,:]
+
+melt_GL = melt.sum(axis=0) # all GL melt if no ROIs
 for i in range(7):
     melt[i,:,:] = melt[i,:,:] / melt[i,:,:].sum() # Normalize (sum-to-1)
     melt[i,:,:] = melt[i,:,:] / area # Make units /m^2
@@ -634,6 +636,7 @@ ds = xr.Dataset({
                                    'longitude':lon[0,:],
                                    'latitude':lat[:,0]})})
 
+ds['melt_GL'] = (('latitude','longitude'), melt_GL)
 ROIs = garray.array("ROIs")[::-1,:]
 ds['region_map'] = (('latitude','longitude'), ROIs)
 
@@ -656,6 +659,8 @@ ds['longitude'].attrs['standard_name'] = 'longitude'
 
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
 ds['melt'].attrs['units'] = 'm-2'
+ds['melt_GL'].attrs['long_name'] = 'Normalised iceberg melt climatology for all Greenland'
+ds['melt_GL'].attrs['units'] = 'm-2'
 
 ds['region'].attrs['long_name'] = 'Mouginot (2019) region'
 ds['region_map'].attrs['long_name'] = 'Region IDs'
@@ -673,7 +678,7 @@ ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
 
 comp = dict(zlib=True, complevel=2) # Internal NetCDF compression
-encoding = {var: comp for var in ['melt']}
+encoding = {var: comp for var in ds.drop_vars('region_names').data_vars}
 
 !rm ./dat/GL_iceberg_melt.nc
 ds.to_netcdf('./dat/GL_iceberg_melt.nc', encoding=encoding)
