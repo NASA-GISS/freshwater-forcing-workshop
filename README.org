@@ -354,22 +354,23 @@ xr.open_dataset('./dat/GL_iceberg_melt.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 17MB
-Dimensions:       (region: 7, longitude: 720, latitude: 360)
+Dimensions:      (region: 7, longitude: 720, latitude: 360)
 Coordinates:
-  ,* region        (region) int8 7B 1 2 3 4 5 6 7
-  ,* longitude     (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
-  ,* latitude      (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
+  ,* region       (region) int8 7B 1 2 3 4 5 6 7
+  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
+  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
 Data variables:
-    melt          (region, latitude, longitude) float64 15MB ...
-    region_map    (latitude, longitude) float64 2MB ...
-    region_names  (region) <U2 56B ...
-    spatial_ref   int8 1B ...
+    melt         (region, latitude, longitude) float64 15MB ...
+    melt_GL      (latitude, longitude) float64 2MB ...
+    region_map   (latitude, longitude) int8 259kB ...
+    region_name  (region) <U2 56B ...
+    spatial_ref  int8 1B ...
 Attributes:
-    geospatial_lat_min:  -89.75
-    geospatial_lat_max:  89.75
-    geospatial_lon_min:  -179.75
-    geospatial_lon_max:  179.75
-    date_created:        20241101T215609Z
+    geospatial_lat_min:  -90
+    geospatial_lat_max:  90
+    geospatial_lon_min:  -180
+    geospatial_lon_max:  180
+    date_created:        20241106T220234Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
