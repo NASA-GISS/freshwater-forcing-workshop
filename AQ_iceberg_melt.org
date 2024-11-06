@@ -1,0 +1,251 @@
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data][Data]]
+    - [[#printout][Printout]]
+    - [[#figure][Figure]]
+- [[#processing][Processing]]
+  - [[#netcdf][NetCDF]]
+
+* Introduction
+
++ Data from Nico Jourdain processed from Mathiot (2023)
++ Rework to match other products generated for the Schmidt freshwater paper
+
+** Data
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_iceberg_melt.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 21MB
+Dimensions:      (region: 18, latitude: 360, longitude: 720)
+Coordinates:
+  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
+    spatial_ref  int8 1B ...
+  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+Data variables:
+    melt         (region, latitude, longitude) float32 19MB ...
+    melt_AQ      (latitude, longitude) float32 1MB ...
+    msk_nemo     (latitude, longitude) float32 1MB ...
+    region_name  (region) <U5 360B ...
+    region_map   (latitude, longitude) int16 518kB ...
+Attributes: (12/13)
+    description:         Annual JRA55 climatology
+    original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
+    script_used:         remap_per_basin.py
+    processed_by:        Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alp...
+    geospatial_lat_min:  -89.75
+    geospatial_lat_max:  89.75
+    ...                  ...
+    geospatial_lon_max:  179.75
+    date_created:        20241106T222409Z
+    title:               Normalised iceberg melt climatology in the Southern ...
+    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
+    Conventions:         CF-1.8
+    DOI:                 https://doi.org/10.5281/zenodo.14020895
+#+end_example
+
+*** Figure
+
+#+BEGIN_SRC jupyter-python :exports results :file ./fig/AQ_iceberg_melt.png
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+import geopandas as gpd
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+ds = xr.open_dataset('dat/AQ_iceberg_melt.nc')
+region_name = ds['region_name']
+ds = ds.drop_vars(['region_name','region_map'])
+ds = ds.rio.write_crs('EPSG:4326')
+ds = ds.sel({'latitude':slice(-90,-40)}, drop=True)
+ds = ds.rio.reproject('EPSG:3031')
+
+g = np.log10(ds['melt'])\
+      .plot(x='x', y='y',
+            col='region', col_wrap=5,
+            # vmin = -7, vmax = -5,
+            cbar_kwargs={"label": "Melt [log$_{10}$ m$^{-2}$]"},
+            cmap=plt.cm.viridis)
+
+for i, ax in enumerate(g.axs.flat):
+    if i < 18:
+        ax.set_title(f"{region_name[i].values} [{i+1}]")
+
+plt.draw()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+: /home/kdm/local/mambaforge/envs/ds/lib/python3.10/site-packages/xarray/core/computation.py:825: RuntimeWarning: divide by zero encountered in log10
+:   result_data = func(*input_data)
+[[./fig/AQ_iceberg_melt.png]]
+:END:
+
+
+* Processing
+
+** NetCDF
+
+#+begin_src jupyter-python :exports both :session Mathiot_2023
+import rioxarray as rxr
+import rasterio as rio
+import xarray as xr
+import numpy as np
+import datetime
+
+ds = xr.open_dataset('~/data/Mathiot_2023/iceberg_melt_pattern_SH_per_basin.nc')
+
+# add projection metadata
+ds = ds.rio.write_crs('epsg:4326') # create ds['spatial_ref']
+ds = ds.rio.set_spatial_dims(x_dim='longitude', y_dim='latitude') # or ('lon','lat') and only maybe needed
+ds['spatial_ref'] = ds['spatial_ref'].astype(np.byte)
+
+# provide cell center values at all coordinates
+ds = ds.pad(latitude=(0, 1), longitude=(0,1))  # Add one column at the end
+ds['latitude'] = np.linspace(-89.75, 89.75, num=360)
+ds['longitude'] = np.linspace(-179.75, 179.75, num=720)
+
+# Rignot basins are 1 through 18, not 0 through 17
+ds = ds.rename({'basin':'region'})
+ds['region'] = (ds['region'] + 1).astype(np.int32)
+
+ds['region_name'] = (('region'), ['A-Ap', 'Ap-B', 'B-C', 'C-Cp', 'Cp-D',
+                                  'D-Dp', 'Dp-E', 'E-Ep', 'Ep-F', 'F-G',
+                                  'G-H', 'H-Hp', 'Hp-I', 'I-Ipp', 'Ipp-J',
+                                  'J-Jpp', 'Jpp-K', 'K-A'])
+
+# Annual maps only
+ds = ds.resample({'time':'YS'}).mean()
+ds = ds.squeeze()
+ds = ds.drop_vars('time')
+
+ds.attrs['description'] = 'Annual JRA55 climatology'
+
+ds = ds.rename_vars({'pattern_SH':'melt',
+                     'pattern_SH_allbasins':'melt_AQ'})
+
+ds['melt'].attrs['units'] = 'm-2'
+ds['melt'].attrs['grid_mapping'] = 'spatial_ref'
+ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
+ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
+
+ds['melt_AQ'].attrs['units'] = 'm-2'
+ds['melt_AQ'].attrs['grid_mapping'] = 'spatial_ref'
+ds['melt_AQ'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
+ds['melt_AQ'].attrs['long_name'] = 'Normalised iceberg melt climatology for all Greenland'
+
+rt = rio.open('./tmp/regions.tif').read(1)[::-1,:]
+rt[rt < 0] = 0
+ds['region_map'] = (('latitude','longitude'), rt)
+
+# # apply a spatial smooth to the iceberg track
+# area = rio.open('./tmp/area.tif').read(1)[::-1,:]
+# # (area * ds['melt']).sum(dim=['longitude','latitude']) # sums to 1
+
+# for v in ['melt','melt_AQ']:
+#     vs = v+'_smooth'
+#     ds[vs] = ds[v].fillna(0).rolling(longitude=3, latitude=3, center=True).mean()
+#     ds[vs] = ds[vs].where(~np.isnan(ds['region_map']), 0)
+#     roi_sum = ds[vs].sum(dim=['longitude','latitude'])
+#     ds[vs] = ds[vs] / roi_sum / area
+
+ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
+ds['latitude'].attrs['standard_name'] = 'latitude'
+ds['longitude'].attrs['standard_name'] = 'longitude'
+ds['region'].attrs['long_name'] = 'IMBIE region'
+ds['region_map'].attrs['long_name'] = 'IMBIE regions'
+ds.attrs['geospatial_lat_min'] = ds['latitude'].values.min()
+ds.attrs['geospatial_lat_max'] = ds['latitude'].values.max()
+ds.attrs['geospatial_lon_min'] = ds['longitude'].values.min()
+ds.attrs['geospatial_lon_max'] = ds['longitude'].values.max()
+ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+ds.attrs['title'] = 'Normalised iceberg melt climatology in the Southern Hemisphere per region of calving'
+ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
+ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+
+comp = dict(zlib=True, complevel=5)
+encoding = {var: comp for var in ds.drop_vars(['region_name']).data_vars}
+
+!rm ./dat/AQ_iceberg_melt.nc
+ds.to_netcdf('./dat/AQ_iceberg_melt.nc', encoding=encoding)
+!ncdump -h ./dat/AQ_iceberg_melt.nc
+#+end_src
+
+#+RESULTS:
+#+begin_example
+netcdf AQ_iceberg_melt {
+dimensions:
+	region = 18 ;
+	latitude = 360 ;
+	longitude = 720 ;
+variables:
+	float melt(region, latitude, longitude) ;
+		melt:_FillValue = NaNf ;
+		melt:long_name = "Normalised iceberg melt climatology per region of calving" ;
+		melt:units = "m-2" ;
+		melt:grid_mapping = "spatial_ref" ;
+		melt:standard_name = "water_flux_into_sea_water_from_icebergs" ;
+		melt:coordinates = "spatial_ref" ;
+	float melt_AQ(latitude, longitude) ;
+		melt_AQ:_FillValue = NaNf ;
+		melt_AQ:long_name = "Normalised iceberg melt climatology for all Greenland" ;
+		melt_AQ:units = "m-2" ;
+		melt_AQ:grid_mapping = "spatial_ref" ;
+		melt_AQ:standard_name = "water_flux_into_sea_water_from_icebergs" ;
+		melt_AQ:coordinates = "spatial_ref" ;
+	double longitude(longitude) ;
+		longitude:_FillValue = NaN ;
+		longitude:standard_name = "longitude" ;
+	byte spatial_ref ;
+		spatial_ref:crs_wkt = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
+		spatial_ref:semi_major_axis = 6378137. ;
+		spatial_ref:semi_minor_axis = 6356752.31424518 ;
+		spatial_ref:inverse_flattening = 298.257223563 ;
+		spatial_ref:reference_ellipsoid_name = "WGS 84" ;
+		spatial_ref:longitude_of_prime_meridian = 0. ;
+		spatial_ref:prime_meridian_name = "Greenwich" ;
+		spatial_ref:geographic_crs_name = "WGS 84" ;
+		spatial_ref:grid_mapping_name = "latitude_longitude" ;
+		spatial_ref:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
+		spatial_ref:horizontal_datum_name = "WGS 84" ;
+	double latitude(latitude) ;
+		latitude:_FillValue = NaN ;
+		latitude:standard_name = "latitude" ;
+	int region(region) ;
+		region:long_name = "IMBIE region" ;
+	float msk_nemo(latitude, longitude) ;
+		msk_nemo:_FillValue = NaNf ;
+		msk_nemo:long_name = "Original land/sea mask in the NEMO simulation" ;
+		msk_nemo:coordinates = "spatial_ref" ;
+	string region_name(region) ;
+		region_name:coordinates = "spatial_ref" ;
+	short region_map(latitude, longitude) ;
+		region_map:long_name = "IMBIE regions" ;
+		region_map:coordinates = "spatial_ref" ;
+
+// global attributes:
+		:description = "Annual JRA55 climatology" ;
+		string :original_data = "NEMO 0.25° simulations by Anna Olive-Abello (in preparation)" ;
+		:script_used = "remap_per_basin.py" ;
+		:processed_by = "Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alpes.fr>" ;
+		:geospatial_lat_min = -89.75 ;
+		:geospatial_lat_max = 89.75 ;
+		:geospatial_lon_min = -179.75 ;
+		:geospatial_lon_max = 179.75 ;
+		:date_created = "20241106T222409Z" ;
+		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per region of calving" ;
+		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
+		:Conventions = "CF-1.8" ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+}
+#+end_example
+
+

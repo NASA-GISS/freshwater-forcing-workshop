@@ -158,40 +158,35 @@ Normalized iceberg melt patterns per region of origin, i.e. for calving in 18 An
 
 **** Data
 
-#+BEGIN_SRC bash :exports none
-cp ~/data/Mathiot_2023/AQ_iceberg_melt.nc ./dat/
-#+END_SRC
-
-#+RESULTS:
-
 #+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
 xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 20MB
-Dimensions:      (region: 18, latitude: 359, longitude: 719)
+<xarray.Dataset> Size: 21MB
+Dimensions:      (region: 18, latitude: 360, longitude: 720)
 Coordinates:
-  ,* longitude    (longitude) float32 3kB -179.8 -179.2 -178.8 ... 178.8 179.2
-  ,* latitude     (latitude) float32 1kB -89.5 -89.0 -88.5 ... 88.5 89.0 89.5
+  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
+    spatial_ref  int8 1B ...
+  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
   ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
     melt         (region, latitude, longitude) float32 19MB ...
-    spatial_ref  int8 1B ...
+    melt_AQ      (latitude, longitude) float32 1MB ...
     msk_nemo     (latitude, longitude) float32 1MB ...
     region_name  (region) <U5 360B ...
-    region_map   (latitude, longitude) int16 516kB ...
+    region_map   (latitude, longitude) int16 518kB ...
 Attributes: (12/13)
     description:         Annual JRA55 climatology
     original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
     script_used:         remap_per_basin.py
     processed_by:        Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alp...
-    geospatial_lat_min:  -89.5
-    geospatial_lat_max:  89.5
+    geospatial_lat_min:  -89.75
+    geospatial_lat_max:  89.75
     ...                  ...
-    geospatial_lon_max:  179.25
-    date_created:        20241101T045919Z
+    geospatial_lon_max:  179.75
+    date_created:        20241106T222409Z
     title:               Normalised iceberg melt climatology in the Southern ...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -200,32 +195,7 @@ Attributes: (12/13)
 
 **** Graphic
 
-#+BEGIN_SRC jupyter-python :exports results :file ./fig/AQ_iceberg_melt.png
-import rioxarray as rxr
-import xarray as xr
-import numpy as np
-import cartopy.crs as ccrs
-
-ds = xr.open_dataset('./dat/AQ_iceberg_melt.nc')
-ds = ds.rio.write_crs('epsg:4326')
-g = np.log10(ds['melt']).plot(x='longitude',
-                              y='latitude',
-                              vmin = -18, vmax=-12,
-                              col='region', col_wrap=6)
-
-for ax in g.axs.flatten():
-     ax.set_title(ax.title.get_text(), fontsize=20)
-    
-g.cbar.ax.tick_params(labelsize=20)
-g.cbar.set_label(label='Melt [m$^{-2}$]', fontsize=20)
-#+END_SRC
-
-#+RESULTS:
-:RESULTS:
-: /home/kdm/local/mambaforge/envs/ds/lib/python3.10/site-packages/xarray/core/computation.py:825: RuntimeWarning: divide by zero encountered in log10
-:   result_data = func(*input_data)
 [[./fig/AQ_iceberg_melt.png]]
-:END:
 
 
 *** NOTDONE Surface runoff
