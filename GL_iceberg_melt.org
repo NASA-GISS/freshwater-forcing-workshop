@@ -54,7 +54,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241106T220234Z
+    date_created:        20241108T002711Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -787,7 +787,9 @@ ds['melt_GL'].attrs['long_name'] = 'Normalised iceberg melt climatology for all 
 ds['melt_GL'].attrs['units'] = 'm-2'
 ds['melt_GL'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
 
-ds['region'].attrs['long_name'] = 'Mouginot (2019) region'
+ds['region'].attrs['long_name'] = 'Region IDs'
+ds['region_name'].attrs['long_name'] = 'Mouginot (2019) region'
+ds['region_name'].attrs['standard_name'] = 'region'
 ds['region_map'].attrs['long_name'] = 'Region IDs'
 
 ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
@@ -829,7 +831,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241106T220234Z
+    date_created:        20241108T002711Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8

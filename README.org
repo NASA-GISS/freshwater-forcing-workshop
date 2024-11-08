@@ -186,7 +186,7 @@ Attributes: (12/13)
     geospatial_lat_max:  89.75
     ...                  ...
     geospatial_lon_max:  179.75
-    date_created:        20241106T222409Z
+    date_created:        20241108T002652Z
     title:               Normalised iceberg melt climatology in the Southern ...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -340,7 +340,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241106T220234Z
+    date_created:        20241108T002711Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
