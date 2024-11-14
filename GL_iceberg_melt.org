@@ -24,6 +24,7 @@
   - [[#reproject-from-3413-to-4326][Reproject from 3413 to 4326]]
     - [[#sanity-check-gtyearsector][Sanity check: Gt/year/sector]]
   - [[#export-to-netcdf][Export to NetCDF]]
+    - [[#units-check][Units check]]
 
 * Introduction
 
@@ -37,14 +38,15 @@ xr.open_dataset('./dat/GL_iceberg_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 17MB
-Dimensions:      (region: 7, longitude: 720, latitude: 360)
+<xarray.Dataset> Size: 177MB
+Dimensions:      (region: 7, time: 12, longitude: 720, latitude: 360)
 Coordinates:
   ,* region       (region) int8 7B 1 2 3 4 5 6 7
+  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
   ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
   ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
 Data variables:
-    melt         (region, latitude, longitude) float64 15MB ...
+    melt         (region, time, latitude, longitude) float64 174MB ...
     melt_GL      (latitude, longitude) float64 2MB ...
     region_map   (latitude, longitude) int8 259kB ...
     region_name  (region) <U2 56B ...
@@ -54,7 +56,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241108T002711Z
+    date_created:        20241116T204327Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -65,60 +67,101 @@ Attributes:
 
 #+BEGIN_QUOTE
 [!WARNING]
-Iceberg tracks come from Marson (2024) http://doi.org/10.1029/2023jc020697. The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, you may lose large melt inputs. Rescaling the melt so melt*area sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the melt by increasing only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
+Iceberg tracks come from Marson (2024) http://doi.org/10.1029/2023jc020697. The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, you may lose large melt inputs. Rescaling the melt so melt*area sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the melt by increasin1g only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
 #+END_QUOTE
 
 *** Figure
 
 #+begin_src jupyter-python :exports results :file ./fig/GL_berg_melt.png
+import rioxarray as rio
 import xarray as xr
 import numpy as np
+import cartopy.crs as ccrs
+from cartopy.feature import ShapelyFeature
 import matplotlib.pyplot as plt
 import geopandas as gpd
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from tqdm import tqdm
 
 gdf = gpd.read_file('~/data/Mouginot_2019/GL_regions.gpkg')
-gdf = gdf.to_crs('EPSG:4326')
+gdf['geometry'] = gdf['geometry'].simplify(25000)
 gdf = gdf.set_index('label')
-gdf = gdf.to_crs('EPSG:3413')
 
 ds = xr.open_dataset('dat/GL_iceberg_melt.nc')
-region_name = ds['region_name']
-ds = ds.drop_vars(['region_name','region_map'])
 ds = ds.rio.write_crs('EPSG:4326')
 ds = ds.sel({'latitude':slice(40,90), 'longitude':slice(-100,15)}, drop=True)
-ds = ds.rio.reproject('EPSG:3413')
 
-xx,yy = np.meshgrid(ds['x'],ds['y'])
-ds['xx'] = (('y','x'), xx); ds['yy'] = (('y','x'), yy)
-ds = ds.where(ds['melt_GL'].fillna(0) != 0)
-xxrange = [ds['xx'].min().values, ds['xx'].max().values]
-yyrange = [ds['yy'].min().values, ds['yy'].max().values]
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+ds['area'] = (('latitude','longitude'), cell_area)
+ds['melt'] = ds['melt'] / ds['melt'].sum() * ds['area']
 
-ds = ds.sel({'x':slice(xxrange[0], xxrange[1]),
-             'y':slice(yyrange[1], yyrange[0])}, drop=True)
+proj = ccrs.Stereographic(central_latitude=70, central_longitude=-42)
+gdf = gdf.to_crs(proj.proj4_init)
 
-g = np.log10(ds['melt']).plot(x='x', y='y',
-                    col='region', col_wrap=3,
-                    # vmin = -7, vmax = -5,
-                    cbar_kwargs={"label": "Melt [log$_{10}$ m$^{-2}$]"},
-                    cmap=plt.cm.viridis)
+f, axs = plt.subplots(8, 13,
+                      figsize=(8*3, 13*3),
+                      subplot_kw={"projection": proj})
 
-for i, ax in enumerate(g.axs.flat):
-    if i >= 7: continue
-    gdf.boundary.plot(ax=ax, color='k', linewidth=1)
-    ax.set_title(f"{region_name[i].values} [{i+1}]")
+mmin = ds['melt'].where(ds['melt'] != 0).min().values
+mmax = ds['melt'].where(ds['melt'] != 0).max().values
+roi_name = ds['region_name'].values
 
-plt.draw()
+for roi in tqdm(range(8)):
+    for time in range(13):
+        ax = axs[roi,time]
+
+        title = ''
+        ylabel = '' if roi < 7 else "All"
+        if (time < 12) and (roi < 7):
+            data = ds['melt'].isel({'region':roi, 'time':time})
+            if roi == 0:
+                if time == 0: title = 'Month: '
+                title = title + f"{time+1}"
+            if time == 0: ylabel = f"{roi_name[roi]}"
+        elif (time == 12) and (roi < 7):
+            data = ds['melt'].mean(dim='time').isel({'region':roi})
+            if roi == 0: title = f"Annual"
+        elif (time < 12) and (roi == 7):
+            data = ds['melt'].mean(dim='region').isel({'time':time})
+        elif (time == 12) and (roi == 7):
+            data = ds['melt'].mean(dim=['region','time'])
+        else: # should not be here
+            assert(False)
+
+        data = np.log10(data.where(data != 0))
+        p = data.plot(ax=ax,
+                      add_colorbar = False,
+                      vmin = np.log10(mmin),
+                      vmax = np.log10(mmax),
+                      transform = ccrs.PlateCarree())
+        
+        ax.coastlines()
+        ax.set_extent([-60, -20, 35, 90])
+        ax.set_aspect('equal', 'box')
+
+        ax.set_title(title)
+        # ax.set_ylabel(ylabel)
+        ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
+                rotation='vertical', rotation_mode='anchor',
+                transform=ax.transAxes)
+
+        gdf.boundary.plot(ax=ax, color='k', linewidth=1)
+        if roi < 7:
+            geom = gdf.loc[roi_name[roi]]['geometry']
+            ax.add_geometries(geom, crs=proj, facecolor='k', edgecolor='k', alpha=0.33)
+        if (roi == 7):
+            gdf.plot(ax=ax, color='k', facecolor='k', linewidth=1, alpha=0.33)
+        
+plt.subplots_adjust(hspace=-0.85, wspace=0.05)
 #+end_src
 
 #+RESULTS:
 :RESULTS:
-: /home/kdm/local/mambaforge/envs/ds/lib/python3.10/site-packages/xarray/core/computation.py:825: RuntimeWarning: divide by zero encountered in log10
-:   result_data = func(*input_data)
+: 100% 8/8 [03:11<00:00, 23.98s/it]
 [[./fig/GL_berg_melt.png]]
 :END:
-
 
 * Processing
 ** Provenance
@@ -131,7 +174,10 @@ Data from Marson (2024) http://doi.org/10.1029/2023jc020697
 
 *** Algorithm demonstration
 
-#+BEGIN_SRC jupyter-python :exports both
++ Find the first and last iceberg track indices, derive melt from that, check inputs equal outputs
++ For some reason, last time often has large melt. Maybe we shouldn't include it. TBD.
+
+#+begin_src jupyter-python :exports both
 # synthetic ice mass array, dimesions [x=time, y=mass]
 mass = np.zeros((5,5)) * np.nan
 mass[0,0] = 5
@@ -142,22 +188,25 @@ mass[4,[3,4]] = [1.1,1]
 print('mass', mass)
 
 # flag the first time the iceberg appears
-first = np.vstack([np.zeros(mass[:,0].shape)*np.nan, mass.T]).T
-first = (~np.isnan(first[:,1:]) & np.isnan(first[:,:-1]))
-# print('first', first)
+first = (~np.isnan(mass) & np.isnan(np.roll(mass,1,axis=1)))
+print('first', first)
+
+# flag the last time the iceberg appears
+last = (~np.isnan(mass) & np.isnan(np.roll(mass,-1,axis=1)))
+print('last', last)
 
 # the water mass is just the derivative of the ice mass in time
-h2o = np.vstack([mass.T, np.zeros(mass[:,0].shape)*np.nan]).T
-h2o = -1 * np.diff(h2o, axis=1)
-# except the diff() drops the last timestep, so we lose that without some extra work...
-last = np.vstack([mass.T, np.zeros(mass[:,0].shape)*np.nan]).T
-last = (np.isnan(last[:,1:]) & ~np.isnan(last[:,:-1]))
+h2o = -1 * np.diff(mass, axis=1, append=np.nan)
 h2o[last] = mass[last]
 print('h2o', h2o)
 
+h2o_nolast = -1 * np.diff(mass, axis=1, append=np.nan) # NO LAST
+print('h2o no last', h2o_nolast)
+
 print('ice mass: ', mass[first].sum(), mass[first])
 print('water mass: ', np.nansum(h2o), np.nansum(h2o,axis=1))
-#+END_SRC
+print('water mass no last: ', np.nansum(h2o_nolast), np.nansum(h2o_nolast,axis=1))
+#+end_src
 
 #+RESULTS:
 #+begin_example
@@ -166,14 +215,34 @@ mass [[ 5.   nan  nan  nan  nan]
  [ nan 10.   5.   nan  nan]
  [ nan  nan 20.  10.   5. ]
  [ nan  nan  nan  1.1  1. ]]
+first [[ True False False False False]
+ [False  True False False False]
+ [False  True False False False]
+ [False False  True False False]
+ [False False False  True False]]
+last [[ True False False False False]
+ [False False  True False False]
+ [False False  True False False]
+ [False False False False  True]
+ [False False False False  True]]
 h2o [[ 5.   nan  nan  nan  nan]
  [ nan  1.   9.   nan  nan]
  [ nan  5.   5.   nan  nan]
  [ nan  nan 10.   5.   5. ]
  [ nan  nan  nan  0.1  1. ]]
+h2o no last [[ nan  nan  nan  nan  nan]
+ [ nan  1.   nan  nan  nan]
+ [ nan  5.   nan  nan  nan]
+ [ nan  nan 10.   5.   nan]
+ [ nan  nan  nan  0.1  nan]]
 ice mass:  46.1 [ 5.  10.  10.  20.   1.1]
 water mass:  46.1 [ 5.  10.  10.  20.   1.1]
+water mass no last:  21.1 [ 0.   1.   5.  15.   0.1]
 #+end_example
+
+
+
+
 
 *** Tests on real data
 **** Load a subset
@@ -199,65 +268,72 @@ ds = ds.rename({'timestep':'time'})
 
 ds['time'].attrs['calendar'] = 'noleap'
 ds['time'].attrs['units'] = 'days since 2000-01-01'
-ds['time'] = np.arange(ds['time'].values.size).astype(np.int16)
+ds['time'] = pd.Timestamp("2000-01-01") + pd.to_timedelta(ds['time'].values, unit='D')
 ds['particle'] = ds['particle'].astype(np.int32)
 
 print(ds)
 #+END_SRC
 
 #+RESULTS:
-: <xarray.Dataset>
+: <xarray.Dataset> Size: 467MB
 : Dimensions:   (time: 5840, particle: 10000)
 : Coordinates:
-:   * time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
-:   * particle  (particle) int32 117 118 128 129 ... 205888 205896 205897 205916
+:   * time      (time) datetime64[ns] 47kB 2000-01-02 2000-01-03 ... 2000-12-31
+:   * particle  (particle) int32 40kB 117 118 128 129 ... 205896 205897 205916
 : Data variables:
-:     mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+:     mass      (particle, time) float64 467MB dask.array<chunksize=(910, 531), meta=np.ndarray>
 
 
 **** Initial ice mass should equal final water mass
 
 #+BEGIN_SRC jupyter-python :exports both
 # flag the first time the iceberg appears
-empty = np.empty(ds['particle'].size)*np.nan
-first = np.vstack([empty, ds['mass'].values.T]).T
-first = (~np.isnan(first[:,1:]) & np.isnan(first[:,:-1]))
+first = (~np.isnan(ds['mass'].values) & np.isnan(np.roll(ds['mass'].values,1,axis=1)))
+last = (~np.isnan(ds['mass'].values) & np.isnan(np.roll(ds['mass'].values,-1,axis=1)))
 
 # the water mass is just the derivative of the ice mass in time
-h2o = np.vstack([ds['mass'].T, empty]).T
-h2o = -1 * np.diff(h2o, axis=1)
-# except the diff() drops the last timestep, so we lose that without some extra work...
-last = np.vstack([ds['mass'].T, empty]).T
-last = (np.isnan(last[:,1:]) & ~np.isnan(last[:,:-1]))
+h2o = -1 * np.diff(ds['mass'].values, axis=1, append=np.nan)
 h2o[last] = ds['mass'].values[last]
 
+h2oX = -1 * np.diff(ds['mass'].values, axis=1, append=np.nan) # NO LAST
+
 ds['h2o'] = (('particle','time'), h2o)
+ds['h2oX'] = (('particle','time'), h2oX)
 print(ds)
 
-print('ice mass: ', ds['mass'].values[first].sum())
-print('water mass: ', ds['h2o'].sum().values)
-print('diff: ', (ds['mass'].values[first].sum() - ds['h2o'].sum()).values)
+
+ice_mass = ds['mass'].values[first].sum(); print('ice mass: ', ice_mass)
+water_mass = ds['h2o'].sum().values; print('water mass: ', water_mass)
+print(f'diff: {water_mass - ice_mass} ({water_mass / ice_mass * 100} %)')
+water_mass_X = ds['h2oX'].sum().values; print('water mass X: ', water_mass_X)
+print(f'diff: {water_mass_X - ice_mass} ({water_mass_X / ice_mass * 100} %)')
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
+<xarray.Dataset> Size: 1GB
 Dimensions:   (time: 5840, particle: 10000)
 Coordinates:
-  ,* time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
-  ,* particle  (particle) int32 117 118 128 129 ... 205888 205896 205897 205916
+  ,* time      (time) datetime64[ns] 47kB 2000-01-02 2000-01-03 ... 2000-12-31
+  ,* particle  (particle) int32 40kB 117 118 128 129 ... 205896 205897 205916
 Data variables:
-    mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-    h2o       (particle, time) float64 nan nan nan nan nan ... nan nan nan nan
+    mass      (particle, time) float64 467MB dask.array<chunksize=(910, 531), meta=np.ndarray>
+    h2o       (particle, time) float64 467MB nan nan nan nan ... nan nan nan nan
+    h2oX      (particle, time) float64 467MB nan nan nan nan ... nan nan nan nan
 ice mass:  1886583699309968.5
 water mass:  1886583699309959.8
-diff:  8.75
+diff: -8.75 (99.99999999999953 %)
+water mass X:  1410154213770365.2
+diff: -476429485539603.25 (74.74644322889779 %)
 #+end_example
+
+
+From the above, the algorithm appears to work, and water mass, computed from derivative of ice mass, matches. If we drop the last time which is always artificially large we lose 25 % of mass. However, because this is a WEIGHTED MASK, not a flux product, the magnitude does not matter, and the weights are probably more realistic by removing the last element. Unless icebergs catastrophically fail at the end and should have a large melt pulse at their final location.
 
 Per Marson (2021) http://doi.org/10.1029/2021jc017542
 
 #+BEGIN_QUOTE
-The annual mass loss (hereafter referred as discharge) from the Greenland Ice Sheet (GrIS) is currently estimated to be around 1,100 Gt/yr, half of which is attributed to liquid runoff and the other half to solid discharge (Bam- ber et al., 2012, 2018)
+The annual mass loss (hereafter referred as discharge) from the Greenland Ice Sheet (GrIS) is currently estimated to be around 1,100 Gt/yr, half of which is attributed to liquid runoff and the other half to solid discharge (Bamber et al., 2012, 2018)
 
 Greenland discharge was provided by Bamber et al. (2012) on a 5 × 5 km grid and was remapped to the ANHA4 grid. According to the averages estimated in Bamber et al. (2012), we divided the total discharge into 46% liquid runoff and 54% solid discharge.
 #+END_QUOTE
@@ -267,6 +343,7 @@ So discharge should be ~1100*0.54 = 594 Gt/yr
 ** Greenland ROIs
 
 #+BEGIN_SRC bash :exports both :results verbatim
+grass ./G_3413/PERMANENT
 g.mapset PERMANENT
 v.import input=${DATADIR}/Mouginot_2019/GL_regions.gpkg output=ROIs
 v.db.select map=ROIs
@@ -304,7 +381,7 @@ scale = scale.rename({'mass_scaling':'mass'})
 ds = ds.rename({'timestep':'time'})
 ds['time'].attrs['calendar'] = 'noleap'
 ds['time'].attrs['units'] = 'days since 2000-01-01'
-ds['time'] = np.arange(ds['time'].values.size).astype(np.int16)
+ds['time'] = pd.Timestamp("2000-01-01") + pd.to_timedelta(ds['time'].values, unit='D')
 ds['particle'] = ds['particle'].astype(np.int32)
 
 print(ds)
@@ -312,34 +389,27 @@ print(ds)
 
 #+RESULTS:
 #+begin_example
-CPU times: user 4.67 ms, sys: 1.08 ms, total: 5.75 ms
-Wall time: 7.45 ms
-<xarray.Dataset>
+CPU times: user 6.31 ms, sys: 0 ns, total: 6.31 ms
+Wall time: 6.31 ms
+<xarray.Dataset> Size: 5GB
 Dimensions:   (time: 5840, particle: 34025)
 Coordinates:
-  ,* time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
-  ,* particle  (particle) int32 117 118 128 129 ... 1806577 1806831 1807085
+  ,* time      (time) datetime64[ns] 47kB 2000-01-02 2000-01-03 ... 2000-12-31
+  ,* particle  (particle) int32 136kB 117 118 128 129 ... 1806577 1806831 1807085
 Data variables:
-    lon       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-    lat       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-    mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
+    lon       (particle, time) float64 2GB dask.array<chunksize=(1667, 974), meta=np.ndarray>
+    lat       (particle, time) float64 2GB dask.array<chunksize=(1667, 974), meta=np.ndarray>
+    mass      (particle, time) float64 2GB dask.array<chunksize=(910, 531), meta=np.ndarray>
 #+end_example
 
 *** Compute mass loss
 
 #+BEGIN_SRC jupyter-python :exports both
 # flag the first time the iceberg appears
-empty = np.empty(ds['particle'].size)*np.nan
-first = np.vstack([empty, ds['mass'].values.T]).T
-first = (~np.isnan(first[:,1:]) & np.isnan(first[:,:-1]))
+first = (~np.isnan(ds['mass'].values) & np.isnan(np.roll(ds['mass'].values,1,axis=1)))
 
 # the water mass is just the derivative of the ice mass in time
-h2o = np.vstack([ds['mass'].T, empty]).T
-h2o = -1 * np.diff(h2o, axis=1)
-# except the diff() drops the last timestep, so we lose that without some extra work...
-last = np.vstack([ds['mass'].T, empty]).T
-last = (np.isnan(last[:,1:]) & ~np.isnan(last[:,:-1]))
-h2o[last] = ds['mass'].values[last]
+h2o = -1 * np.diff(ds['mass'].values, axis=1, append=np.nan) # drop last time as diff does naturally
 
 ds['h2o'] = (('particle','time'), h2o)
 ds['first'] = (('particle','time'), first)
@@ -348,17 +418,17 @@ print(ds)
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset>
+<xarray.Dataset> Size: 7GB
 Dimensions:   (time: 5840, particle: 34025)
 Coordinates:
-  ,* time      (time) int16 0 1 2 3 4 5 6 ... 5833 5834 5835 5836 5837 5838 5839
-  ,* particle  (particle) int32 117 118 128 129 ... 1806577 1806831 1807085
+  ,* time      (time) datetime64[ns] 47kB 2000-01-02 2000-01-03 ... 2000-12-31
+  ,* particle  (particle) int32 136kB 117 118 128 129 ... 1806577 1806831 1807085
 Data variables:
-    lon       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-    lat       (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-    mass      (particle, time) float64 dask.array<chunksize=(10000, 5840), meta=np.ndarray>
-    h2o       (particle, time) float64 nan nan nan nan ... nan nan nan 1.648e+11
-    first     (particle, time) bool False False False False ... False False True
+    lon       (particle, time) float64 2GB dask.array<chunksize=(1667, 974), meta=np.ndarray>
+    lat       (particle, time) float64 2GB dask.array<chunksize=(1667, 974), meta=np.ndarray>
+    mass      (particle, time) float64 2GB dask.array<chunksize=(910, 531), meta=np.ndarray>
+    h2o       (particle, time) float64 2GB nan nan nan nan ... nan nan nan nan
+    first     (particle, time) bool 199MB False False False ... False False True
 #+end_example
 
 
@@ -373,11 +443,12 @@ from dask.diagnostics import ProgressBar
 with ProgressBar():
     results = delayed_obj.compute()
 
-# saves as 175 MB file. Takes a few minutes...
+# saves as 250 MB file. Takes a few minutes...
 #+END_SRC
 
 #+RESULTS:
-: [########################################] | 100% Completed | 86.61 s
+: [########################################] | 100% Completed | 231.73 s
+
 
 *** Load snapshot
 
@@ -391,8 +462,8 @@ import pandas as pd
 #+END_SRC
 
 #+RESULTS:
-: CPU times: user 17.1 s, sys: 1min 19s, total: 1min 37s
-: Wall time: 1min 38s
+: CPU times: user 13.9 s, sys: 18 s, total: 31.8 s
+: Wall time: 43.3 s
 
 **** Test
 #+BEGIN_SRC jupyter-python :exports both
@@ -403,18 +474,20 @@ print('water mass: ', water_mass * 1E-12 / 16)
 #+END_SRC
 
 #+RESULTS:
-: CPU times: user 152 ms, sys: 0 ns, total: 152 ms
-: Wall time: 150 ms
+: CPU times: user 92.9 ms, sys: 0 ns, total: 92.9 ms
+: Wall time: 91.4 ms
 : ice mass:  407.2388163829433
-: CPU times: user 2.29 s, sys: 12 s, total: 14.3 s
-: Wall time: 14.5 s
-: water mass:  407.2388163829417
+: CPU times: user 996 ms, sys: 4.79 s, total: 5.79 s
+: Wall time: 7.51 s
+: water mass:  296.9381105981331
 
 The difference between the Marson (2024) http://doi.org/10.1029/2023jc020697 407 Gt/year and the Mankoff (2020) http://doi.org/10.5194/essd-12-1367-2020 ~500 Gt/year (subject to change with each version) is not important. It can represent a lot of things, most likely that Mankoff (2020) is discharge across flux gates upstream from the terminus, so 100 - 407/500 % = 18.6 % is submarine melt, and the remainder is the Marson icebergs.
 
 Additional melting occurs in the fjord and must be handled if the model does not resolve fjords.
 
 This product should be shared as one and several weighted masks that sum to 1, and then users can scale by their own estimated discharge.
+
+The difference between ice inputs and water outputs is described above - we drop the last melt event of each berg which seems anomalously high.
 
 ** Iceberg meltwater locations
 *** Export each particle to file
@@ -428,13 +501,13 @@ for p in tqdm(range(ds['particle'].values.size)):
            .to_dataframe()\
            .dropna()
     if df.size == 0: continue
-    df.index = df.index - df.index[0] + 1
-    df[['particle','lon','lat','mass','h2o']]\
+    df['first'] = df['first'].astype(int)
+    df[['particle','lon','lat','mass','h2o','first']]\
         .to_csv(f"./Marson_2024_tmp/{str(p).zfill(5)}.csv", header=None)
 #+END_SRC
 
 #+RESULTS:
-: 100% 34025/34025 [02:17<00:00, 246.62it/s]
+: 100% 34025/34025 [03:16<00:00, 173.55it/s]
 
 
 *** Ingest each track and organize by source
@@ -460,15 +533,19 @@ v.to.rast input=GL output=GL use=attr attribute_column=cat_
 
 **** Import each track and find closest ice ROI for initial location
 
++ Take time (month) into account.
++ 84 maps: 7 roi * 12 month: CE_01, CE_02, etc...
+
 #+BEGIN_SRC bash :exports both :results verbatim
 # reorder from "cat,id,lon,lat,ice mass,water mass" to lon,lat,water,id,time
-cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$6,$2,$1}' > tmp/tracks.csv
+cat Marson_2024_tmp/*.csv | awk -F, '{OFS=",";print $3,$4,$6,$7,$2,$1}' > tmp/tracks.csv
 
+# head -n100 tmp/tracks.csv \
 cat tmp/tracks.csv \
   | m.proj -i input=- separator=comma \
   | tr ' ' ',' \
   | v.in.ascii -n input=- output=bergs sep=, \
-               columns='x double,y double,water double,id int,time int'
+               columns='x double,y double,water double,first int,id int,time varchar(10)'
 
 g.region vector=bergs res=25000 -pa
 g.region save=iceberg_region
@@ -478,43 +555,62 @@ r.mapcalc "y = y()"
 r.mapcalc "area = area()"
 
 # Record nearest region at all times, by finding the region nearest the 1st time
-v.db.addcolumn map=bergs columns="region VARCHAR(3)"
+v.db.addcolumn map=bergs columns="roi VARCHAR(3)"
 
-v.extract input=bergs where='(time == 1)' output=t0
-v.distance from=t0 to=GL upload=to_attr to_column=label column=region
+# v.db.select map=bergs|head
+
+v.extract input=bergs where='(first == 1)' output=t0
+v.distance from=t0 to=GL upload=to_attr to_column=label column=roi
 db.select table=t0|head| column -s"|" -t
 db.select table=bergs|head| column -s"|" -t
 
 roi=NO # debug
 for roi in NO NE SE SW CW NW CE; do
   echo "Processing ROI: ${roi}"
-  ids=$(db.select -c sql="select id from t0 where region == '${roi}'")
+  ids=$(db.select -c sql="select id from t0 where roi == '${roi}'")
   ids=$(echo ${ids}| tr ' ' ',')
-  db.execute sql="update bergs set region = \"${roi}\" where id in (${ids})"
+  db.execute sql="update bergs set roi = \"${roi}\" where id in (${ids})"
 done
 
 db.select table=bergs | head -n 10 | column -s"|" -t
 
+# # convert to raster, binned by melt per cell (a.k.a density or heat or quilt map)
+# roi=NO; month=03 # debug
+# # this loop takes a few minutes per ROI. Could use GNU parallel.
+# for roi in NO NE SE SW CW NW CE; do
+#   echo "Processing ROI: ${roi}"
+#   for month in $(seq -w 12); do
+#     echo "Processing month: ${month}"
+#     v.out.ascii input=bergs output=- format=point columns=water \
+# 		where="roi == \"${roi}\" AND time LIKE \"2000-${month}%\""\
+# 		| r.in.xyz input=- z=4 output=${roi}_${month} method=sum
+#     r.colors -g map=${roi}_${month} color=viridis
+#     # Convert from kg/16years to kg/s
+#     r.mapcalc "${roi}_${month} = ${roi}_${month} / 16 / 365 / 86400"
+#   done
+# done
+
+rois="NO NE SE SW CW NW CE"
+months=$(seq -w 12)
 # convert to raster, binned by melt per cell (a.k.a density or heat or quilt map)
-roi=NO # debug
-# this loop takes a few minutes per ROI. Could use GNU parallel.
-for roi in NO NE SE SW CW NW CE; do
-  echo "Processing ROI: ${roi}"
-  v.out.ascii input=bergs output=- format=point columns=water where="region == \"${roi}\"" \
-    | r.in.xyz input=- z=4 output=${roi} method=sum
-  r.colors -g map=${roi} color=viridis
-  
-  # Convert from kg/16years to kg/s
-  r.mapcalc "${roi} = ${roi} / 16 / 365 / 86400" 
-done
+parallel -j4 --bar "v.out.ascii input=bergs output=- format=point columns=water \
+		where=\"roi == '{1}' AND time LIKE '2000-{2}%'\" \
+		| r.in.xyz input=- z=4 output={1}_{2} method=sum" ::: $rois ::: $months
+# Convert from kg/16years to kg/s
+parallel --bar "r.mapcalc \"{1}_{2} = {1}_{2} / 16 / 365 / 86400\"" ::: $rois ::: $months
+parallel --bar "r.colors -g map={1}_{2} color=viridis" ::: $rois ::: $months
+
 #+END_SRC
+
+# for r in NO_09 NO_09_smooth NO_09_m2; do r.univar $r | grep sum; done
 
 **** Sanity check: Gt/year/sector
 
 #+BEGIN_SRC bash :exports both :results verbatim
 tot=0
 for roi in CE CW NE NO NW SE SW; do
-  eval $(r.univar -g ${roi})
+  roimonths=$(g.list type=raster pattern=${roi}_?? sep=,)
+  eval $(r.univar -g ${roimonths})
   # convert from kg/s to Gt/year
   roi_gt=$(echo "${sum} * 86400 * 365 * 10^(-12)" | bc -l)
   echo "${roi}: ${roi_gt}"
@@ -523,17 +619,6 @@ done
 echo ""
 echo "total: " ${tot}
 #+END_SRC
-
-#+RESULTS:
-: CE: 60.88001865521231664000
-: CW: 64.46425864166702496000
-: NE: 25.40014168772459318400
-: NO: 28.68058742930748950400
-: NW: 97.94160451838922336000
-: SE: 111.14793375478535664000
-: SW: 18.72428341325589532800
-: 
-: total:  407.23882810034189961600
 
 My estimates of discharge by ROI?
 
@@ -554,15 +639,15 @@ dd.to_dataframe()
 :RESULTS:
 : <xarray.DataArray 'discharge' ()> Size: 8B
 : array(476.48053387)
-| region   |   discharge |
-|----------+-------------|
-| CE       |     77.8964 |
-| CW       |     86.1499 |
-| NE       |     25.9822 |
-| NO       |     25.329  |
-| NW       |    103.127  |
-| SE       |    139.048  |
-| SW       |     18.9477 |
+| region | discharge |
+|--------+-----------|
+| CE     |   77.8964 |
+| CW     |   86.1499 |
+| NE     |   25.9822 |
+| NO     |    25.329 |
+| NW     |   103.127 |
+| SE     |   139.048 |
+| SW     |   18.9477 |
 :END:
 
 **** Clean up isolated tracks and smooth ROI boundary
@@ -572,7 +657,8 @@ Display problem:
 g.mapset Marson_2024
 d.mon wx0
 r.colors -g map=CE color=viridis
-d.rast CE
+d.rast CE_01 values=0.001-1000
+d.rast CE_06 values=0.001-1000
 #+END_SRC
 
 Load global coastlines for eventual cropping
@@ -583,120 +669,133 @@ v.to.rast input=land output=land use=value value=1
 r.mask -i land
 #+END_SRC
 
-Problem: Many isolate tracks
-
-+ Smoothing by a lot would remove the high melt cells near the coast...
-+ Cutting off cells with bottom X % of melt doesn't create a continuous blob of melt either...
+Problem: Small isolate tracks
 
 Algorithm:
-+ Make outline of largest clump
-+ Smooth outline (sort-of convex hull but not quite)
++ Smooth (if this is all we do, it would remove the high melt cells near the coast)
 + Crop by coastlines (Greenland, Canada, Iceland, Svalbard, etc.)
-+ Set new area equal to old melt values where both exist
-+ Set new area equal to some low amount (median) where new area but no old melt
++ Set new area equal to old melt values where both exist (undo smooth where there was data)
++ Set new area (from smooth) equal to some low amount (median) where new area but no old melt
 + Rescale so total melt is unchanged
 
 #+BEGIN_SRC bash :exports both :results verbatim
 export GRASS_OVERWRITE=1
 
-# v.import input=${DATADIR}/Morlighem_2017/GL_ice.gpkg output=ice
-# v.to.rast input=ice output=ice use=val val=1
-# v.import input=${DATADIR}/Morlighem_2017/GL_land.gpkg output=land
-# v.to.rast input=land output=land use=val val=1
-# r.mapcalc "land = if(isnull(ice) & isnull(land), null(), 1)"
+rois="NO NE SE SW CW NW CE"
+months=$(seq -w 12)
 
-roi=NW # debug
-for roi in NO NE SE SW CW NW CE; do
-  eval $(r.univar -g -e ${roi})
-  roisum=${sum}
-  roimedian=${median}
+# g.gui.mapswipe first=CE_08 second=CE_08_n
 
-  # Shrink area a bit by removing all cells with bottom X % of melt
-  r.null map=${roi} setnull=0
-  eval $(r.univar -eg map=${roi} percentile=10 | grep percentile) # percentile_10
-  r.mapcalc "r_cutoff = if(${roi} > ${percentile_10}, 1, null())"
+roi=NW; month=08 # debug
+for roi in $rois; do
+  for month in $(seq -w 12); do
 
-  # shrink by 1 and grow by 1 to again remove individual lines
-  r.grow input=r_cutoff output=r_shrink radius=-1.01
-  r.grow input=r_shrink output=r_grow radius=1.01
-  
-  # Limit to largest clump (mostly removes single iceberg trails)
-  r.clump input=r_grow output=clumps --o
-  main_clump=$(r.stats -c -n clumps sort=desc | head -n1 | cut -d" " -f1)
-  r.mapcalc "r_main = if(clumps == ${main_clump}, 1, null())"
+    r.mapcalc "r_main = if(${roi}_${month} > 0, ${roi}_${month}, null())"
+    eval $(r.univar -g -e r_main percentile=95)
+    roisum=${sum}
+    roimedian=${median}
 
-  # buffer by X m to get a smooth border
-  r.grow.distance -m input=r_main distance=distance
-  r.mapcalc "r_buffer = distance < 100000" # 100 km
+    # buffer by X m to get a smooth border
+    r.grow.distance -m input=r_main distance=distance
+    r.mapcalc "r_buffer = distance < 250000" # 250 km
+    # at 25 km resolution this is 10 cells
 
-  # Expand original melt map with average of neighbors
-  r.neighbors input=${roi} output=r_neighbor method=average size=7 weighting_function=gaussian weighting_factor=1
+    # Expand original melt map with average of neighbors
+    # SIZE here should take into account buffer distance above
+    r.neighbors input=${roi}_${month} output=r_neighbor method=average size=15 weighting_function=gaussian weighting_factor=3
 
-  # Convert new area to melt w/ median values where filled in
-  r.mask -i land
-  r.mapcalc "r_newmelt = if(r_buffer, if(not(isnull(${roi})), ${roi}, r_neighbor))"
-  r.mask -r
+    # Convert new area to melt w/ median values where filled in
+    r.mask -i land
+    r.mapcalc "r_newmelt = if(r_buffer, if((${roi}_${month} > ${percentile_95}), ${roi}_${month}, r_neighbor))"
+    r.mask -r
 
-  # get rid of islands
-  r.mapcalc "r_clumps = if(r_newmelt)"
-  r.reclass.area -c input=r_clumps output=r_areas value=1000000 mode=lesser method=rmarea
-  r.mapcalc "r_noisland = if(r_areas == 1, r_newmelt, null())"
-  
-  # rescale to total melt from original map
-  eval $(r.univar -g r_newmelt) # get $sum
-  r.mapcalc "${roi}_notail = (r_noisland / ${sum}) * ${roisum}"
-  r.colors -g map=${roi}_notail,${roi} color=viridis
+    # rescale to total melt from original map
+    eval $(r.univar -g r_newmelt) # get $sum
+    r.mapcalc "${roi}_${month}_smooth = (r_newmelt / ${sum}) * ${roisum}"
+    r.colors -g map=${roi}_${month}_smooth,${roi}_${month} color=viridis
+  done
 done
 
-# x=SE; g.gui.mapswipe first=$x second=${x}_notail # mode=mirror
+# x=${roi}_${month}; g.gui.mapswipe first=$x second=r_newmelt
+# x=${roi}_${month}; g.gui.mapswipe first=$x second=${x}_smooth # mode=mirror
+x=NO_08; g.gui.mapswipe first=$x second=${x}_smooth mode=mirror
 
-# Generate GL-wide map
-r.mapcalc "GL_notail = 0"
-for roi in NO NE SE SW CW NW CE; do
-  r.mapcalc "GL_notail = GL_notail + if(isnull(${roi}_notail), 0, ${roi}_notail)"
-done
-r.null map=GL_notail setnull=0
+# # Generate GL-wide map
+# r.mapcalc "GL_notail = 0"
+# for roi in NO NE SE SW CW NW CE; do
+#   r.mapcalc "GL_notail = GL_notail + if(isnull(${roi}_notail), 0, ${roi}_notail)"
+# done
+# r.null map=GL_notail setnull=0
 
-# convert to m-2
-for roi in NO NE SE SW CW NW CE GL; do
-  eval $(r.univar -g ${roi}_notail | grep sum)
-  r.mapcalc "${roi}_m2 = ${roi}_notail / $sum / area"
-  r.colors map=${roi}_m2 color=viridis -g
+# convert to m-2 prior to reproject
+for roi in $rois; do
+  for mm in $months; do
+    r.mapcalc "${roi}_${mm}_m2 = ${roi}_${mm}_smooth / area"
+    r.colors map=${roi}_m2 color=viridis -g
+  done
 done
+
 #+END_SRC
 
 ** Reproject from 3413 to 4326
 
-#+BEGIN_SRC bash :exports both :results verbatim
-grass ./G_4326/PERMANENT
-g.mapset -c Marson_2024
-export GRASS_OVERWRITE=1
-# g.region -pa res=0:15 s=-90 n=90 w=-180 e=180
-g.region -pa s=-90 n=90 w=-180 e=180 res=0.5
++ GRASS raster reprojection uses nearest neighbor.
++ We need to convert to points in 3413, and then sum multiple 3413 points that fall within a 4326 grid cell.
++ Work at a high resolution in 3413 so that there are no cells in 4326 that are left empty.
++ If we reproject points from the current 25 km resolution there will be gaps because in N Greenland at EPSG:4326 and 0.5 degree resolution grid cells are ~15 km wide.
++ Therefore, resample to 5 km and then reproject points at that resolution.
++ Check: The sum of flux (kg) and the sum of flux (m-2) should be the same after reprojection.
 
-r.mapcalc "x = x()"
-r.mapcalc "y = y()"
-r.mapcalc "area = area()"
-r.out.gdal -c -m input=area output=./tmp/area.tif format=GTiff type=Float64 createopt="COMPRESS=DEFLATE" # used in AQ processing
+3413:
+#+begin_src bash :exports both :results verbatim
+# grass ./G_3413/Marson_2024
 
-# convert to raster, binned by melt per cell (a.k.a density or heat or quilt map)
-roi=NO # debug
-# this loop takes a few minutes per ROI. Could use GNU parallel.
-for roi in NO NE SE SW CW NW CE GL; do
-  echo "Processing ROI: ${roi}"
-  r.proj project=G_3413 input=${roi}_m2 output=${roi}
-  # rescale
-  eval $(r.univar -g ${roi} | grep sum)
-  r.mapcalc "${roi} = ${roi} / $sum / area"
+g.region res=5000 -pa # Divide value by 25 because they were calculated on a grid 5x5 larger
+
+roi=NO; mm=09 # debug
+for roi in $rois; do
+  for mm in $months; do
+    echo $roi $mm
+    r.mapcalc --q "tmp_5km = ${roi}_${mm}_smooth / 25"
+    r.out.xyz --q input=tmp_5km output=- \
+      | grep -v "|0$" \
+      | m.proj --q -o -d input=- > ./tmp/${roi}_${mm}.xyz
+  done
 done
-#+END_SRC
+# r.univar -gr tmp_5km  | grep -E "mean|sum"
+# r.univar -gr NO_09_m2  | grep -E "mean|sum"
+g.region -pa region=iceberg_region # reset region
+#+end_src
+
+4326:
+#+begin_src bash :exports both :results verbatim
+grass ./G_4326/Marson_2024
+
+rois="NO NE SE SW CW NW CE"
+months=$(seq -w 12)
+export GRASS_OVERWRITE=1
+
+r.proj project=G_3413 input=area output=area_3413
+
+roi=NO; mm=09 # debug
+for roi in $rois; do
+  for mm in $months; do
+    echo $roi $mm
+    r.in.xyz --q input=./tmp/${roi}_${mm}.xyz z=3 output=${roi}_${mm} method=sum
+    #r.univar -g ${roi}_${mm} | grep -E "mean|sum" # matches SUM [kg] from 3413
+    # r.mapcalc "${roi}_${mm}_m2 = ${roi}_${mm} / area_3413"
+    # r.univar -g ${roi}_${month}_m2 | grep -E "mean|sum" # matches SUM [m-2] from 3413
+  done
+done
+#+end_src
 
 *** Sanity check: Gt/year/sector
 
 #+BEGIN_SRC bash :exports both :results verbatim
 tot=0
-for roi in CE CW NE NO NW SE SW; do
-  eval $(r.univar -g ${roi})
+for roi in $rois; do
+  roimonths=$(g.list type=raster pattern=${roi}_?? sep=,)
+  eval $(r.univar -g ${roimonths})
   # convert from kg/s to Gt/year
   roi_gt=$(echo "${sum} * 86400 * 365 * 10^(-12)" | bc -l)
   echo "${roi}: ${roi_gt}"
@@ -707,15 +806,27 @@ echo "total: " ${tot}
 #+END_SRC
 
 #+RESULTS:
-: CE: 60.88
-: CW: 64.46
-: NE: 25.40
-: NO: 28.68
-: NW: 97.94
-: SE: 111.14
-: SW: 18.72
+: CE: 44.76374035974432864000
+: CW: 55.79715155801872896000
+: NE: 19.41732943638206054400
+: NO: 20.40425666413177809600
+: NW: 62.87261995622087280000
+: SE: 80.38475519025573360000
+: SW: 13.37355447290342323200
+: total:  297.01340763765692587200
+
+These are the results without last berg removed:
+
+#+RESULTS:
+: CE: 60.83514096745521600000
+: CW: 77.10383458384345872000
+: NE: 25.40014065127645070400
+: NO: 28.68057265378820385600
+: NW: 85.30203183944359392000
+: SE: 111.19281504778338912000
+: SW: 18.72428302446387782400
 : 
-: total:  407.23
+: total:  407.23881876805419014400
 
 ** Export to NetCDF
 
@@ -742,24 +853,31 @@ S.open(gisdb=".", location="G_4326", mapset="Marson_2024", create_opts=None)
 lon = garray.array("x")[::-1,:]
 lat = garray.array("y")[::-1,:]
 
-melt = np.zeros((7, lon.shape[0], lat.shape[1]))
-melt[0,:,:] = garray.array("CE")[::-1,:]
-melt[1,:,:] = garray.array("CW")[::-1,:]
-melt[2,:,:] = garray.array("NE")[::-1,:]
-melt[3,:,:] = garray.array("NO")[::-1,:]
-melt[4,:,:] = garray.array("NW")[::-1,:]
-melt[5,:,:] = garray.array("SE")[::-1,:]
-melt[6,:,:] = garray.array("SW")[::-1,:]
-melt_GL = garray.array("GL")[::-1,:]
+melt = np.zeros((7, 12, lon.shape[0], lat.shape[1]))
+for roi_i,roi in enumerate(['CE','CW','NE','NO','NW','SE','SW']):
+    for month in range(12):
+        mm = str(month+1).zfill(2)
+        melt[roi_i,month,:,:] = garray.array(roi+'_'+mm)[::-1,:]
 
 ds = xr.Dataset({
     'melt': xr.DataArray(data = melt,
-                         dims = ['region','latitude','longitude'],
+                         dims = ['region','time','latitude','longitude'],
                          coords = {'region':np.arange(7).astype(np.int8)+1,
+                                   'time': np.arange(12).astype(np.int8)+1,
                                    'longitude':lon[0,:],
                                    'latitude':lat[:,0]})})
 
-ds['melt_GL'] = (('latitude','longitude'), melt_GL)
+ds['melt_GL'] = ds['melt'].sum(dim=['region','time'])
+
+# normalize from kg m-2 to m-2
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+
+ds['melt'] = ds['melt'] / ds['melt_GL'].sum() / cell_area
+ds['melt_GL'] = ds['melt_GL'] / ds['melt_GL'].sum() / cell_area
+
 ROIs = garray.array("ROIs")[::-1,:]
 ds['region_map'] = (('latitude','longitude'), ROIs.astype(np.byte))
 
@@ -783,9 +901,11 @@ ds['longitude'].attrs['standard_name'] = 'longitude'
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
 ds['melt'].attrs['units'] = 'm-2'
 ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
+ds['melt'].attrs['comment'] = 'This value summed by area and time and multiplied by cell area should sum to 1'
 ds['melt_GL'].attrs['long_name'] = 'Normalised iceberg melt climatology for all Greenland'
 ds['melt_GL'].attrs['units'] = 'm-2'
 ds['melt_GL'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
+ds['melt_GL'].attrs['comment'] = 'This value multiplied by cell area should sum to 1'
 
 ds['region'].attrs['long_name'] = 'Region IDs'
 ds['region_name'].attrs['long_name'] = 'Mouginot (2019) region'
@@ -814,15 +934,16 @@ print(ds)
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 17MB
-Dimensions:      (region: 7, longitude: 720, latitude: 360)
+<xarray.Dataset> Size: 177MB
+Dimensions:      (region: 7, time: 12, longitude: 720, latitude: 360)
 Coordinates:
   ,* region       (region) int8 7B 1 2 3 4 5 6 7
+  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
   ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
   ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
     spatial_ref  int8 1B 0
 Data variables:
-    melt         (region, latitude, longitude) float64 15MB 0.0 0.0 ... 0.0 0.0
+    melt         (region, time, latitude, longitude) float64 174MB 0.0 ... 0.0
     melt_GL      (latitude, longitude) float64 2MB 0.0 0.0 0.0 ... 0.0 0.0 0.0
     region_map   (latitude, longitude) int8 259kB 0 0 0 0 0 0 0 ... 0 0 0 0 0 0
     region_name  (region) <U2 56B 'CE' 'CW' 'NE' 'NO' 'NW' 'SE' 'SW'
@@ -831,10 +952,53 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241108T002711Z
+    date_created:        20241116T204327Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
     DOI:                 https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
+
+*** Units check
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+
+ds = xr.open_dataset('dat/GL_iceberg_melt.nc')
+
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+
+ds['area'] = (('latitude','longitude'), cell_area)
+# print(ds)
+print( 'melt_GL', (ds['melt_GL']*ds['area']).sum(dim=['latitude','longitude']) )
+
+times = (ds['melt']*ds['area']).sum(dim=['latitude','longitude','region'])
+print( 'melt times', times, times.sum())
+
+rois = (ds['melt']*ds['area']).sum(dim=['latitude','longitude','time'])
+print( 'melt rois', rois, rois.sum())
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.DataArray ()> Size: 8B
+array(1.)
+<xarray.DataArray (time: 12)> Size: 96B
+array([0.05709769, 0.05647682, 0.05988504, 0.0497022 , 0.05714598,
+       0.07278505, 0.12313315, 0.15238323, 0.13335883, 0.09943356,
+       0.07442078, 0.06417767])
+Coordinates:
+  ,* time     (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12 <xarray.DataArray ()> Size: 8B
+array(1.)
+<xarray.DataArray (region: 7)> Size: 56B
+array([0.15071286, 0.18786072, 0.06537526, 0.0686981 , 0.21168277,
+       0.27064352, 0.04502677])
+Coordinates:
+  ,* region   (region) int8 7B 1 2 3 4 5 6 7 <xarray.DataArray ()> Size: 8B
+array(1.)
+#+end_example

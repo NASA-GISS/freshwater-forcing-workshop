@@ -58,16 +58,16 @@ There are two types of data products provided here:
 
 2. Weighted freshwater distribution maps [units: m^{-2}]. These are maps of where freshwater is distributed within a ROI if not at the coast, for example iceberg melt. These maps are provided in EPSG:4326 (lon,lat) projection.
 
-| Filename            | Dimensions   | Description                                                 |
-|---------------------+--------------+-------------------------------------------------------------|
-| AQ_calving.nc       | region, time | Antarctic ice shelf calving                                 |
-| AQ_subshelf_melt.nc | region, time | Antarctic ice shelf basal melting                           |
-| AQ_iceberg_melt.nc  | lon, lat     | Antarctic iceberg melt by location and magnitude            |
-|---------------------+--------------+-------------------------------------------------------------|
-| GL_discharge.nc     | region, time | Greenland ice sheet  discharge upstream from grounding line |
-| GL_runoff.nc        | region, time | Greenland ice sheet and non-ice grounded liquid runoff      |
-| GL_basal_melt.nc    | region       | Greenland grounded ice basal melt by region                 |
-| GL_iceberg_melt.nc  | lon, lat     | Greenland iceberg melt by location and magnitude            |
+| Filename            | Dimensions     | Description                                                 |
+|---------------------+----------------+-------------------------------------------------------------|
+| AQ_calving.nc       | region, time   | Antarctic ice shelf calving                                 |
+| AQ_subshelf_melt.nc | region, time   | Antarctic ice shelf basal melting                           |
+| AQ_iceberg_melt.nc  | lon, lat       | Antarctic iceberg melt by location and magnitude            |
+|---------------------+----------------+-------------------------------------------------------------|
+| GL_discharge.nc     | region, time   | Greenland ice sheet  discharge upstream from grounding line |
+| GL_runoff.nc        | region, time   | Greenland ice sheet and non-ice grounded liquid runoff      |
+| GL_basal_melt.nc    | region         | Greenland grounded ice basal melt by region                 |
+| GL_iceberg_melt.nc  | lon, lat, time | Greenland iceberg melt magnitude by month and location      |
 
 ** Antarctica
 
@@ -323,14 +323,15 @@ xr.open_dataset('./dat/GL_iceberg_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 17MB
-Dimensions:      (region: 7, longitude: 720, latitude: 360)
+<xarray.Dataset> Size: 177MB
+Dimensions:      (region: 7, time: 12, longitude: 720, latitude: 360)
 Coordinates:
   ,* region       (region) int8 7B 1 2 3 4 5 6 7
+  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
   ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
   ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
 Data variables:
-    melt         (region, latitude, longitude) float64 15MB ...
+    melt         (region, time, latitude, longitude) float64 174MB ...
     melt_GL      (latitude, longitude) float64 2MB ...
     region_map   (latitude, longitude) int8 259kB ...
     region_name  (region) <U2 56B ...
@@ -340,7 +341,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241108T002711Z
+    date_created:        20241116T204327Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
