@@ -56,7 +56,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241116T204327Z
+    date_created:        20241117T020634Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -898,6 +898,8 @@ ds['longitude'].attrs['axis'] = 'X'
 ds['longitude'].attrs['units'] = 'degrees_east'
 ds['longitude'].attrs['standard_name'] = 'longitude'
 
+ds['time'].attrs['standard_name'] = 'time'
+
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
 ds['melt'].attrs['units'] = 'm-2'
 ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
@@ -952,7 +954,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241116T204327Z
+    date_created:        20241117T020634Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
