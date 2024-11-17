@@ -56,7 +56,7 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241117T020634Z
+    date_created:        20241117T144923Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -67,7 +67,7 @@ Attributes:
 
 #+BEGIN_QUOTE
 [!WARNING]
-Iceberg tracks come from Marson (2024) http://doi.org/10.1029/2023jc020697. The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, you may lose large melt inputs. Rescaling the melt so melt*area sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the melt by increasin1g only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
+Iceberg tracks come from Marson (2024) http://doi.org/10.1029/2023jc020697. The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, you may lose large melt inputs. Rescaling the melt so melt*area sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the melt by increasing only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
 #+END_QUOTE
 
 *** Figure
@@ -104,8 +104,8 @@ f, axs = plt.subplots(8, 13,
                       figsize=(8*3, 13*3),
                       subplot_kw={"projection": proj})
 
-mmin = ds['melt'].where(ds['melt'] != 0).min().values
-mmax = ds['melt'].where(ds['melt'] != 0).max().values
+mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
+mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
 roi_name = ds['region_name'].values
 
 for roi in tqdm(range(8)):
@@ -113,18 +113,19 @@ for roi in tqdm(range(8)):
         ax = axs[roi,time]
 
         title = ''
-        ylabel = '' if roi < 7 else "All"
+        ylabel = ''
         if (time < 12) and (roi < 7):
             data = ds['melt'].isel({'region':roi, 'time':time})
             if roi == 0:
                 if time == 0: title = 'Month: '
                 title = title + f"{time+1}"
-            if time == 0: ylabel = f"{roi_name[roi]}"
+            if time == 0: ylabel = f"{roi_name[roi]} [{roi+1}]"
         elif (time == 12) and (roi < 7):
             data = ds['melt'].mean(dim='time').isel({'region':roi})
             if roi == 0: title = f"Annual"
         elif (time < 12) and (roi == 7):
             data = ds['melt'].mean(dim='region').isel({'time':time})
+            if time == 0: ylabel = 'All'
         elif (time == 12) and (roi == 7):
             data = ds['melt'].mean(dim=['region','time'])
         else: # should not be here
@@ -159,7 +160,7 @@ plt.subplots_adjust(hspace=-0.85, wspace=0.05)
 
 #+RESULTS:
 :RESULTS:
-: 100% 8/8 [03:11<00:00, 23.98s/it]
+: 100% 8/8 [03:41<00:00, 27.66s/it]
 [[./fig/GL_berg_melt.png]]
 :END:
 
@@ -954,13 +955,12 @@ Attributes:
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241117T020634Z
+    date_created:        20241117T144923Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
     DOI:                 https://doi.org/10.5281/zenodo.14020895
 #+end_example
-
 
 *** Units check
 
@@ -980,27 +980,16 @@ ds['area'] = (('latitude','longitude'), cell_area)
 print( 'melt_GL', (ds['melt_GL']*ds['area']).sum(dim=['latitude','longitude']) )
 
 times = (ds['melt']*ds['area']).sum(dim=['latitude','longitude','region'])
-print( 'melt times', times, times.sum())
+print( 'melt times', times.values, times.sum().values)
 
 rois = (ds['melt']*ds['area']).sum(dim=['latitude','longitude','time'])
-print( 'melt rois', rois, rois.sum())
+print( 'melt rois', rois.values, rois.sum().values)
 #+END_SRC
 
 #+RESULTS:
-#+begin_example
-<xarray.DataArray ()> Size: 8B
-array(1.)
-<xarray.DataArray (time: 12)> Size: 96B
-array([0.05709769, 0.05647682, 0.05988504, 0.0497022 , 0.05714598,
-       0.07278505, 0.12313315, 0.15238323, 0.13335883, 0.09943356,
-       0.07442078, 0.06417767])
-Coordinates:
-  ,* time     (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12 <xarray.DataArray ()> Size: 8B
-array(1.)
-<xarray.DataArray (region: 7)> Size: 56B
-array([0.15071286, 0.18786072, 0.06537526, 0.0686981 , 0.21168277,
-       0.27064352, 0.04502677])
-Coordinates:
-  ,* region   (region) int8 7B 1 2 3 4 5 6 7 <xarray.DataArray ()> Size: 8B
-array(1.)
-#+end_example
+: melt_GL <xarray.DataArray ()> Size: 8B
+: array(1.)
+: melt times [0.05709769 0.05647682 0.05988504 0.0497022  0.05714598 0.07278505
+:  0.12313315 0.15238323 0.13335883 0.09943356 0.07442078 0.06417767] 1.0
+: melt rois [0.15071286 0.18786072 0.06537526 0.0686981  0.21168277 0.27064352
+:  0.04502677] 0.9999999999999999
