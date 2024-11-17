@@ -3,6 +3,7 @@
 - [[#introduction][Introduction]]
   - [[#data][Data]]
     - [[#printout][Printout]]
+    - [[#information][Information]]
     - [[#figure][Figure]]
 - [[#processing][Processing]]
   - [[#netcdf][NetCDF]]
@@ -22,16 +23,17 @@ xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 21MB
-Dimensions:      (region: 18, latitude: 360, longitude: 720)
+<xarray.Dataset> Size: 238MB
+Dimensions:      (time: 12, region: 18, latitude: 360, longitude: 720)
 Coordinates:
   ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
-    spatial_ref  int8 1B ...
   ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
   ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
+    spatial_ref  int8 1B ...
 Data variables:
-    melt         (region, latitude, longitude) float32 19MB ...
-    melt_AQ      (latitude, longitude) float32 1MB ...
+    melt         (time, region, latitude, longitude) float32 224MB ...
+    melt_AQ      (time, latitude, longitude) float32 12MB ...
     msk_nemo     (latitude, longitude) float32 1MB ...
     region_name  (region) <U5 360B ...
     region_map   (latitude, longitude) int16 518kB ...
@@ -44,48 +46,112 @@ Attributes: (12/13)
     geospatial_lat_max:  89.75
     ...                  ...
     geospatial_lon_max:  179.75
-    date_created:        20241108T002652Z
+    date_created:        20241117T141200Z
     title:               Normalised iceberg melt climatology in the Southern ...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
     DOI:                 https://doi.org/10.5281/zenodo.14020895
 #+end_example
 
+*** Information
+
+#+BEGIN_QUOTE
+[!WARNING]
+The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, you may lose large melt inputs. Rescaling the melt so melt*area sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the melt by increasing only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
+#+END_QUOTE
+
 *** Figure
 
-#+BEGIN_SRC jupyter-python :exports results :file ./fig/AQ_iceberg_melt.png
+#+begin_src jupyter-python :exports results :file ./fig/AQ_berg_melt.png
+import rioxarray as rio
 import xarray as xr
 import numpy as np
+import cartopy.crs as ccrs
+from cartopy.feature import ShapelyFeature
 import matplotlib.pyplot as plt
 import geopandas as gpd
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from tqdm import tqdm
+
+gdf = gpd.read_file('~/data/IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp')
+gdf['geometry'] = gdf['geometry'].simplify(100000)
+gdf = gdf.set_index('Subregion').drop(columns='Regions')
 
 ds = xr.open_dataset('dat/AQ_iceberg_melt.nc')
-region_name = ds['region_name']
-ds = ds.drop_vars(['region_name','region_map'])
-ds = ds.rio.write_crs('EPSG:4326')
+ds = ds.rio.write_crs('EPSG:3031')
 ds = ds.sel({'latitude':slice(-90,-40)}, drop=True)
-ds = ds.rio.reproject('EPSG:3031')
 
-g = np.log10(ds['melt'])\
-      .plot(x='x', y='y',
-            col='region', col_wrap=5,
-            # vmin = -7, vmax = -5,
-            cbar_kwargs={"label": "Melt [log$_{10}$ m$^{-2}$]"},
-            cmap=plt.cm.viridis)
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+ds['area'] = (('latitude','longitude'), cell_area)
+ds['melt'] = ds['melt'] / ds['melt'].sum() * ds['area']
 
-for i, ax in enumerate(g.axs.flat):
-    if i < 18:
-        ax.set_title(f"{region_name[i].values} [{i+1}]")
+proj = ccrs.Stereographic(central_latitude=-90, central_longitude=0)
+gdf = gdf.to_crs(proj.proj4_init)
 
-plt.draw()
-#+END_SRC
+f, axs = plt.subplots(19, 13,
+                      figsize=(19*3, 13*3),
+                      subplot_kw={"projection": proj})
+
+mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
+mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
+roi_name = ds['region_name'].values
+
+for roi in tqdm(range(19)):
+    for time in range(13):
+        ax = axs[roi,time]
+
+        title = ''
+        ylabel = ''
+        if (time < 12) and (roi < 18):
+            data = ds['melt'].isel({'region':roi, 'time':time})
+            if roi == 0:
+                if time == 0: title = 'Month: '
+                title = title + f"{time+1}"
+            if time == 0: ylabel = f"{roi_name[roi]} [{roi+1}]"
+        elif (time == 12) and (roi < 18):
+            data = ds['melt'].mean(dim='time').isel({'region':roi})
+            if roi == 0: title = f"Annual"
+        elif (time < 12) and (roi == 18):
+            data = ds['melt'].mean(dim='region').isel({'time':time})
+            if time == 0: ylabel = 'All'
+        elif (time == 12) and (roi == 18):
+            data = ds['melt'].mean(dim=['region','time'])
+        else: # should not be here
+            assert(False)
+
+        data = np.log10(data.where(data != 0))
+        p = data.plot(ax=ax,
+                      add_colorbar = False,
+                      vmin = np.log10(mmin),
+                      vmax = np.log10(mmax),
+                      transform = ccrs.PlateCarree())
+        
+        ax.coastlines()
+        ax.set_extent([-180,180,-90,-50], crs=ccrs.PlateCarree())
+
+        ax.set_title(title)
+        # ax.set_ylabel(ylabel)
+        ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
+                rotation='vertical', rotation_mode='anchor',
+                transform=ax.transAxes)
+
+        gdf.boundary.plot(ax=ax, color='k', linewidth=1)
+        if roi < 18:
+            geom = gdf.loc[roi_name[roi]]['geometry']
+            ax.add_geometries(geom, crs=proj, facecolor='k', edgecolor='k', alpha=0.33)
+        if (roi == 18):
+            gdf.plot(ax=ax, color='k', facecolor='k', linewidth=1, alpha=0.33)
+
+        
+plt.subplots_adjust(wspace=-0.935, hspace=0.1)
+#+end_src
 
 #+RESULTS:
 :RESULTS:
-: /home/kdm/local/mambaforge/envs/ds/lib/python3.10/site-packages/xarray/core/computation.py:825: RuntimeWarning: divide by zero encountered in log10
-:   result_data = func(*input_data)
-[[./fig/AQ_iceberg_melt.png]]
+: 100% 19/19 [29:50<00:00, 94.22s/it] 
+[[./fig/AQ_berg_melt.png]]
 :END:
 
 
@@ -112,6 +178,8 @@ ds = ds.pad(latitude=(0, 1), longitude=(0,1))  # Add one column at the end
 ds['latitude'] = np.linspace(-89.75, 89.75, num=360)
 ds['longitude'] = np.linspace(-179.75, 179.75, num=720)
 
+ds['time'] = (('time'), np.arange(12).astype(np.int8)+1)
+
 # Rignot basins are 1 through 18, not 0 through 17
 ds = ds.rename({'basin':'region'})
 ds['region'] = (ds['region'] + 1).astype(np.int32)
@@ -120,11 +188,6 @@ ds['region_name'] = (('region'), ['A-Ap', 'Ap-B', 'B-C', 'C-Cp', 'Cp-D',
                                   'D-Dp', 'Dp-E', 'E-Ep', 'Ep-F', 'F-G',
                                   'G-H', 'H-Hp', 'Hp-I', 'I-Ipp', 'Ipp-J',
                                   'J-Jpp', 'Jpp-K', 'K-A'])
-
-# Annual maps only
-ds = ds.resample({'time':'YS'}).mean()
-ds = ds.squeeze()
-ds = ds.drop_vars('time')
 
 ds.attrs['description'] = 'Annual JRA55 climatology'
 
@@ -157,11 +220,17 @@ ds['region_map'] = (('latitude','longitude'), rt)
 #     ds[vs] = ds[vs] / roi_sum / area
 
 ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
-ds['latitude'].attrs['standard_name'] = 'latitude'
+ds['region'].attrs['long_name'] = 'Region IDs'
+ds['time'].attrs['standard_name'] = 'time'
 ds['longitude'].attrs['standard_name'] = 'longitude'
-ds['region'].attrs['long_name'] = 'Region IDs'
+ds['longitude'].attrs['long_name'] = 'longitude'
+ds['longitude'].attrs['axis'] = 'X'
+ds['longitude'].attrs['units'] = 'degrees_east'
+ds['latitude'].attrs['standard_name'] = 'latitude'
+ds['latitude'].attrs['long_name'] = 'latitude'
+ds['latitude'].attrs['axis'] = 'Y'
+ds['latitude'].attrs['units'] = 'degrees_north'
 ds['region_map'].attrs['long_name'] = 'IMBIE regions'
-ds['region'].attrs['long_name'] = 'Region IDs'
 ds['region_name'].attrs['long_name'] = 'IMBIE regions'
 ds['region_name'].attrs['standard_name'] = 'region'
 
@@ -170,7 +239,7 @@ ds.attrs['geospatial_lat_max'] = ds['latitude'].values.max()
 ds.attrs['geospatial_lon_min'] = ds['longitude'].values.min()
 ds.attrs['geospatial_lon_max'] = ds['longitude'].values.max()
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-ds.attrs['title'] = 'Normalised iceberg melt climatology in the Southern Hemisphere per region of calving'
+ds.attrs['title'] = 'Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving'
 ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
 ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
@@ -187,27 +256,45 @@ ds.to_netcdf('./dat/AQ_iceberg_melt.nc', encoding=encoding)
 #+begin_example
 netcdf AQ_iceberg_melt {
 dimensions:
+	time = UNLIMITED ; // (12 currently)
 	region = 18 ;
 	latitude = 360 ;
 	longitude = 720 ;
 variables:
-	float melt(region, latitude, longitude) ;
+	float melt(time, region, latitude, longitude) ;
 		melt:_FillValue = NaNf ;
 		melt:long_name = "Normalised iceberg melt climatology per region of calving" ;
 		melt:units = "m-2" ;
 		melt:grid_mapping = "spatial_ref" ;
 		melt:standard_name = "water_flux_into_sea_water_from_icebergs" ;
 		melt:coordinates = "spatial_ref" ;
-	float melt_AQ(latitude, longitude) ;
+	float melt_AQ(time, latitude, longitude) ;
 		melt_AQ:_FillValue = NaNf ;
 		melt_AQ:long_name = "Normalised iceberg melt climatology for all Greenland" ;
 		melt_AQ:units = "m-2" ;
 		melt_AQ:grid_mapping = "spatial_ref" ;
 		melt_AQ:standard_name = "water_flux_into_sea_water_from_icebergs" ;
 		melt_AQ:coordinates = "spatial_ref" ;
+	float msk_nemo(latitude, longitude) ;
+		msk_nemo:_FillValue = NaNf ;
+		msk_nemo:long_name = "Original land/sea mask in the NEMO simulation" ;
+		msk_nemo:coordinates = "spatial_ref" ;
 	double longitude(longitude) ;
 		longitude:_FillValue = NaN ;
 		longitude:standard_name = "longitude" ;
+		longitude:long_name = "longitude" ;
+		longitude:axis = "X" ;
+		longitude:units = "degrees_east" ;
+	double latitude(latitude) ;
+		latitude:_FillValue = NaN ;
+		latitude:standard_name = "latitude" ;
+		latitude:long_name = "latitude" ;
+		latitude:axis = "Y" ;
+		latitude:units = "degrees_north" ;
+	int region(region) ;
+		region:long_name = "Region IDs" ;
+	byte time(time) ;
+		time:standard_name = "time" ;
 	byte spatial_ref ;
 		spatial_ref:crs_wkt = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
 		spatial_ref:semi_major_axis = 6378137. ;
@@ -220,15 +307,6 @@ variables:
 		spatial_ref:grid_mapping_name = "latitude_longitude" ;
 		spatial_ref:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
 		spatial_ref:horizontal_datum_name = "WGS 84" ;
-	double latitude(latitude) ;
-		latitude:_FillValue = NaN ;
-		latitude:standard_name = "latitude" ;
-	int region(region) ;
-		region:long_name = "Region IDs" ;
-	float msk_nemo(latitude, longitude) ;
-		msk_nemo:_FillValue = NaNf ;
-		msk_nemo:long_name = "Original land/sea mask in the NEMO simulation" ;
-		msk_nemo:coordinates = "spatial_ref" ;
 	string region_name(region) ;
 		region_name:long_name = "IMBIE regions" ;
 		region_name:standard_name = "region" ;
@@ -246,8 +324,8 @@ variables:
 		:geospatial_lat_max = 89.75 ;
 		:geospatial_lon_min = -179.75 ;
 		:geospatial_lon_max = 179.75 ;
-		:date_created = "20241108T002652Z" ;
-		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per region of calving" ;
+		:date_created = "20241117T141200Z" ;
+		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:Conventions = "CF-1.8" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
