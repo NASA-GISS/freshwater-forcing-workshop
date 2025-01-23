@@ -265,7 +265,8 @@ This product is generated from flux gates ~5 km upstream of the terminus.
 
 It lacks:
 + Terminus retreat, which should add ~10 % over the last two decades
-+ Splitting output between icebergs and submarine melt, which is ~50 % +- 40 % (Enderlin 2013)
++ Splitting output between icebergs and submarine melt, which is ~50 % +- 30 % (Rignot 2010)
++ Peripheral glaciers which is ~5 Gt/yr at present (see Bollen 2013)
 
 + Workbook: [[./GL_discharge.org]]
 + Data product: =GL_discharge.nc=
@@ -280,20 +281,20 @@ xr.open_dataset('./dat/GL_discharge.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 12kB
-Dimensions:      (region: 7, time: 185)
+Dimensions:      (region: 7, time: 186)
 Coordinates:
+  ,* time         (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2025-01-01
   ,* region       (region) int32 28B 1 2 3 4 5 6 7
-  ,* time         (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2024-01-01
 Data variables:
     discharge    (region, time) float32 5kB ...
     err          (region, time) float32 5kB ...
-    region_name  (region) <U3 84B ...
+    region_name  (region) <U2 56B ...
 Attributes: (12/14)
     featureType:      timeSeries
-    title:            Greenland ice sheet discharge by Mougniot region
-    summary:          Greenland ice shet discharge by Mougnito region
+    title:            Greenland ice sheet discharge by Mouginot region
+    summary:          Greenland ice sheet discharge by Mouginot region
     keywords:         Greenland; Mass; Mass balance
-    source:           git commit: 20af941
+    source:           git commit: 54a4452
     creator_name:     Ken Mankoff
     ...               ...
     institution:      NASA GISS
