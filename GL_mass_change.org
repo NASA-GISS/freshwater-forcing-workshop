@@ -1,0 +1,459 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session mankoff_2021
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#warning][WARNING]]
+  - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#plot-annual-mass-change-per-region-5-year-smooth][Plot: Annual mass change per region (5 year smooth)]]
+    - [[#table-annual-mass-change-per-region][Table: Annual mass change per region]]
+- [[#fetch-data][Fetch data]]
+- [[#reprocess][Reprocess]]
+
+* Introduction
+
+Greenland mass loss is repackaged from:
++ Paper: Mankoff (2021) http://doi.org/10.5194/essd-13-5001-2021
++ Code (original): https://github.com/GEUS-Glaciology-and-Climate/mass_balance
++ Data: https://doi.org/10.22008/FK2/OHI23Z
+
+** WARNING
+
+This product is generated from discharge with flux gates ~5 km upstream of the terminus, and SMB for the whole ice sheet. These are the same issues with the discharge product.
+
+It lacks
++ Terminus retreat, which should add ~10 % over the last two decades
+  + Greene (2024) http://doi.org/10.1038/s41586-023-06863-2
+  + Kochtitzky (2023) http://doi.org/10.1029/2023gl104095 
++ Splitting output between icebergs and submarine melt, which is ~50 % +- 30 %
+  + Rignot (2010) http://doi.org/10.1038/NGEO765
++ Peripheral glaciers
+  + Adds 5 Gt/yr for recent years from Bollen (2023) http://doi.org/10.1017/jog.2022.52 
+
+
+** Data example
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_mass_change.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 12kB
+Dimensions:       (region: 7, time: 186)
+Coordinates:
+  ,* time          (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2025-01-01
+  ,* region        (region) int32 28B 1 2 3 4 5 6 7
+Data variables:
+    mass_balance  (region, time) float32 5kB ...
+    err           (region, time) float32 5kB ...
+    region_name   (region) <U2 56B ...
+Attributes: (12/14)
+    featureType:      timeSeries
+    title:            Greenland ice sheet mass_balance by Mouginot region
+    summary:          Greenland ice sheet mass_balance by Mouginot region
+    keywords:         Greenland; Mass; Mass balance
+    source:           git commit: 54a4452
+    creator_name:     Ken Mankoff
+    ...               ...
+    institution:      NASA GISS
+    references:       TBD
+    product_version:  1.0
+    history:          TBD
+    Conventions:      CF-1.8
+    DOI:              https://doi.org/10.5281/zenodo.14020895
+#+end_example
+
+*** Plot: Annual mass change per region (5 year smooth)
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_mass.png
+import xarray as xr
+ds = xr.open_dataset('dat/GL_mass_change.nc')
+df = ds['mass_balance'].to_dataframe()['mass_balance']
+
+df = df.unstack().T
+df.columns = ds['region_name'].values
+ax = df.rolling(window=5, center=True).mean().plot(drawstyle='steps-post')
+df.sum(axis='columns').rolling(window=5, center=True).mean().plot(drawstyle='steps-post',
+                                                                  color='k', legend=True, label='All')
+_ = ax.set_ylabel('Mass balance [Gt yr$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/GL_mass.png]]
+
+*** Table: Annual mass change per region
+
+#+begin_src jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/GL_mass_change.nc')
+ds = ds.sel({'time': slice('1800-01-01','2023-12-31')})
+df = ds['mass_balance'].to_dataframe()['mass_balance']
+df = df.unstack().T
+df.columns = [str(_[0]) + ' ['+_[1]+']' for _ in zip(ds['region'].values, ds['region_name'].values)]
+df['GL'] = df.sum(axis='columns')
+df.index = [str(_)[0:4] for _ in df.index]
+df.round()
+#+end_src
+
+#+RESULTS:
+|      |   1 [CE] |   2 [CW] |   3 [NE] |   4 [NO] |   5 [NW] |   6 [SE] |   7 [SW] |   GL |
+|------+----------+----------+----------+----------+----------+----------+----------+------|
+| 1840 |       -9 |       28 |       10 |       29 |       48 |        9 |      -15 |  100 |
+| 1841 |      -10 |       31 |       12 |       33 |       54 |       10 |      -17 |  112 |
+| 1842 |       10 |      -28 |      -10 |      -30 |      -49 |       -9 |       15 | -102 |
+| 1843 |       11 |      -32 |      -12 |      -34 |      -55 |      -10 |       17 | -115 |
+| 1844 |       16 |      -47 |      -18 |      -50 |      -82 |      -15 |       25 | -171 |
+| 1845 |       10 |      -29 |      -11 |      -31 |      -51 |       -9 |       16 | -106 |
+| 1846 |       -8 |       23 |        9 |       25 |       40 |        7 |      -12 |   84 |
+| 1847 |      -17 |       49 |       18 |       52 |       85 |       15 |      -27 |  178 |
+| 1848 |       14 |      -42 |      -16 |      -44 |      -72 |      -13 |       22 | -151 |
+| 1849 |       -5 |       15 |        6 |       16 |       26 |        5 |       -8 |   54 |
+| 1850 |        5 |      -15 |       -6 |      -16 |      -26 |       -5 |        8 |  -54 |
+| 1851 |       -3 |        9 |        4 |       10 |       16 |        3 |       -5 |   34 |
+| 1852 |        7 |      -20 |       -7 |      -21 |      -35 |       -6 |       11 |  -72 |
+| 1853 |        8 |      -24 |       -9 |      -25 |      -41 |       -7 |       13 |  -86 |
+| 1854 |        1 |       -2 |       -1 |       -3 |       -4 |       -1 |        1 |   -9 |
+| 1855 |       -7 |       20 |        7 |       21 |       34 |        6 |      -11 |   71 |
+| 1856 |      -10 |       29 |       11 |       31 |       50 |        9 |      -16 |  105 |
+| 1857 |       15 |      -46 |      -17 |      -49 |      -79 |      -14 |       25 | -165 |
+| 1858 |       15 |      -46 |      -17 |      -48 |      -79 |      -14 |       25 | -164 |
+| 1859 |        3 |       -8 |       -3 |       -9 |      -14 |       -3 |        4 |  -30 |
+| 1860 |        3 |       -8 |       -3 |       -8 |      -14 |       -2 |        4 |  -28 |
+| 1861 |       -5 |       15 |        6 |       16 |       27 |        5 |       -8 |   56 |
+| 1862 |       -6 |       18 |        7 |       19 |       30 |        6 |       -9 |   63 |
+| 1863 |      -13 |       38 |       14 |       41 |       66 |       12 |      -21 |  138 |
+| 1864 |       -9 |       26 |       10 |       28 |       45 |        8 |      -14 |   94 |
+| 1865 |        0 |       -0 |       -0 |       -0 |       -1 |       -0 |        0 |   -1 |
+| 1866 |        4 |      -12 |       -5 |      -13 |      -21 |       -4 |        7 |  -44 |
+| 1867 |        6 |      -19 |       -7 |      -20 |      -32 |       -6 |       10 |  -67 |
+| 1868 |      -13 |       40 |       15 |       42 |       69 |       13 |      -21 |  144 |
+| 1869 |       -3 |       10 |        4 |       10 |       17 |        3 |       -5 |   35 |
+| 1870 |        1 |       -3 |       -1 |       -3 |       -5 |       -1 |        2 |  -11 |
+| 1871 |        6 |      -17 |       -6 |      -18 |      -30 |       -5 |        9 |  -62 |
+| 1872 |        4 |      -11 |       -4 |      -11 |      -19 |       -3 |        6 |  -39 |
+| 1873 |       -7 |       20 |        7 |       21 |       34 |        6 |      -11 |   70 |
+| 1874 |        5 |      -16 |       -6 |      -17 |      -28 |       -5 |        9 |  -57 |
+| 1875 |       -5 |       14 |        5 |       15 |       25 |        4 |       -8 |   51 |
+| 1876 |       -2 |        6 |        2 |        6 |       10 |        2 |       -3 |   20 |
+| 1877 |       23 |      -69 |      -26 |      -74 |     -120 |      -22 |       37 | -250 |
+| 1878 |       -6 |       17 |        6 |       18 |       29 |        5 |       -9 |   60 |
+| 1879 |       -0 |        1 |        0 |        1 |        2 |        0 |       -1 |    4 |
+| 1880 |       -2 |        5 |        2 |        5 |        8 |        1 |       -3 |   17 |
+| 1881 |        3 |       -9 |       -3 |       -9 |      -15 |       -3 |        5 |  -31 |
+| 1882 |        6 |      -18 |       -7 |      -20 |      -32 |       -6 |       10 |  -66 |
+| 1883 |        4 |      -12 |       -4 |      -13 |      -21 |       -4 |        6 |  -43 |
+| 1884 |       -2 |        5 |        2 |        6 |        9 |        2 |       -3 |   19 |
+| 1885 |        4 |      -11 |       -4 |      -12 |      -20 |       -4 |        6 |  -41 |
+| 1886 |        4 |      -11 |       -4 |      -11 |      -18 |       -3 |        6 |  -38 |
+| 1887 |        4 |      -11 |       -4 |      -11 |      -18 |       -3 |        6 |  -38 |
+| 1888 |        5 |      -14 |       -5 |      -15 |      -25 |       -4 |        8 |  -52 |
+| 1889 |      -18 |       52 |       19 |       55 |       90 |       16 |      -28 |  187 |
+| 1890 |        3 |      -10 |       -4 |      -11 |      -18 |       -3 |        5 |  -37 |
+| 1891 |        4 |      -13 |       -5 |      -14 |      -22 |       -4 |        7 |  -46 |
+| 1892 |       12 |      -35 |      -13 |      -38 |      -61 |      -11 |       19 | -128 |
+| 1893 |        3 |      -10 |       -4 |      -11 |      -18 |       -3 |        6 |  -37 |
+| 1894 |        4 |      -12 |       -4 |      -12 |      -20 |       -4 |        6 |  -42 |
+| 1895 |       -9 |       27 |       10 |       29 |       48 |        9 |      -15 |   99 |
+| 1896 |       -3 |       10 |        4 |       10 |       17 |        3 |       -5 |   35 |
+| 1897 |        4 |      -11 |       -4 |      -12 |      -19 |       -4 |        6 |  -40 |
+| 1898 |      -18 |       54 |       20 |       57 |       93 |       17 |      -29 |  194 |
+| 1899 |        5 |      -15 |       -6 |      -16 |      -27 |       -5 |        8 |  -56 |
+| 1900 |       21 |      -63 |      -23 |      -67 |     -108 |      -20 |       34 | -225 |
+| 1901 |      -15 |       44 |       16 |       46 |       76 |       14 |      -24 |  157 |
+| 1902 |        7 |      -22 |       -8 |      -23 |      -37 |       -7 |       12 |  -78 |
+| 1903 |       15 |      -44 |      -16 |      -46 |      -75 |      -14 |       23 | -157 |
+| 1904 |       29 |      -85 |      -32 |      -91 |     -147 |      -27 |       46 | -307 |
+| 1905 |        6 |      -17 |       -6 |      -18 |      -29 |       -5 |        9 |  -60 |
+| 1906 |       18 |      -52 |      -19 |      -55 |      -90 |      -16 |       28 | -187 |
+| 1907 |       15 |      -44 |      -16 |      -47 |      -76 |      -14 |       24 | -158 |
+| 1908 |       16 |      -48 |      -18 |      -51 |      -82 |      -15 |       26 | -171 |
+| 1909 |       12 |      -35 |      -13 |      -37 |      -60 |      -11 |       19 | -125 |
+| 1910 |        9 |      -27 |      -10 |      -29 |      -47 |       -9 |       15 |  -98 |
+| 1911 |       -5 |       16 |        6 |       17 |       27 |        5 |       -8 |   57 |
+| 1912 |       15 |      -44 |      -16 |      -46 |      -75 |      -14 |       23 | -157 |
+| 1913 |        9 |      -27 |      -10 |      -29 |      -46 |       -8 |       14 |  -97 |
+| 1914 |        1 |       -4 |       -1 |       -4 |       -6 |       -1 |        2 |  -13 |
+| 1915 |        4 |      -13 |       -5 |      -14 |      -22 |       -4 |        7 |  -46 |
+| 1916 |      -11 |       34 |       13 |       36 |       58 |       11 |      -18 |  122 |
+| 1917 |       14 |      -42 |      -15 |      -44 |      -72 |      -13 |       22 | -150 |
+| 1918 |        1 |       -2 |       -1 |       -2 |       -4 |       -1 |        1 |   -8 |
+| 1919 |        1 |       -4 |       -1 |       -4 |       -6 |       -1 |        2 |  -13 |
+| 1920 |        6 |      -17 |       -6 |      -18 |      -29 |       -5 |        9 |  -59 |
+| 1921 |        8 |      -23 |       -9 |      -25 |      -40 |       -7 |       12 |  -83 |
+| 1922 |       -9 |       27 |       10 |       28 |       46 |        8 |      -14 |   96 |
+| 1923 |       12 |      -37 |      -14 |      -39 |      -64 |      -12 |       20 | -133 |
+| 1924 |       24 |      -70 |      -26 |      -74 |     -121 |      -22 |       38 | -251 |
+| 1925 |       -4 |       11 |        4 |       12 |       19 |        3 |       -6 |   39 |
+| 1926 |       32 |      -93 |      -35 |      -99 |     -161 |      -29 |       50 | -336 |
+| 1927 |        8 |      -23 |       -9 |      -24 |      -40 |       -7 |       12 |  -83 |
+| 1928 |       27 |      -80 |      -30 |      -86 |     -139 |      -25 |       43 | -290 |
+| 1929 |       18 |      -52 |      -19 |      -55 |      -90 |      -16 |       28 | -187 |
+| 1930 |       12 |      -37 |      -14 |      -39 |      -64 |      -12 |       20 | -133 |
+| 1931 |       49 |     -144 |      -54 |     -153 |     -249 |      -45 |       78 | -520 |
+| 1932 |       10 |      -29 |      -11 |      -31 |      -50 |       -9 |       15 | -104 |
+| 1933 |       17 |      -51 |      -19 |      -55 |      -89 |      -16 |       28 | -185 |
+| 1934 |       16 |      -47 |      -17 |      -50 |      -81 |      -15 |       25 | -169 |
+| 1935 |       35 |     -102 |      -38 |     -109 |     -177 |      -32 |       55 | -368 |
+| 1936 |       22 |      -66 |      -25 |      -70 |     -114 |      -21 |       36 | -238 |
+| 1937 |       17 |      -52 |      -19 |      -55 |      -89 |      -16 |       28 | -186 |
+| 1938 |        9 |      -27 |      -10 |      -29 |      -47 |       -9 |       15 |  -99 |
+| 1939 |        3 |      -10 |       -4 |      -11 |      -18 |       -3 |        6 |  -37 |
+| 1940 |        3 |      -10 |       -4 |      -10 |      -17 |       -3 |        5 |  -35 |
+| 1941 |        8 |      -23 |       -9 |      -24 |      -40 |       -7 |       12 |  -83 |
+| 1942 |        3 |      -10 |       -4 |      -10 |      -17 |       -3 |        5 |  -35 |
+| 1943 |       18 |      -54 |      -20 |      -57 |      -93 |      -17 |       29 | -193 |
+| 1944 |        5 |      -16 |       -6 |      -17 |      -28 |       -5 |        9 |  -58 |
+| 1945 |      -13 |       38 |       14 |       40 |       66 |       12 |      -20 |  137 |
+| 1946 |       -8 |       22 |        8 |       24 |       39 |        7 |      -12 |   81 |
+| 1947 |       -2 |        5 |        2 |        6 |        9 |        2 |       -3 |   19 |
+| 1948 |       23 |      -67 |      -25 |      -72 |     -117 |      -21 |       36 | -243 |
+| 1949 |       31 |      -92 |      -34 |      -98 |     -160 |      -29 |       50 | -333 |
+| 1950 |       26 |      -78 |      -29 |      -83 |     -135 |      -24 |       42 | -281 |
+| 1951 |       24 |      -70 |      -26 |      -75 |     -122 |      -22 |       38 | -254 |
+| 1952 |       12 |      -36 |      -13 |      -38 |      -62 |      -11 |       19 | -129 |
+| 1953 |        8 |      -24 |       -9 |      -26 |      -42 |       -8 |       13 |  -87 |
+| 1954 |        1 |       -3 |       -1 |       -3 |       -5 |       -1 |        1 |  -10 |
+| 1955 |        5 |      -14 |       -5 |      -15 |      -24 |       -4 |        7 |  -50 |
+| 1956 |        7 |      -20 |       -7 |      -21 |      -34 |       -6 |       11 |  -72 |
+| 1957 |       23 |      -68 |      -25 |      -72 |     -117 |      -21 |       36 | -244 |
+| 1958 |       22 |      -64 |      -24 |      -69 |     -111 |      -20 |       35 | -232 |
+| 1959 |        1 |       -3 |       -1 |       -3 |       -5 |       -1 |        2 |  -11 |
+| 1960 |       20 |      -60 |      -22 |      -64 |     -104 |      -19 |       33 | -218 |
+| 1961 |       20 |      -60 |      -22 |      -64 |     -104 |      -19 |       32 | -216 |
+| 1962 |       31 |      -91 |      -34 |      -97 |     -158 |      -29 |       49 | -329 |
+| 1963 |        3 |      -10 |       -4 |      -10 |      -17 |       -3 |        5 |  -35 |
+| 1964 |       -4 |       13 |        5 |       13 |       22 |        4 |       -7 |   46 |
+| 1965 |       17 |      -51 |      -19 |      -55 |      -89 |      -16 |       28 | -185 |
+| 1966 |       29 |      -85 |      -32 |      -91 |     -148 |      -27 |       46 | -308 |
+| 1967 |       12 |      -36 |      -13 |      -39 |      -63 |      -11 |       20 | -131 |
+| 1968 |       25 |      -73 |      -27 |      -78 |     -127 |      -23 |       39 | -264 |
+| 1969 |       14 |      -41 |      -15 |      -43 |      -70 |      -13 |       22 | -146 |
+| 1970 |        4 |      -11 |       -4 |      -12 |      -20 |       -4 |        6 |  -41 |
+| 1971 |       20 |      -59 |      -22 |      -62 |     -101 |      -18 |       32 | -211 |
+| 1972 |      -22 |       64 |       24 |       68 |      110 |       20 |      -34 |  230 |
+| 1973 |        3 |       -9 |       -3 |       -9 |      -15 |       -3 |        5 |  -31 |
+| 1974 |       15 |      -45 |      -17 |      -48 |      -77 |      -14 |       24 | -161 |
+| 1975 |       -3 |        9 |        3 |       10 |       16 |        3 |       -5 |   33 |
+| 1976 |      -14 |       41 |       15 |       43 |       71 |       13 |      -22 |  147 |
+| 1977 |        2 |       -5 |       -2 |       -5 |       -8 |       -1 |        3 |  -17 |
+| 1978 |       -3 |        8 |        3 |        9 |       14 |        3 |       -4 |   30 |
+| 1979 |        4 |      -13 |       -5 |      -14 |      -23 |       -4 |        7 |  -47 |
+| 1980 |       11 |      -31 |      -12 |      -33 |      -54 |      -10 |       17 | -113 |
+| 1981 |       21 |      -61 |      -23 |      -65 |     -106 |      -19 |       33 | -221 |
+| 1982 |       14 |      -40 |      -15 |      -43 |      -69 |      -13 |       22 | -144 |
+| 1983 |      -19 |       55 |       21 |       59 |       96 |       17 |      -30 |  200 |
+| 1984 |       -7 |       20 |        7 |       21 |       34 |        6 |      -11 |   71 |
+| 1985 |        8 |      -25 |       -9 |      -27 |      -44 |       -8 |       14 |  -91 |
+| 1986 |       39 |       -8 |        6 |      -10 |       -9 |       14 |       19 |   51 |
+| 1987 |       24 |      -12 |      -20 |      -23 |      -45 |       26 |       -0 |  -49 |
+| 1988 |      -13 |      -30 |      -19 |        3 |      -41 |       -8 |        2 | -107 |
+| 1989 |       -2 |      -34 |      -39 |      -13 |      -52 |      -19 |       -5 | -165 |
+| 1990 |      -14 |      -18 |      -20 |      -30 |      -60 |        2 |        2 | -137 |
+| 1991 |        0 |      -10 |      -15 |      -27 |      -36 |       13 |       -0 |  -76 |
+| 1992 |       46 |      -15 |       14 |        8 |      -32 |       12 |       54 |   88 |
+| 1993 |       31 |      -35 |      -12 |      -31 |      -59 |        2 |       13 |  -90 |
+| 1994 |        2 |      -33 |       -7 |      -12 |      -28 |      -30 |       -6 | -113 |
+| 1995 |      -33 |      -39 |      -21 |      -25 |      -37 |      -37 |      -19 | -212 |
+| 1996 |       37 |       23 |      -15 |      -11 |       11 |       24 |       66 |  133 |
+| 1997 |       20 |       -1 |        5 |      -17 |       -9 |       -5 |       16 |    8 |
+| 1998 |      -25 |      -55 |      -18 |      -34 |      -46 |      -23 |      -41 | -241 |
+| 1999 |       -0 |       -7 |       19 |      -25 |      -32 |      -17 |       17 |  -46 |
+| 2000 |      -12 |      -12 |       -5 |      -10 |      -14 |      -23 |        0 |  -76 |
+| 2001 |       11 |      -16 |       -4 |      -17 |      -24 |       -5 |       31 |  -25 |
+| 2002 |       31 |      -62 |      -45 |      -42 |      -68 |       61 |      -17 | -141 |
+| 2003 |        3 |      -39 |      -51 |      -46 |      -36 |       34 |      -32 | -166 |
+| 2004 |       -6 |      -36 |      -29 |      -23 |      -26 |      -49 |        4 | -164 |
+| 2005 |      -42 |      -26 |      -29 |      -37 |      -40 |      -29 |       37 | -167 |
+| 2006 |      -24 |      -55 |        8 |      -15 |      -66 |      -59 |      -26 | -238 |
+| 2007 |      -26 |      -54 |      -33 |      -29 |      -61 |      -17 |      -35 | -256 |
+| 2008 |       33 |      -34 |      -31 |      -59 |      -82 |      -33 |        5 | -200 |
+| 2009 |       -7 |      -73 |      -23 |      -42 |      -94 |       16 |      -19 | -242 |
+| 2010 |      -55 |      -58 |      -41 |      -31 |      -36 |      -53 |     -101 | -376 |
+| 2011 |       12 |      -82 |      -25 |      -45 |      -87 |      -43 |      -64 | -335 |
+| 2012 |      -64 |      -62 |      -48 |      -58 |      -73 |      -46 |      -78 | -428 |
+| 2013 |       -2 |      -52 |       -9 |      -11 |      -52 |        8 |       13 | -107 |
+| 2014 |       27 |      -63 |       -9 |      -40 |      -78 |       10 |      -31 | -183 |
+| 2015 |       26 |      -58 |      -15 |      -58 |     -103 |      -14 |        9 | -214 |
+| 2016 |        6 |      -62 |      -37 |      -37 |      -65 |       11 |      -75 | -259 |
+| 2017 |       23 |      -22 |      -32 |      -24 |      -48 |      -15 |       13 | -106 |
+| 2018 |       29 |      -42 |       24 |      -26 |      -62 |        1 |       -4 |  -81 |
+| 2019 |      -39 |      -97 |      -62 |      -63 |     -101 |       16 |      -89 | -434 |
+| 2020 |       -5 |      -39 |       -6 |      -46 |      -75 |      -32 |        7 | -196 |
+| 2021 |      -26 |      -40 |      -26 |      -31 |      -47 |      -42 |       -6 | -218 |
+| 2022 |       14 |      -22 |       -3 |      -24 |      -40 |      -14 |       12 |  -77 |
+| 2023 |      -18 |      -27 |      -35 |      -42 |      -63 |      -44 |      -16 | -246 |
+
+#+begin_src jupyter-python :exports both
+df.describe().round()
+#+end_src
+
+#+RESULTS:
+|       |   1 [CE] |   2 [CW] |   3 [NE] |   4 [NO] |   5 [NW] |   6 [SE] |   7 [SW] |   GL |
+|-------+----------+----------+----------+----------+----------+----------+----------+------|
+| count |      184 |      184 |      184 |      184 |      184 |      184 |      184 |  184 |
+| mean  |        5 |      -22 |       -9 |      -22 |      -36 |       -7 |        6 |  -85 |
+| std   |       17 |       35 |       16 |       35 |       57 |       16 |       25 |  134 |
+| min   |      -64 |     -144 |      -62 |     -153 |     -249 |      -59 |     -101 | -520 |
+| 25%   |       -3 |      -45 |      -19 |      -43 |      -72 |      -15 |       -5 | -170 |
+| 50%   |        4 |      -19 |       -7 |      -20 |      -35 |       -5 |        7 |  -76 |
+| 75%   |       15 |       -3 |        0 |       -3 |       -5 |        3 |       20 |   -9 |
+| max   |       49 |       64 |       24 |       68 |      110 |       61 |       78 |  230 |
+
+* Fetch data
+
+#+BEGIN_SRC bash :exports both :results verbatim :wrap src json
+export SERVER_URL=https://dataverse.geus.dk
+export PERSISTENT_IDENTIFIER=doi:10.22008/FK2/OHI23Z
+export METADATA_FORMAT=dataverse_json # ddi dataverse_json schema.org Datacite oai_datacite
+curl "$SERVER_URL/api/datasets/export?exporter=$METADATA_FORMAT&persistentId=$PERSISTENT_IDENTIFIER" | jq .datasetVersion.versionNumber
+#+END_SRC
+
+#+RESULTS:
+#+begin_src json
+875
+#+end_src
+
+#+BEGIN_SRC bash :exports both :results verbatim
+mkdir -p tmp/greenland_discharge
+pushd tmp/greenland_discharge
+wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/FK2/OHI23Z"
+# wget -r -e robots=off -nH --cut-dirs=3 --content-disposition "https://dataverse.geus.dk/api/datasets/:persistentId/dirindex?persistentId=doi:10.22008/promice/data/ice_discharge/d/v02"
+popd
+#+END_SRC
+
+* Reprocess
+
++ Annual mass balance
++ Group by ROI
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+
+ds = xr.open_dataset('./tmp/greenland_discharge/MB_region.nc')
+
+# Limit to mass balance terms
+ds = ds[['MB_ROI','MB_ROI_err','MB']]
+
+# Drop partial years
+this_yr = ds['time'].to_series().iloc[-1].year
+ds = ds.sel({'time':slice('1800',str(this_yr))})
+
+# Scale early values to annual
+ds.loc[{'time': slice('1840-01-01','1985-12-31')}] *= 365
+
+# Resample by year
+ds = ds.resample({'time':'YS'}).sum()
+
+# Prior to 1986 there is no regional resolution, just one value for all of Greenland.
+
+# Split into regions by taking the 1990s percent of mass balance per region, and assuming the historical GIS-wide mass balance maintained that distribution (even if magnitude changed).
+
+ds_ratio = ds['MB_ROI'].loc[{'time': slice('1990-01-01','1999-12-31')}].sum(dim='time')
+ds_ratio = ds_ratio / sum(ds_ratio)
+# print(ds_ratio)
+
+for r in ds['region']:
+    # Set regional values to the average of the first 5 years when there is regional resolution
+    ds['MB_ROI'].sel({'region':r}).loc[{'time': slice('1840-01-01','1985-12-31')}] = ds['MB'].loc[{'time': slice('1840-01-01','1985-12-31')}] * ds_ratio.sel(region=r.values).values
+    # Set regional uncertainty to the full range of observed values
+    errmax = ds['MB_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).max()
+    errmin = ds['MB_ROI'].sel({'region':r, 'time':slice('1986-01-01','1999-12-31')}).min()
+    ds['MB_ROI_err'].sel({'region':r}).loc[{'time': slice('1840-01-01','1985-12-31')}] = (errmax-errmin)
+
+ds = ds.transpose()
+
+ds = ds.rename({'MB_ROI':'mass_balance','MB_ROI_err':'err'})
+ds = ds.drop_vars('MB')
+
+ds['mass_balance'].attrs['units'] = 'Gt yr-1'
+ds['err'].attrs['units'] = 'Gt yr-1'
+
+ds['mass_balance'].attrs['long_name'] = 'Mass balance'
+
+ds = ds.sortby('region')
+ds = ds.rename_dims({'region':'region_name'}).rename({'region':'region_name'})
+ds['region'] = (('region_name'),np.arange(7).astype(np.int32) + 1)
+ds = ds.set_coords('region')
+ds = ds.swap_dims({'region_name':'region'})
+ds = ds.reset_coords('region_name')
+
+ds['mass_balance'].attrs['standard_name'] = 'tendency_of_ice_mass'
+ds['mass_balance'].attrs['units'] = 'Gt yr-1'
+ds['err'].attrs['standard_name'] = 'tendency_of_ice_mass'
+
+ds['time'].attrs['long_name'] = 'time'
+ds['region'].attrs['long_name'] = 'Mouginot (2019) region'
+
+ds.attrs['title'] = 'Greenland ice sheet mass balance by Mouginot region'
+ds.attrs['history'] = 'TBD'
+ds.attrs['Conventions'] = 'CF-1.8'
+
+ds.attrs['summary'] = 'Greenland ice sheet mass balance by Mouginot region'
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
+ds.attrs['references'] = 'TBD'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+
+comp = dict(zlib=True, complevel=5)
+encoding = {} # var: comp for var in items}
+encoding['time'] = {'dtype': 'i4'}
+
+!rm ./dat/GL_mass_change.nc
+ds.to_netcdf('./dat/GL_mass_change.nc', encoding=encoding)
+!ncdump -h ./dat/GL_mass_change.nc
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+/tmp/ipykernel_665622/2388294872.py:46: UserWarning: rename 'region' to 'region_name' does not create an index anymore. Try using swap_dims instead or use set_index after rename to create an indexed coordinate.
+  ds = ds.rename_dims({'region':'region_name'}).rename({'region':'region_name'})
+netcdf GL_mass_change {
+dimensions:
+	region = 7 ;
+	time = 186 ;
+variables:
+	float mass_balance(region, time) ;
+		mass_balance:_FillValue = NaNf ;
+		mass_balance:units = "Gt yr-1" ;
+		mass_balance:long_name = "Mass balance" ;
+		mass_balance:standard_name = "tendency_of_ice_mass" ;
+	float err(region, time) ;
+		err:_FillValue = NaNf ;
+		err:units = "Gt yr-1" ;
+		err:standard_name = "tendency_of_ice_mass" ;
+	string region_name(region) ;
+		region_name:long_name = "Mouginot 2019 regions" ;
+	int time(time) ;
+		time:cf_role = "timeseries_id" ;
+		time:standard_name = "time" ;
+		time:axis = "T" ;
+		time:long_name = "time" ;
+		time:units = "days since 1840-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+	int region(region) ;
+		region:long_name = "Mouginot (2019) region" ;
+
+// global attributes:
+		:featureType = "timeSeries" ;
+		:title = "Greenland ice sheet mass_balance by Mouginot region" ;
+		:summary = "Greenland ice sheet mass_balance by Mouginot region" ;
+		:keywords = "Greenland; Mass; Mass balance" ;
+		:source = "git commit: 54a4452" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
+		:creator_url = "http://kenmankoff.com" ;
+		:institution = "NASA GISS" ;
+		:references = "TBD" ;
+		:product_version = 1. ;
+		:history = "TBD" ;
+		:Conventions = "CF-1.8" ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+}
+#+end_example
+

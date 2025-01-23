@@ -33,6 +33,9 @@
       - [[#data-5][Data]]
       - [[#graphic-5][Graphic]]
     - [[#basal-runoff][Basal runoff]]
+    - [[#mass-change][Mass change]]
+      - [[#data-6][Data]]
+      - [[#graphic-6][Graphic]]
   - [[#regions-name--id][Regions (Name & ID)]]
 
 * Introduction
@@ -66,6 +69,7 @@ There are two types of data products provided here:
 |---------------------+----------------+-------------------------------------------------------------|
 | GL_discharge.nc     | region, time   | Greenland ice sheet  discharge upstream from grounding line |
 | GL_runoff.nc        | region, time   | Greenland ice sheet and non-ice grounded liquid runoff      |
+| GL_mass_change.nc   | region, time   | Greenland mass change by month and location                 |
 | GL_basal_melt.nc    | region         | Greenland grounded ice basal melt by region                 |
 | GL_iceberg_melt.nc  | lon, lat, time | Greenland iceberg melt magnitude by month and location      |
 
@@ -359,6 +363,51 @@ This product splits basal melt from Karlsson (2021) http://doi.org/10.1038/s4146
 
 + Workbook: [[./GL_basal_melt.org]]
 + Data product: =GL_basal_melt.nc=
+
+
+*** Mass change
+
+This product uses the discharge product and has all of those limitations.
+
++ Workbook: [[./GL_mass_change.org]]
++ Data product: =GL_mass_change.nc=
+
+**** Data
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/GL_mass_change.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 12kB
+Dimensions:       (region: 7, time: 186)
+Coordinates:
+  ,* time          (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2025-01-01
+  ,* region        (region) int32 28B 1 2 3 4 5 6 7
+Data variables:
+    mass_balance  (region, time) float32 5kB ...
+    err           (region, time) float32 5kB ...
+    region_name   (region) <U2 56B ...
+Attributes: (12/14)
+    featureType:      timeSeries
+    title:            Greenland ice sheet mass_balance by Mouginot region
+    summary:          Greenland ice sheet mass_balance by Mouginot region
+    keywords:         Greenland; Mass; Mass balance
+    source:           git commit: 54a4452
+    creator_name:     Ken Mankoff
+    ...               ...
+    institution:      NASA GISS
+    references:       TBD
+    product_version:  1.0
+    history:          TBD
+    Conventions:      CF-1.8
+    DOI:              https://doi.org/10.5281/zenodo.14020895
+#+end_example
+
+**** Graphic
+
+[[./fig/GL_mass.png]]
 
 
 ** Regions (Name & ID)
