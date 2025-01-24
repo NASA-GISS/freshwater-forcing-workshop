@@ -25,12 +25,15 @@ xr.open_dataset('./dat/AQ_mass_change.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 352B
-Dimensions:       (time: 22)
+<xarray.Dataset> Size: 880B
+Dimensions:                (time: 22)
 Coordinates:
-  ,* time          (time) datetime64[ns] 176B 1994-01-01 ... 2015-01-01
+  ,* time                   (time) datetime64[ns] 176B 1994-01-01 ... 2015-01-01
 Data variables:
-    mass_balance  (time) float64 176B ...
+    thinning_mass_balance  (time) float64 176B ...
+    calving_mass_balance   (time) float64 176B ...
+    land_mass_balance      (time) float64 176B ...
+    mass_balance           (time) float64 176B ...
 Attributes:
     title:          Antarctic ice sheet mass balance
     history:        TBD
@@ -48,7 +51,7 @@ Attributes:
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass.png
 import xarray as xr
 ds = xr.open_dataset('dat/AQ_mass_change.nc')
-df = ds['mass_balance'].to_dataframe()['mass_balance']
+df = ds.to_dataframe()
 ax = df.rolling(window=5, center=True).mean().plot(drawstyle='steps-post')
 _ = ax.set_ylabel('Mass balance [Gt yr$^{-1}$]')
 #+END_SRC
@@ -61,52 +64,52 @@ _ = ax.set_ylabel('Mass balance [Gt yr$^{-1}$]')
 #+begin_src jupyter-python :exports both
 import xarray as xr
 ds = xr.open_dataset('dat/AQ_mass_change.nc')
-df = ds['mass_balance'].to_dataframe()['mass_balance']
+df = ds.to_dataframe()
+df.index = df.index.year
 df.round().astype(int)
 #+end_src
 
 #+RESULTS:
-#+begin_example
-time
-1994-01-01    -37
-1995-01-01    -29
-1996-01-01    -32
-1997-01-01    -22
-1998-01-01    -79
-1999-01-01    -28
-2000-01-01    -21
-2001-01-01    -29
-2002-01-01    -96
-2003-01-01    -79
-2004-01-01    -17
-2005-01-01    -95
-2006-01-01   -208
-2007-01-01   -114
-2008-01-01    -89
-2009-01-01   -229
-2010-01-01   -148
-2011-01-01   -209
-2012-01-01   -270
-2013-01-01   -262
-2014-01-01   -255
-2015-01-01    -67
-Name: mass_balance, dtype: int64
-#+end_example
+|   time |   thinning_mass_balance |   calving_mass_balance |   land_mass_balance |   mass_balance |
+|--------+-------------------------+------------------------+---------------------+----------------|
+|   1994 |                      -2 |                    -71 |                 -37 |           -110 |
+|   1995 |                      17 |                    -71 |                 -29 |            -83 |
+|   1996 |                       5 |                   -127 |                 -32 |           -154 |
+|   1997 |                     -38 |                   -127 |                 -22 |           -188 |
+|   1998 |                     -85 |                   -336 |                 -79 |           -500 |
+|   1999 |                     -92 |                   -308 |                 -28 |           -428 |
+|   2000 |                     -77 |                   -332 |                 -21 |           -430 |
+|   2001 |                    -109 |                   -139 |                 -29 |           -277 |
+|   2002 |                    -189 |                   -139 |                 -96 |           -425 |
+|   2003 |                    -270 |                   -139 |                 -79 |           -488 |
+|   2004 |                    -297 |                   -139 |                 -17 |           -454 |
+|   2005 |                    -312 |                   -139 |                 -95 |           -547 |
+|   2006 |                    -332 |                   -139 |                -208 |           -680 |
+|   2007 |                    -347 |                   -139 |                -114 |           -601 |
+|   2008 |                    -306 |                   -139 |                 -89 |           -535 |
+|   2009 |                    -217 |                   -139 |                -229 |           -585 |
+|   2010 |                    -129 |                   -139 |                -148 |           -417 |
+|   2011 |                     -95 |                   -139 |                -209 |           -444 |
+|   2012 |                     -90 |                   -139 |                -270 |           -500 |
+|   2013 |                     -56 |                   -139 |                -262 |           -457 |
+|   2014 |                      13 |                   -139 |                -255 |           -381 |
+|   2015 |                      49 |                   -139 |                 -67 |           -157 |
 
 #+begin_src jupyter-python :exports both
 df.describe().round()
 #+end_src
 
 #+RESULTS:
-: count     22.0
-: mean    -110.0
-: std       89.0
-: min     -270.0
-: 25%     -193.0
-: 50%      -84.0
-: 75%      -30.0
-: max      -17.0
-: Name: mass_balance, dtype: float64
+|       |   thinning_mass_balance |   calving_mass_balance |   land_mass_balance |   mass_balance |
+|-------+-------------------------+------------------------+---------------------+----------------|
+| count |                      22 |                     22 |                  22 |             22 |
+| mean  |                    -135 |                   -157 |                -110 |           -402 |
+| std   |                     128 |                     71 |                  89 |            168 |
+| min   |                    -347 |                   -336 |                -270 |           -680 |
+| 25%   |                    -257 |                   -139 |                -193 |           -500 |
+| 50%   |                     -93 |                   -139 |                 -84 |           -437 |
+| 75%   |                     -43 |                   -139 |                 -30 |           -303 |
+| max   |                      49 |                    -71 |                 -17 |            -83 |
 
 * Reprocess
 
@@ -115,25 +118,30 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-df = pd.read_csv('~/data/Slater_2021/AIS_cumul_1994_2017_annual.csv', index_col=0, parse_dates=True)
-df = df.rename(columns={'Cumulative mass change (Gt)':'mass_balance'})
+base = '~/data/Slater_2021/'
+csv_kw = {'parse_dates':True, 'index_col':0}
+shelf_calving = pd.read_csv(base + 'iceshelves_calving_cumul_1994_2017_annual.csv', **csv_kw).rename(columns={"Cumulative mass change (Gt)":"calving_mass_balance"})
+shelf_thinning = pd.read_csv(base + 'iceshelves_thinning_cumul_1994_2017_annual.csv', **csv_kw).rename(columns={"Cumulative mass change (Gt)":"thinning_mass_balance"})
+AQ_grounded = pd.read_csv(base + 'AIS_cumul_1994_2017_annual.csv', **csv_kw).rename(columns={"Cumulative mass change (Gt)":"land_mass_balance"})
+
+merge_kw = {'left_index':True, 'right_index':True, 'how':'outer'}
+df = shelf_thinning.merge(shelf_calving, **merge_kw).merge(AQ_grounded, **merge_kw)
+
+df['mass_balance'] = df.sum(axis='columns')
 df.index.name = 'time'
 
-# Data is cumulative change. We want annual. Take the derivative and shift by a year
+datavars = ['mass_balance', 'land_mass_balance', 'thinning_mass_balance', 'calving_mass_balance']
 df = df.diff()
-df['mass_balance'] = df['mass_balance'].shift(-1)
+for v in datavars:
+    df[v] = df[v].shift(-1)
 df = df.dropna()
 
 ds = df.to_xarray()
 
-ds['mass_balance'].attrs['units'] = 'Gt yr-1'
-# ds['err'].attrs['units'] = 'Gt yr-1'
-
-ds['mass_balance'].attrs['long_name'] = 'Mass balance'
-
-ds['mass_balance'].attrs['standard_name'] = 'tendency_of_ice_mass'
-ds['mass_balance'].attrs['units'] = 'Gt yr-1'
-# ds['err'].attrs['standard_name'] = 'tendency_of_ice_mass'
+for v in datavars:
+    ds[v].attrs['units'] = 'Gt yr-1'
+    ds[v].attrs['long_name'] = 'Mass balance'
+    ds[v].attrs['standard_name'] = 'tendency_of_ice_mass'
 
 ds['time'].attrs['long_name'] = 'time'
 
@@ -163,6 +171,21 @@ netcdf AQ_mass_change {
 dimensions:
 	time = 22 ;
 variables:
+	double thinning_mass_balance(time) ;
+		thinning_mass_balance:_FillValue = NaN ;
+		thinning_mass_balance:units = "Gt yr-1" ;
+		thinning_mass_balance:long_name = "Mass balance" ;
+		thinning_mass_balance:standard_name = "tendency_of_ice_mass" ;
+	double calving_mass_balance(time) ;
+		calving_mass_balance:_FillValue = NaN ;
+		calving_mass_balance:units = "Gt yr-1" ;
+		calving_mass_balance:long_name = "Mass balance" ;
+		calving_mass_balance:standard_name = "tendency_of_ice_mass" ;
+	double land_mass_balance(time) ;
+		land_mass_balance:_FillValue = NaN ;
+		land_mass_balance:units = "Gt yr-1" ;
+		land_mass_balance:long_name = "Mass balance" ;
+		land_mass_balance:standard_name = "tendency_of_ice_mass" ;
 	double mass_balance(time) ;
 		mass_balance:_FillValue = NaN ;
 		mass_balance:units = "Gt yr-1" ;

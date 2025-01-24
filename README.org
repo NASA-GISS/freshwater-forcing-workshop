@@ -227,12 +227,15 @@ xr.open_dataset('./dat/AQ_mass_change.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 352B
-Dimensions:       (time: 22)
+<xarray.Dataset> Size: 880B
+Dimensions:                (time: 22)
 Coordinates:
-  ,* time          (time) datetime64[ns] 176B 1994-01-01 ... 2015-01-01
+  ,* time                   (time) datetime64[ns] 176B 1994-01-01 ... 2015-01-01
 Data variables:
-    mass_balance  (time) float64 176B ...
+    thinning_mass_balance  (time) float64 176B ...
+    calving_mass_balance   (time) float64 176B ...
+    land_mass_balance      (time) float64 176B ...
+    mass_balance           (time) float64 176B ...
 Attributes:
     title:          Antarctic ice sheet mass balance
     history:        TBD
