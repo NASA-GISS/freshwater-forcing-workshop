@@ -7,7 +7,7 @@
   - [[#data][Data]]
     - [[#printout][Printout]]
     - [[#information][Information]]
-    - [[#figure][Figure]]
+    - [[#figures][Figures]]
 - [[#processing][Processing]]
   - [[#provenance][Provenance]]
   - [[#tests-and-checks][Tests and checks]]
@@ -70,7 +70,99 @@ Attributes:
 Iceberg tracks come from Marson (2024) http://doi.org/10.1029/2023jc020697. The highest melt rates (largest meltwater injection) occurs in near-coastal cells. If your model has land covering some of these cells, you may lose large melt inputs. Rescaling the melt so melt*area sums to 1 for your ocean is a good idea, but this also redistributes the largest melt points over the entire melt region. It may be better to re-scale the melt by increasing only the largest cell or largest few cells (which are hopefully nearby the coast and the high melt rate cells that were covered by land)
 #+END_QUOTE
 
-*** Figure
+*** Figures
+
+**** All regions annual map
+
+#+begin_src jupyter-python :exports results :file ./fig/GL_berg_melt_ann.png
+import rioxarray as rio
+import xarray as xr
+import numpy as np
+import cartopy.crs as ccrs
+from cartopy.feature import ShapelyFeature
+import matplotlib.pyplot as plt
+import geopandas as gpd
+from tqdm import tqdm
+
+gdf = gpd.read_file('~/data/Mouginot_2019/GL_regions.gpkg')
+gdf['geometry'] = gdf['geometry'].simplify(25000)
+gdf = gdf.set_index('label')
+
+ds = xr.open_dataset('dat/GL_iceberg_melt.nc')
+ds = ds.rio.write_crs('EPSG:4326')
+ds = ds.sel({'latitude':slice(40,90), 'longitude':slice(-100,15)}, drop=True)
+
+ds = ds.mean(dim='time')
+
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+ds['area'] = (('latitude','longitude'), cell_area)
+ds['melt'] = ds['melt'] / ds['melt'].sum() * ds['area']
+
+proj = ccrs.Stereographic(central_latitude=70, central_longitude=-42)
+gdf = gdf.to_crs(proj.proj4_init)
+
+f, axs = plt.subplots(2,4,
+                      figsize=(2*3, 7*3),
+                      subplot_kw={"projection": proj})
+
+mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
+mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
+roi_name = ds['region_name'].values
+
+for roi in tqdm(range(8)):
+    ax = axs.flatten()[roi]
+    if (roi < 7):
+        data = ds['melt'].isel({'region':roi})
+        title = f"{roi_name[roi]} [{roi+1}]"
+    elif (roi == 7):
+        data = ds['melt'].mean(dim='region')
+        title = 'All'
+    else: # should not be here
+        assert(False)
+
+    data = np.log10(data.where(data != 0))
+    p = data.plot(ax=ax,
+                  add_colorbar = False,
+                  vmin = np.log10(mmin),
+                  vmax = np.log10(mmax),
+                  transform = ccrs.PlateCarree())
+    
+    ax.coastlines()
+    ax.set_extent([-60, -20, 35, 90])
+    ax.set_aspect('equal', 'box')
+
+    ax.set_title(title)
+    # ax.set_ylabel(ylabel)
+    ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
+            rotation='vertical', rotation_mode='anchor',
+            transform=ax.transAxes)
+
+    # | pink        | 251 | 154 | 153 | #fb9a99 |
+    # | red         | 227 |  26 |  28 | #e31a1c |
+    # | pale orange | 253 | 191 | 111 | #fdbf6f |
+    # | orange      | 255 | 127 |   0 | #ff7f00 |
+    fc='#fb9a99'
+    
+    gdf.boundary.plot(ax=ax, color='k', linewidth=1)
+    if roi < 7:
+        geom = gdf.loc[roi_name[roi]]['geometry']
+        ax.add_geometries(geom, crs=proj, facecolor=fc, edgecolor='k')
+    if (roi == 7):
+        gdf.plot(ax=ax, color=fc, facecolor=fc, linewidth=1)
+        
+plt.subplots_adjust(hspace=-0.85, wspace=0.05)
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+: 100% 8/8 [00:01<00:00,  5.40it/s]
+[[file:./fig/GL_berg_melt_ann.png]]
+:END:
+
+**** All regions monthly map
 
 #+begin_src jupyter-python :exports results :file ./fig/GL_berg_melt.png
 import rioxarray as rio
@@ -160,8 +252,8 @@ plt.subplots_adjust(hspace=-0.85, wspace=0.05)
 
 #+RESULTS:
 :RESULTS:
-: 100% 8/8 [03:41<00:00, 27.66s/it]
-[[./fig/GL_berg_melt.png]]
+: 100% 8/8 [03:53<00:00, 29.22s/it]
+[[file:./fig/GL_berg_melt.png]]
 :END:
 
 * Processing
