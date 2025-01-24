@@ -21,21 +21,24 @@
       - [[#graphic-2][Graphic]]
     - [[#notdone-surface-runoff][NOTDONE Surface runoff]]
     - [[#notdone-basal-grounded-runoff][NOTDONE Basal (grounded) runoff]]
+    - [[#mass-change][Mass change]]
+      - [[#data-3][Data]]
+      - [[#graphic-3][Graphic]]
   - [[#greenland][Greenland]]
     - [[#surface-runoff][Surface runoff]]
       - [[#background-3][Background]]
-      - [[#data-3][Data]]
-      - [[#graphic-3][Graphic]]
-    - [[#discharge][Discharge]]
       - [[#data-4][Data]]
       - [[#graphic-4][Graphic]]
-    - [[#iceberg-melt-locations-1][Iceberg melt locations]]
+    - [[#discharge][Discharge]]
       - [[#data-5][Data]]
       - [[#graphic-5][Graphic]]
-    - [[#basal-runoff][Basal runoff]]
-    - [[#mass-change][Mass change]]
+    - [[#iceberg-melt-locations-1][Iceberg melt locations]]
       - [[#data-6][Data]]
       - [[#graphic-6][Graphic]]
+    - [[#basal-runoff][Basal runoff]]
+    - [[#mass-change-1][Mass change]]
+      - [[#data-7][Data]]
+      - [[#graphic-7][Graphic]]
   - [[#regions-name--id][Regions (Name & ID)]]
 
 * Introduction
@@ -75,7 +78,7 @@ There are two types of data products provided here:
 
 ** Antarctica
 
-All products below are split by the Rignot (2017) regions a.k.a. IMBIE 2 regions.
+All products below are split by the Rignot (2017) regions a.k.a. IMBIE 2 regions, with the exception of Antarctic mass change which is only provided for the whole continent.
 
 *** Sub-shelf melt
 
@@ -210,6 +213,42 @@ Attributes: (12/13)
 *** NOTDONE Basal (grounded) runoff
 
 + Small term (~70 Gt yr^{-1} per van Liefferinge (2013), not done as part of this work.
+
+*** Mass change
+
++ Workbook: [[./AQ_mass_change.org]]
++ Data product: =AQ_mass_change.nc=
+
+**** Data
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_mass_change.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 352B
+Dimensions:       (time: 22)
+Coordinates:
+  ,* time          (time) datetime64[ns] 176B 1994-01-01 ... 2015-01-01
+Data variables:
+    mass_balance  (time) float64 176B ...
+Attributes:
+    title:          Antarctic ice sheet mass balance
+    history:        TBD
+    Conventions:    CF-1.8
+    summary:        Antarctic ice sheet mass balance
+    creator_name:   Ken Mankoff
+    creator_email:  ken.mankoff@nasa.gov
+    institution:    NASA GISS
+    references:     TBD
+    DOI:            https://doi.org/10.5281/zenodo.14020895
+#+end_example
+
+**** Graphic
+
+[[./fig/AQ_mass.png]]
+
 
 ** Greenland
 

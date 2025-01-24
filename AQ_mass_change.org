@@ -1,0 +1,188 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session slater_2021
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#plot-annual-mass-change-per-region-5-year-smooth][Plot: Annual mass change per region (5 year smooth)]]
+    - [[#table-annual-mass-change-per-region][Table: Annual mass change per region]]
+- [[#reprocess][Reprocess]]
+
+* Introduction
+
+Antarctic mass loss is repackaged from:
++ Paper: Slater (2021) https://doi.org/10.5194/tc-15-233-2021 
++ Data: https://doi.org/10.5281/ZENODO.7612514  
+ 
+** Data example
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_mass_change.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 352B
+Dimensions:       (time: 22)
+Coordinates:
+  ,* time          (time) datetime64[ns] 176B 1994-01-01 ... 2015-01-01
+Data variables:
+    mass_balance  (time) float64 176B ...
+Attributes:
+    title:          Antarctic ice sheet mass balance
+    history:        TBD
+    Conventions:    CF-1.8
+    summary:        Antarctic ice sheet mass balance
+    creator_name:   Ken Mankoff
+    creator_email:  ken.mankoff@nasa.gov
+    institution:    NASA GISS
+    references:     TBD
+    DOI:            https://doi.org/10.5281/zenodo.14020895
+#+end_example
+
+*** Plot: Annual mass change per region (5 year smooth)
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass.png
+import xarray as xr
+ds = xr.open_dataset('dat/AQ_mass_change.nc')
+df = ds['mass_balance'].to_dataframe()['mass_balance']
+ax = df.rolling(window=5, center=True).mean().plot(drawstyle='steps-post')
+_ = ax.set_ylabel('Mass balance [Gt yr$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/AQ_mass.png]]
+
+*** Table: Annual mass change per region
+
+#+begin_src jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/AQ_mass_change.nc')
+df = ds['mass_balance'].to_dataframe()['mass_balance']
+df.round().astype(int)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+time
+1994-01-01    -37
+1995-01-01    -29
+1996-01-01    -32
+1997-01-01    -22
+1998-01-01    -79
+1999-01-01    -28
+2000-01-01    -21
+2001-01-01    -29
+2002-01-01    -96
+2003-01-01    -79
+2004-01-01    -17
+2005-01-01    -95
+2006-01-01   -208
+2007-01-01   -114
+2008-01-01    -89
+2009-01-01   -229
+2010-01-01   -148
+2011-01-01   -209
+2012-01-01   -270
+2013-01-01   -262
+2014-01-01   -255
+2015-01-01    -67
+Name: mass_balance, dtype: int64
+#+end_example
+
+#+begin_src jupyter-python :exports both
+df.describe().round()
+#+end_src
+
+#+RESULTS:
+: count     22.0
+: mean    -110.0
+: std       89.0
+: min     -270.0
+: 25%     -193.0
+: 50%      -84.0
+: 75%      -30.0
+: max      -17.0
+: Name: mass_balance, dtype: float64
+
+* Reprocess
+
+#+begin_src jupyter-python :exports both
+import numpy as np
+import pandas as pd
+import xarray as xr
+
+df = pd.read_csv('~/data/Slater_2021/AIS_cumul_1994_2017_annual.csv', index_col=0, parse_dates=True)
+df = df.rename(columns={'Cumulative mass change (Gt)':'mass_balance'})
+df.index.name = 'time'
+
+# Data is cumulative change. We want annual. Take the derivative and shift by a year
+df = df.diff()
+df['mass_balance'] = df['mass_balance'].shift(-1)
+df = df.dropna()
+
+ds = df.to_xarray()
+
+ds['mass_balance'].attrs['units'] = 'Gt yr-1'
+# ds['err'].attrs['units'] = 'Gt yr-1'
+
+ds['mass_balance'].attrs['long_name'] = 'Mass balance'
+
+ds['mass_balance'].attrs['standard_name'] = 'tendency_of_ice_mass'
+ds['mass_balance'].attrs['units'] = 'Gt yr-1'
+# ds['err'].attrs['standard_name'] = 'tendency_of_ice_mass'
+
+ds['time'].attrs['long_name'] = 'time'
+
+ds.attrs['title'] = 'Antarctic ice sheet mass balance'
+ds.attrs['history'] = 'TBD'
+ds.attrs['Conventions'] = 'CF-1.8'
+
+ds.attrs['summary'] = 'Antarctic ice sheet mass balance'
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
+ds.attrs['references'] = 'TBD'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+
+comp = dict(zlib=True, complevel=5)
+encoding = {} # var: comp for var in items}
+encoding['time'] = {'dtype': 'i4'}
+
+!rm ./dat/AQ_mass_change.nc
+ds.to_netcdf('./dat/AQ_mass_change.nc', encoding=encoding)
+!ncdump -h ./dat/AQ_mass_change.nc
+#+end_src
+
+#+RESULTS:
+#+begin_example
+netcdf AQ_mass_change {
+dimensions:
+	time = 22 ;
+variables:
+	double mass_balance(time) ;
+		mass_balance:_FillValue = NaN ;
+		mass_balance:units = "Gt yr-1" ;
+		mass_balance:long_name = "Mass balance" ;
+		mass_balance:standard_name = "tendency_of_ice_mass" ;
+	int time(time) ;
+		time:long_name = "time" ;
+		time:units = "days since 1994-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+
+// global attributes:
+		:title = "Antarctic ice sheet mass balance" ;
+		:history = "TBD" ;
+		:Conventions = "CF-1.8" ;
+		:summary = "Antarctic ice sheet mass balance" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
+		:institution = "NASA GISS" ;
+		:references = "TBD" ;
+		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+}
+#+end_example
+
