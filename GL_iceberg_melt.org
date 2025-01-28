@@ -1,6 +1,6 @@
 
 #+PROPERTY: header-args:jupyter-python+ :session marson_2024
-#+PROPERTY: header-args:bash+ :session (concat "*" (nth 1 (reverse (split-string default-directory "/"))) "-shell*")
+# #+PROPERTY: header-args:bash+ :session (concat "*" (nth 1 (reverse (split-string default-directory "/"))) "-shell*")
 
 * Table of contents                               :toc_3:noexport:
 - [[#introduction][Introduction]]
@@ -39,24 +39,25 @@ xr.open_dataset('./dat/GL_iceberg_melt.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 177MB
-Dimensions:      (region: 7, time: 12, longitude: 720, latitude: 360)
+Dimensions:              (region: 7, time: 12, longitude: 720, latitude: 360)
 Coordinates:
-  ,* region       (region) int8 7B 1 2 3 4 5 6 7
-  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
-  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
-  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
+  ,* region               (region) int8 7B 1 2 3 4 5 6 7
+  ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
+  ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
+  ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
 Data variables:
-    melt         (region, time, latitude, longitude) float64 174MB ...
-    melt_GL      (latitude, longitude) float64 2MB ...
-    region_map   (latitude, longitude) int8 259kB ...
-    region_name  (region) <U2 56B ...
-    spatial_ref  int8 1B ...
+    melt                 (region, time, latitude, longitude) float64 174MB ...
+    melt_GL              (latitude, longitude) float64 2MB ...
+    region_map           (latitude, longitude) int8 259kB ...
+    region_map_expanded  (latitude, longitude) int8 259kB ...
+    region_name          (region) <U2 56B ...
+    spatial_ref          int8 1B ...
 Attributes:
     geospatial_lat_min:  -90
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241117T144923Z
+    date_created:        20250220T155519Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -136,9 +137,9 @@ for roi in tqdm(range(8)):
 
     ax.set_title(title)
     # ax.set_ylabel(ylabel)
-    ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
-            rotation='vertical', rotation_mode='anchor',
-            transform=ax.transAxes)
+    # ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
+    #         rotation='vertical', rotation_mode='anchor',
+    #         transform=ax.transAxes)
 
     # | pink        | 251 | 154 | 153 | #fb9a99 |
     # | red         | 227 |  26 |  28 | #e31a1c |
@@ -158,7 +159,7 @@ plt.subplots_adjust(hspace=-0.85, wspace=0.05)
 
 #+RESULTS:
 :RESULTS:
-: 100% 8/8 [00:01<00:00,  5.40it/s]
+: 100% 8/8 [00:01<00:00,  4.89it/s]
 [[file:./fig/GL_berg_melt_ann.png]]
 :END:
 
@@ -440,7 +441,10 @@ grass ./G_3413/PERMANENT
 g.mapset PERMANENT
 v.import input=${DATADIR}/Mouginot_2019/GL_regions.gpkg output=ROIs
 v.db.select map=ROIs
+g.region vector=ROIs res=1000 -pa
 v.to.rast input=ROIs output=ROIs use=attr attribute_column=cat_
+
+r.grow input=ROIs output=ROIs_grow radius=1000
 #+END_SRC
 
 
@@ -864,6 +868,12 @@ g.region -pa region=iceberg_region # reset region
 #+begin_src bash :exports both :results verbatim
 grass ./G_4326/Marson_2024
 
+g.mapset PERMANENT
+r.proj location=G_3413 input=ROIs_grow output=ROIs_grow
+r.grow input=ROIs_grow output=ROIs_grow2 radius=25
+r.mapcalc "ROIs_grow = int(ROIs_grow2)"
+g.mapset Marson_2024
+
 rois="NO NE SE SW CW NW CE"
 months=$(seq -w 12)
 export GRASS_OVERWRITE=1
@@ -974,6 +984,9 @@ ds['melt_GL'] = ds['melt_GL'] / ds['melt_GL'].sum() / cell_area
 ROIs = garray.array("ROIs")[::-1,:]
 ds['region_map'] = (('latitude','longitude'), ROIs.astype(np.byte))
 
+ROIs = garray.array("ROIs_grow")[::-1,:]
+ds['region_map_expanded'] = (('latitude','longitude'), ROIs.astype(np.byte))
+
 S.close() # Done with GRASS
 
 ds['region_name'] = (('region'), ['CE','CW','NE','NO','NW','SE','SW'])
@@ -1030,24 +1043,25 @@ print(ds)
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 177MB
-Dimensions:      (region: 7, time: 12, longitude: 720, latitude: 360)
+Dimensions:              (region: 7, time: 12, longitude: 720, latitude: 360)
 Coordinates:
-  ,* region       (region) int8 7B 1 2 3 4 5 6 7
-  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
-  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
-  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
-    spatial_ref  int8 1B 0
+  ,* region               (region) int8 7B 1 2 3 4 5 6 7
+  ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
+  ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
+  ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
+    spatial_ref          int8 1B 0
 Data variables:
-    melt         (region, time, latitude, longitude) float64 174MB 0.0 ... 0.0
-    melt_GL      (latitude, longitude) float64 2MB 0.0 0.0 0.0 ... 0.0 0.0 0.0
-    region_map   (latitude, longitude) int8 259kB 0 0 0 0 0 0 0 ... 0 0 0 0 0 0
-    region_name  (region) <U2 56B 'CE' 'CW' 'NE' 'NO' 'NW' 'SE' 'SW'
+    melt                 (region, time, latitude, longitude) float64 174MB 0....
+    melt_GL              (latitude, longitude) float64 2MB 0.0 0.0 ... 0.0 0.0
+    region_map           (latitude, longitude) int8 259kB 0 0 0 0 0 ... 0 0 0 0
+    region_map_expanded  (latitude, longitude) int8 259kB 0 0 0 0 0 ... 0 0 0 0
+    region_name          (region) <U2 56B 'CE' 'CW' 'NE' 'NO' 'NW' 'SE' 'SW'
 Attributes:
     geospatial_lat_min:  -90
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241117T144923Z
+    date_created:        20250220T155519Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
