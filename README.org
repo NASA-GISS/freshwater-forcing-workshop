@@ -106,7 +106,7 @@ Data variables:
     region_name  (region) <U5 360B ...
 Attributes:
     description:   Antarctic region sub-shelf melt
-    date_created:  20241101T045557Z
+    date_created:  20241101T050531Z
     title:         Subshelf melt per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
@@ -145,7 +145,7 @@ Data variables:
     region_name  (region) <U5 360B ...
 Attributes:
     description:   Antarctic region ice shelf calving rate
-    date_created:  20241101T153743Z
+    date_created:  20241104T185548Z
     title:         Calving per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5281/ZENODO.8052519
@@ -171,20 +171,20 @@ xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 238MB
-Dimensions:      (time: 12, region: 18, latitude: 360, longitude: 720)
+<xarray.Dataset> Size: 226MB
+Dimensions:              (time: 12, region: 18, latitude: 360, longitude: 720)
 Coordinates:
-  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
-  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
-  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
-  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
-    spatial_ref  int8 1B ...
+  ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
+  ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
+  ,* region               (region) int32 72B 1 2 3 4 5 6 7 ... 13 14 15 16 17 18
+  ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
+    spatial_ref          int8 1B ...
 Data variables:
-    melt         (time, region, latitude, longitude) float32 224MB ...
-    melt_AQ      (time, latitude, longitude) float32 12MB ...
-    msk_nemo     (latitude, longitude) float32 1MB ...
-    region_name  (region) <U5 360B ...
-    region_map   (latitude, longitude) int16 518kB ...
+    melt                 (time, region, latitude, longitude) float32 224MB ...
+    msk_nemo             (latitude, longitude) float32 1MB ...
+    region_name          (region) <U5 360B ...
+    region_map           (latitude, longitude) int16 518kB ...
+    region_map_expanded  (latitude, longitude) int16 518kB ...
 Attributes: (12/13)
     description:         Annual JRA55 climatology
     original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
@@ -194,7 +194,7 @@ Attributes: (12/13)
     geospatial_lat_max:  89.75
     ...                  ...
     geospatial_lon_max:  179.75
-    date_created:        20241117T141200Z
+    date_created:        20250220T153857Z
     title:               Normalised iceberg melt climatology in the Southern ...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -372,24 +372,25 @@ xr.open_dataset('./dat/GL_iceberg_melt.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 177MB
-Dimensions:      (region: 7, time: 12, longitude: 720, latitude: 360)
+Dimensions:              (region: 7, time: 12, longitude: 720, latitude: 360)
 Coordinates:
-  ,* region       (region) int8 7B 1 2 3 4 5 6 7
-  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
-  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
-  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
+  ,* region               (region) int8 7B 1 2 3 4 5 6 7
+  ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
+  ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
+  ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
 Data variables:
-    melt         (region, time, latitude, longitude) float64 174MB ...
-    melt_GL      (latitude, longitude) float64 2MB ...
-    region_map   (latitude, longitude) int8 259kB ...
-    region_name  (region) <U2 56B ...
-    spatial_ref  int8 1B ...
+    melt                 (region, time, latitude, longitude) float64 174MB ...
+    melt_GL              (latitude, longitude) float64 2MB ...
+    region_map           (latitude, longitude) int8 259kB ...
+    region_map_expanded  (latitude, longitude) int8 259kB ...
+    region_name          (region) <U2 56B ...
+    spatial_ref          int8 1B ...
 Attributes:
     geospatial_lat_min:  -90
     geospatial_lat_max:  90
     geospatial_lon_min:  -180
     geospatial_lon_max:  180
-    date_created:        20241117T144923Z
+    date_created:        20250220T155519Z
     title:               Normalised iceberg melt climatology per region of ca...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
