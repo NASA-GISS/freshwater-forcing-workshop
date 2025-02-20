@@ -7,6 +7,7 @@
     - [[#figure][Figure]]
 - [[#processing][Processing]]
   - [[#netcdf][NetCDF]]
+    - [[#units-check][Units check]]
 
 * Introduction
 
@@ -23,20 +24,20 @@ xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 238MB
-Dimensions:      (time: 12, region: 18, latitude: 360, longitude: 720)
+<xarray.Dataset> Size: 226MB
+Dimensions:              (time: 12, region: 18, latitude: 360, longitude: 720)
 Coordinates:
-  ,* longitude    (longitude) float64 6kB -179.8 -179.2 -178.8 ... 179.2 179.8
-  ,* latitude     (latitude) float64 3kB -89.75 -89.25 -88.75 ... 89.25 89.75
-  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
-  ,* time         (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
-    spatial_ref  int8 1B ...
+  ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
+  ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
+  ,* region               (region) int32 72B 1 2 3 4 5 6 7 ... 13 14 15 16 17 18
+  ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
+    spatial_ref          int8 1B ...
 Data variables:
-    melt         (time, region, latitude, longitude) float32 224MB ...
-    melt_AQ      (time, latitude, longitude) float32 12MB ...
-    msk_nemo     (latitude, longitude) float32 1MB ...
-    region_name  (region) <U5 360B ...
-    region_map   (latitude, longitude) int16 518kB ...
+    melt                 (time, region, latitude, longitude) float32 224MB ...
+    msk_nemo             (latitude, longitude) float32 1MB ...
+    region_name          (region) <U5 360B ...
+    region_map           (latitude, longitude) int16 518kB ...
+    region_map_expanded  (latitude, longitude) int16 518kB ...
 Attributes: (12/13)
     description:         Annual JRA55 climatology
     original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
@@ -46,7 +47,7 @@ Attributes: (12/13)
     geospatial_lat_max:  89.75
     ...                  ...
     geospatial_lon_max:  179.75
-    date_created:        20241117T141200Z
+    date_created:        20250220T153857Z
     title:               Normalised iceberg melt climatology in the Southern ...
     history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     Conventions:         CF-1.8
@@ -181,8 +182,8 @@ ds['longitude'] = np.linspace(-179.75, 179.75, num=720)
 ds['time'] = (('time'), np.arange(12).astype(np.int8)+1)
 
 # Rignot basins are 1 through 18, not 0 through 17
-ds = ds.rename({'basin':'region'})
-ds['region'] = (ds['region'] + 1).astype(np.int32)
+# ds = ds.rename({'basin':'region'})
+ds['region'] = (ds['region']).astype(np.int32)
 
 ds['region_name'] = (('region'), ['A-Ap', 'Ap-B', 'B-C', 'C-Cp', 'Cp-D',
                                   'D-Dp', 'Dp-E', 'E-Ep', 'Ep-F', 'F-G',
@@ -191,33 +192,21 @@ ds['region_name'] = (('region'), ['A-Ap', 'Ap-B', 'B-C', 'C-Cp', 'Cp-D',
 
 ds.attrs['description'] = 'Annual JRA55 climatology'
 
-ds = ds.rename_vars({'pattern_SH':'melt',
-                     'pattern_SH_allbasins':'melt_AQ'})
+ds = ds.rename_vars({'melt_pattern':'melt'})
+#                      'pattern_SH_allbasins':'melt_AQ'})
 
 ds['melt'].attrs['units'] = 'm-2'
 ds['melt'].attrs['grid_mapping'] = 'spatial_ref'
 ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
 
-ds['melt_AQ'].attrs['units'] = 'm-2'
-ds['melt_AQ'].attrs['grid_mapping'] = 'spatial_ref'
-ds['melt_AQ'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
-ds['melt_AQ'].attrs['long_name'] = 'Normalised iceberg melt climatology for all Greenland'
-
 rt = rio.open('./tmp/regions.tif').read(1)[::-1,:]
 rt[rt < 0] = 0
 ds['region_map'] = (('latitude','longitude'), rt)
 
-# # apply a spatial smooth to the iceberg track
-# area = rio.open('./tmp/area.tif').read(1)[::-1,:]
-# # (area * ds['melt']).sum(dim=['longitude','latitude']) # sums to 1
-
-# for v in ['melt','melt_AQ']:
-#     vs = v+'_smooth'
-#     ds[vs] = ds[v].fillna(0).rolling(longitude=3, latitude=3, center=True).mean()
-#     ds[vs] = ds[vs].where(~np.isnan(ds['region_map']), 0)
-#     roi_sum = ds[vs].sum(dim=['longitude','latitude'])
-#     ds[vs] = ds[vs] / roi_sum / area
+rt = rio.open('./tmp/regions_expanded.tif').read(1)[::-1,:]
+rt[rt < 0] = 0
+ds['region_map_expanded'] = (('latitude','longitude'), rt)
 
 ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
 ds['region'].attrs['long_name'] = 'Region IDs'
@@ -256,7 +245,7 @@ ds.to_netcdf('./dat/AQ_iceberg_melt.nc', encoding=encoding)
 #+begin_example
 netcdf AQ_iceberg_melt {
 dimensions:
-	time = UNLIMITED ; // (12 currently)
+	time = 12 ;
 	region = 18 ;
 	latitude = 360 ;
 	longitude = 720 ;
@@ -264,21 +253,19 @@ variables:
 	float melt(time, region, latitude, longitude) ;
 		melt:_FillValue = NaNf ;
 		melt:long_name = "Normalised iceberg melt climatology per region of calving" ;
+		melt:comment = "The spatial integral on the spherical Earth summed over the 12 months and all regions is equal to 1.0" ;
 		melt:units = "m-2" ;
 		melt:grid_mapping = "spatial_ref" ;
 		melt:standard_name = "water_flux_into_sea_water_from_icebergs" ;
 		melt:coordinates = "spatial_ref" ;
-	float melt_AQ(time, latitude, longitude) ;
-		melt_AQ:_FillValue = NaNf ;
-		melt_AQ:long_name = "Normalised iceberg melt climatology for all Greenland" ;
-		melt_AQ:units = "m-2" ;
-		melt_AQ:grid_mapping = "spatial_ref" ;
-		melt_AQ:standard_name = "water_flux_into_sea_water_from_icebergs" ;
-		melt_AQ:coordinates = "spatial_ref" ;
 	float msk_nemo(latitude, longitude) ;
 		msk_nemo:_FillValue = NaNf ;
 		msk_nemo:long_name = "Original land/sea mask in the NEMO simulation" ;
 		msk_nemo:coordinates = "spatial_ref" ;
+	string region_name(region) ;
+		region_name:long_name = "IMBIE regions" ;
+		region_name:standard_name = "region" ;
+		region_name:coordinates = "spatial_ref" ;
 	double longitude(longitude) ;
 		longitude:_FillValue = NaN ;
 		longitude:standard_name = "longitude" ;
@@ -293,6 +280,7 @@ variables:
 		latitude:units = "degrees_north" ;
 	int region(region) ;
 		region:long_name = "Region IDs" ;
+		region:comment = "IMBIE2 basin (https://doi.org/10.1038/s41586-018-0179-y)" ;
 	byte time(time) ;
 		time:standard_name = "time" ;
 	byte spatial_ref ;
@@ -304,16 +292,14 @@ variables:
 		spatial_ref:longitude_of_prime_meridian = 0. ;
 		spatial_ref:prime_meridian_name = "Greenwich" ;
 		spatial_ref:geographic_crs_name = "WGS 84" ;
+		spatial_ref:horizontal_datum_name = "WGS 84" ;
 		spatial_ref:grid_mapping_name = "latitude_longitude" ;
 		spatial_ref:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
-		spatial_ref:horizontal_datum_name = "WGS 84" ;
-	string region_name(region) ;
-		region_name:long_name = "IMBIE regions" ;
-		region_name:standard_name = "region" ;
-		region_name:coordinates = "spatial_ref" ;
 	short region_map(latitude, longitude) ;
 		region_map:long_name = "IMBIE regions" ;
 		region_map:coordinates = "spatial_ref" ;
+	short region_map_expanded(latitude, longitude) ;
+		region_map_expanded:coordinates = "spatial_ref" ;
 
 // global attributes:
 		:description = "Annual JRA55 climatology" ;
@@ -324,7 +310,7 @@ variables:
 		:geospatial_lat_max = 89.75 ;
 		:geospatial_lon_min = -179.75 ;
 		:geospatial_lon_max = 179.75 ;
-		:date_created = "20241117T141200Z" ;
+		:date_created = "20250220T153857Z" ;
 		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:Conventions = "CF-1.8" ;
@@ -333,3 +319,34 @@ variables:
 #+end_example
 
 
+*** Units check
+
+#+BEGIN_SRC jupyter-python :exports both
+import xarray as xr
+import numpy as np
+
+ds = xr.open_dataset('dat/AQ_iceberg_melt.nc')
+
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+
+ds['area'] = (('latitude','longitude'), cell_area)
+# print(ds)
+print( 'melt', (ds['melt']*ds['area']).sum().values )
+
+times = (ds['melt']*ds['area']).sum(dim=['latitude','longitude','region'])
+print( 'melt times', times.values, times.sum().values)
+
+rois = (ds['melt']*ds['area']).sum(dim=['latitude','longitude','time'])
+print( 'melt rois', rois.values, rois.sum().values)
+#+END_SRC
+
+#+RESULTS:
+: melt 0.989742102609713
+: melt times [0.21008673 0.20930613 0.1380628  0.07019004 0.0393484  0.03732747
+:  0.02741233 0.02707993 0.02636447 0.03068494 0.05382992 0.12004895] 0.9897421026097116
+: melt rois [0.04957716 0.02489026 0.04744073 0.06769404 0.08279573 0.06925033
+:  0.00440376 0.04834739 0.09674372 0.06607943 0.12372214 0.01435447
+:  0.01112696 0.03560035 0.01393721 0.14893319 0.04256935 0.04227588] 0.9897421026097117
