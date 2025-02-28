@@ -1,4 +1,6 @@
 
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session fw_workshop
+
 * Ice Sheet Freshwater Forcing
 
 * Table of contents                               :toc_4:noexport:
@@ -24,21 +26,24 @@
     - [[#mass-change][Mass change]]
       - [[#data-3][Data]]
       - [[#graphic-3][Graphic]]
+    - [[#mass-anomaly][Mass anomaly]]
+      - [[#data-4][Data]]
+      - [[#graphic-4][Graphic]]
   - [[#greenland][Greenland]]
     - [[#surface-runoff][Surface runoff]]
       - [[#background-3][Background]]
-      - [[#data-4][Data]]
-      - [[#graphic-4][Graphic]]
-    - [[#discharge][Discharge]]
       - [[#data-5][Data]]
       - [[#graphic-5][Graphic]]
-    - [[#iceberg-melt-locations-1][Iceberg melt locations]]
+    - [[#discharge][Discharge]]
       - [[#data-6][Data]]
       - [[#graphic-6][Graphic]]
-    - [[#basal-runoff][Basal runoff]]
-    - [[#mass-change-1][Mass change]]
+    - [[#iceberg-melt-locations-1][Iceberg melt locations]]
       - [[#data-7][Data]]
       - [[#graphic-7][Graphic]]
+    - [[#basal-runoff][Basal runoff]]
+    - [[#mass-change-1][Mass change]]
+      - [[#data-8][Data]]
+      - [[#graphic-8][Graphic]]
   - [[#regions-name--id][Regions (Name & ID)]]
 
 * Introduction
@@ -72,7 +77,7 @@ There are two types of data products provided here:
 |---------------------+----------------+-------------------------------------------------------------|
 | GL_discharge.nc     | region, time   | Greenland ice sheet  discharge upstream from grounding line |
 | GL_runoff.nc        | region, time   | Greenland ice sheet and non-ice grounded liquid runoff      |
-| GL_mass_change.nc   | region, time   | Greenland mass change by month and location                 |
+| GL_mass_anomaly.nc  | region, time   | Greenland mass anomaly by month and location                |
 | GL_basal_melt.nc    | region         | Greenland grounded ice basal melt by region                 |
 | GL_iceberg_melt.nc  | lon, lat, time | Greenland iceberg melt magnitude by month and location      |
 
@@ -216,41 +221,76 @@ Attributes: (12/13)
 
 *** Mass change
 
-+ Workbook: [[./AQ_mass_change.org]]
-+ Data product: =AQ_mass_change.nc=
++ Workbook: [[./AQ_grounded.org]]
++ Data product: =AQ_grounded_mass_change.nc=
 
 **** Data
 
 #+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
-xr.open_dataset('./dat/AQ_mass_change.nc')
+xr.open_dataset('./dat/AQ_grounded_mass_change.nc')
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 880B
-Dimensions:                (time: 22)
+<xarray.Dataset> Size: 3kB
+Dimensions:      (basins: 18, time: 22)
 Coordinates:
-  ,* time                   (time) datetime64[ns] 176B 1994-01-01 ... 2015-01-01
+  ,* basins       (basins) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* time         (time) datetime64[ns] 176B 2002-07-01 2003-07-01 ... 2023-07-01
 Data variables:
-    thinning_mass_balance  (time) float64 176B ...
-    calving_mass_balance   (time) float64 176B ...
-    land_mass_balance      (time) float64 176B ...
-    mass_balance           (time) float64 176B ...
-Attributes:
-    title:          Antarctic ice sheet mass balance
-    history:        TBD
-    Conventions:    CF-1.8
-    summary:        Antarctic ice sheet mass balance
-    creator_name:   Ken Mankoff
-    creator_email:  ken.mankoff@nasa.gov
-    institution:    NASA GISS
-    references:     TBD
-    DOI:            https://doi.org/10.5281/zenodo.14020895
+    grounded_dm  (time, basins) float64 3kB ...
+Attributes: (12/39)
+    title:                     ESA CCI AIS Gravimetric Mass Balance Gridded P...
+    institution:               TU Dresden, Chair of Geodetic Earth System Res...
+    source:                    GRACE/GRACE-FO L2 monthly solutions provided b...
+    history:                   2021-02-26: version 3.0 tracking_id d1fc87d6-6...
+    references:                AIS_cci Product User Guide (https://climate.es...
+    tracking_id:               e8fca258-8e11-4e80-86a2-fcf9bf5405ff
+    ...                        ...
+    standard_name_vocabulary:  CF Standard Name Table v77
+    license:                   ESA CCI Data Policy: free and open access
+    platform:                  GRACE, GRACE-FO
+    sensor:                    KBR, ACC, GPS
+    spatial_resolution:        data resolution: ~350km, grid resolution: 50x5...
+    key_variables:             change_in_land_ice_amount
 #+end_example
 
 **** Graphic
 
 [[./fig/AQ_mass.png]]
+
+
+*** Mass anomaly
+
++ Workbook: [[./AQ_mass_anomaly.org]]
++ Data product: =AQ_anomaly.nc=
+
+**** Data
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_anomaly.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 15kB
+Dimensions:        (time: 34, region: 18)
+Coordinates:
+  ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
+Dimensions without coordinates: region
+Data variables:
+    calve          (time, region) float64 5kB ...
+    subshelf_melt  (time, region) float64 5kB ...
+    grounded_loss  (time, region) float64 5kB ...
+Attributes:
+    Creator:  Ken Mankoff
+#+end_example
+
+**** Graphic
+
+[[./fig/AQ_mass_anom.png]]
+
+[[./fig/AQ_mass_anom_region.png]]
 
 
 ** Greenland
@@ -412,30 +452,34 @@ This product splits basal melt from Karlsson (2021) http://doi.org/10.1038/s4146
 
 This product uses the discharge product and has all of those limitations.
 
-+ Workbook: [[./GL_mass_change.org]]
-+ Data product: =GL_mass_change.nc=
++ Workbook: [[./GL_mass_anomaly.org]]
++ Data product: =GL_mass_anomaly.nc=
 
 **** Data
 
 #+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
-xr.open_dataset('./dat/GL_mass_change.nc')
+xr.open_dataset('./dat/GL_mass_anomaly.nc')
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 12kB
-Dimensions:       (region: 7, time: 186)
+<xarray.Dataset> Size: 27kB
+Dimensions:      (region: 7, time: 175)
 Coordinates:
-  ,* time          (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2025-01-01
-  ,* region        (region) int32 28B 1 2 3 4 5 6 7
+  ,* time         (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
+  ,* region       (region) int64 56B 1 2 3 4 5 6 7
 Data variables:
-    mass_balance  (region, time) float32 5kB ...
-    err           (region, time) float32 5kB ...
-    region_name   (region) <U2 56B ...
+    SMB_ROI      (region, time) float32 5kB ...
+    SMB_ROI_err  (region, time) float32 5kB ...
+    D_ROI        (region, time) float32 5kB ...
+    D_ROI_err    (region, time) float32 5kB ...
+    region_name  (region) <U2 56B ...
+    MB_ROI       (region, time) float32 5kB ...
+    MB           (time) float32 700B ...
 Attributes: (12/14)
     featureType:      timeSeries
-    title:            Greenland ice sheet mass_balance by Mouginot region
-    summary:          Greenland ice sheet mass_balance by Mouginot region
+    title:            Greenland ice sheet mass balance by Mouginot region
+    summary:          Greenland ice sheet mass balance by Mouginot region
     keywords:         Greenland; Mass; Mass balance
     source:           git commit: 54a4452
     creator_name:     Ken Mankoff
@@ -450,7 +494,7 @@ Attributes: (12/14)
 
 **** Graphic
 
-[[./fig/GL_mass.png]]
+[[./fig/GL_mass_anom.png]]
 
 
 ** Regions (Name & ID)

@@ -1,0 +1,245 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session groh_2021
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#plot-annual-mass-change-per-region][Plot: Annual mass change per region]]
+    - [[#table-annual-mass-change-per-region][Table: Annual mass change per region]]
+- [[#reprocess][Reprocess]]
+  - [[#import-aq-basins][Import AQ basins]]
+  - [[#align-aq-basins-with-gmb-product][Align AQ basins with GMB product]]
+  - [[#sum-gridded-time-series-by-basins-and-year][Sum gridded time series by basins and year]]
+
+* Introduction
+
+Antarctic grounded mass loss from:
++ Paper: Groh (2021) https://doi.org/10.3390/rs13091736 
++ Data: https://data1.geo.tu-dresden.de/ais_gmb/
+ 
+** Data example
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_grounded_mass_change.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 3kB
+Dimensions:      (basins: 18, time: 22)
+Coordinates:
+  ,* basins       (basins) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* time         (time) datetime64[ns] 176B 2002-07-01 2003-07-01 ... 2023-07-01
+Data variables:
+    grounded_dm  (time, basins) float64 3kB ...
+Attributes: (12/39)
+    title:                     ESA CCI AIS Gravimetric Mass Balance Gridded P...
+    institution:               TU Dresden, Chair of Geodetic Earth System Res...
+    source:                    GRACE/GRACE-FO L2 monthly solutions provided b...
+    history:                   2021-02-26: version 3.0 tracking_id d1fc87d6-6...
+    references:                AIS_cci Product User Guide (https://climate.es...
+    tracking_id:               e8fca258-8e11-4e80-86a2-fcf9bf5405ff
+    ...                        ...
+    standard_name_vocabulary:  CF Standard Name Table v77
+    license:                   ESA CCI Data Policy: free and open access
+    platform:                  GRACE, GRACE-FO
+    sensor:                    KBR, ACC, GPS
+    spatial_resolution:        data resolution: ~350km, grid resolution: 50x5...
+    key_variables:             change_in_land_ice_amount
+#+end_example
+
+*** Plot: Annual mass change per region
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass.png
+import xarray as xr
+import matplotlib.pyplot as plt
+ds = xr.open_dataset('dat/AQ_grounded_mass_change.nc')
+df = ds.to_dataframe()['grounded_dm'].unstack().T
+
+ax = df.plot(legend=False)
+
+plt.legend(ncols=6, fontsize='small', frameon=False)
+_ = ax.set_ylabel('Grounded mass loss [Gt yr$^{-1}$]')
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/AQ_mass.png]]
+
+*** Table: Annual mass change per region
+
+#+begin_src jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/AQ_grounded_mass_change.nc')
+df = ds.to_dataframe()['grounded_dm'].unstack().T
+df['AQ'] = df.sum(axis='columns')
+df.round().astype(int)
+#+end_src
+
+#+RESULTS:
+| time                |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |   9 |   10 |   11 |   12 |   13 |   14 |   15 |   16 |   17 |   18 |   AQ |
+|---------------------+-----+-----+-----+-----+-----+-----+-----+-----+-----+------+------+------+------+------+------+------+------+------+------|
+| 2002-07-01 00:00:00 |   2 |   1 |  -6 |  -9 |  28 | -18 |   7 |  25 |  68 |   17 |  -38 |   -3 |    0 |  -36 |    3 |  -22 |   31 |    4 |   52 |
+| 2003-07-01 00:00:00 |  -2 |  39 |  -4 |  27 | -33 | -33 |  16 |   8 |   9 |  -23 |  -66 |   -4 |  -10 |  -21 |    3 |    1 |  -11 |    2 | -102 |
+| 2004-07-01 00:00:00 | -18 |  25 |   0 |  14 |  28 |  23 | -12 | -11 |   4 |  -43 |  -63 |   -4 |   20 |  -14 |   -4 |   55 |   -4 |  -15 |  -19 |
+| 2005-07-01 00:00:00 |   4 |  30 |   5 |  12 |  19 |  11 |  -9 |  15 |  36 |   -5 |  -41 |   -2 |    6 |  -30 |    0 |   41 |   21 |   10 |  122 |
+| 2006-07-01 00:00:00 |   3 | -10 |   7 |  -7 | -27 |   6 |   9 |   8 |  13 |  -24 | -104 |    1 |    4 |  -19 |   11 |    1 |   32 |   36 |  -59 |
+| 2007-07-01 00:00:00 |   3 |  -6 |   9 |   8 | -39 | -26 | -16 |   6 |  41 |  -11 | -106 |   -5 |  -33 |  -44 |    8 |   -8 |   22 |    9 | -190 |
+| 2008-07-01 00:00:00 |  17 |  26 |   7 |   9 |  -3 | -45 |  -5 |   4 |   8 |  -35 | -106 |    4 |    5 |   -7 |   -7 |   35 |   20 |   12 |  -62 |
+| 2009-07-01 00:00:00 |  85 |  72 |  10 |  22 |  55 |  -3 | -14 | -16 |   9 |  -61 | -162 |  -24 |  -25 |  -34 |    0 |  -23 |   34 |   17 |  -59 |
+| 2010-07-01 00:00:00 |  -8 |  29 |   0 |  -1 | -64 | -13 |  -2 |  -3 | -16 |  -74 | -122 |    2 |   -1 |   -1 |    1 |    4 |   41 |   22 | -207 |
+| 2011-07-01 00:00:00 |  66 |  71 |  22 |  26 | -40 |  18 |   6 |  38 |  33 |  -41 | -153 |  -14 |  -29 |  -22 |   -1 |   -8 |    4 |   16 |   -8 |
+| 2012-07-01 00:00:00 |  44 |   9 | -15 | -15 |   6 |   9 |   0 |  15 |  26 |  -34 | -142 |  -12 |  -26 |  -25 |    1 |    0 |    2 |    7 | -151 |
+| 2013-07-01 00:00:00 |  29 |  13 |   2 |  -9 | -25 | -12 |  -5 |   7 |  -1 |  -59 | -161 |  -19 |  -26 |  -22 |   -2 |    0 |   11 |   28 | -251 |
+| 2014-07-01 00:00:00 |  11 |  -2 |  -1 | -25 | -47 |  -9 |  -6 |  21 |  33 |  -28 | -100 |   -6 |   -3 |   -3 |    7 |   11 |    9 |   -3 | -141 |
+| 2015-07-01 00:00:00 |  18 |  14 |   6 |  -2 | -14 |   7 |  -6 | -15 |  32 |  -38 | -138 |  -13 |    8 |  -17 |    1 |   17 |    4 |    2 | -133 |
+| 2016-07-01 00:00:00 |  23 |  31 | -27 | -39 | -25 |  15 |  31 |  25 |  44 |  -32 |  -96 |    7 |   46 |   13 |    0 |   51 |  -14 |    3 |   57 |
+| 2017-07-01 00:00:00 |  37 |  46 |  17 |  24 | -76 |  33 |  13 |  11 |  23 |  -72 | -212 |  -12 |  -55 |  -14 |   22 |  -23 |   69 |   53 | -116 |
+| 2018-07-01 00:00:00 |   7 |   7 |  -3 | -55 | -22 |   5 |  -7 |  19 |   5 |  -31 |  -64 |  -12 |    5 |    3 |  -18 |   10 |    3 |  -18 | -167 |
+| 2019-07-01 00:00:00 |  -9 |  27 |   2 | -19 | -59 |  -7 |  -8 |  11 |  34 |  -19 |  -69 |   -6 |  -16 |  -30 |   -4 |   32 |    6 |   -4 | -136 |
+| 2020-07-01 00:00:00 |  23 |   7 |  28 |  26 | -31 | -15 |  -1 |   4 |  23 |  -24 |  -94 |    4 |    4 |  -12 |   12 |   13 |    7 |    9 |  -17 |
+| 2021-07-01 00:00:00 |  52 |  10 |  21 |  41 |  35 | -13 |  -7 |  -6 |  -9 |  -67 | -153 |   -7 |   19 |   29 |    4 |   29 |   18 |   18 |   13 |
+| 2022-07-01 00:00:00 |  12 |  34 |  24 |  73 |  87 |  40 |   0 |  13 |  -4 |  -46 | -123 |    9 |    4 |   40 |    8 |   64 |   12 |    9 |  255 |
+| 2023-07-01 00:00:00 |   5 |  17 | -10 | -12 | -40 |   9 |  20 |  -9 |   5 |  -47 | -112 |  -16 |    3 |   -5 |  -11 |   16 |   40 |   43 | -104 |
+
+#+begin_src jupyter-python :exports both
+df.describe().round()
+#+end_src
+
+#+RESULTS:
+|       |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |   9 |   10 |   11 |   12 |   13 |   14 |   15 |   16 |   17 |   18 |   AQ |
+|-------+-----+-----+-----+-----+-----+-----+-----+-----+-----+------+------+------+------+------+------+------+------+------+------|
+| count |  22 |  22 |  22 |  22 |  22 |  22 |  22 |  22 |  22 |   22 |   22 |   22 |   22 |   22 |   22 |   22 |   22 |   22 |   22 |
+| mean  |  18 |  22 |   4 |   4 | -13 |  -1 |   0 |   8 |  19 |  -36 | -110 |   -6 |   -5 |  -12 |    1 |   13 |   16 |   12 |  -65 |
+| std   |  25 |  22 |  13 |  28 |  41 |  21 |  12 |  14 |  20 |   22 |   44 |    9 |   22 |   21 |    8 |   25 |   19 |   17 |  117 |
+| min   | -18 | -10 | -27 | -55 | -76 | -45 | -16 | -16 | -16 |  -74 | -212 |  -24 |  -55 |  -44 |  -18 |  -23 |  -14 |  -18 | -251 |
+| 25%   |   3 |   8 |  -3 | -12 | -40 | -13 |  -7 |  -1 |   5 |  -47 | -141 |  -12 |  -23 |  -24 |   -2 |   -0 |    4 |    2 | -140 |
+| 50%   |  12 |  21 |   3 |   4 | -25 |   1 |  -4 |   8 |  18 |  -34 | -106 |   -5 |    1 |  -16 |    1 |   10 |   11 |    9 |  -82 |
+| 75%   |  28 |  31 |   9 |  23 |  16 |  10 |   6 |  15 |  33 |  -24 |  -75 |    1 |    5 |   -3 |    6 |   31 |   28 |   18 |  -10 |
+| max   |  85 |  72 |  28 |  73 |  87 |  40 |  31 |  38 |  68 |   17 |  -38 |    9 |   46 |   40 |   22 |   64 |   69 |   53 |  255 |
+
+* Reprocess
+
+The ESA CCI AQ GMB product is provided by basin, but uses Zwally (2012) basins, not Rignot (2019) basins. It is also provided as a gridded product. Therefore, we use the gridded product and do the basin separation here.
+
+** Import AQ basins
+
+Already done by another product processed earlier. See other Org files.
+
+** Align AQ basins with GMB product
+
+#+BEGIN_SRC bash :exports both :results verbatim
+grass ../G_3031/PERMANENT
+g.mapset -c Groh_2021
+r.in.gdal -o input=NetCDF:${DATADIR}/Groh_2021/AIS_GMB_grid.nc:dm band=1 output=tmp
+g.region raster=tmp -pa
+
+r.mapcalc "basins = regions@PERMANENT"
+r.grow.distance input=basins value=basins_grow
+r.out.gdal input=basins_grow output=tmp/basins.nc format=netCDF
+#+END_SRC
+
+** Sum gridded time series by basins and year
+
+#+begin_src jupyter-python :exports both
+import numpy as np
+import pandas as pd
+import xarray as xr
+
+base = '~/data/Groh_2021/'
+ds = xr.open_dataset(base + '/AIS_GMB_grid.nc')
+attrs = ds['dm'].attrs
+ds['dm'] = ds['dm'] * ds['area']
+
+
+b = xr.open_dataset('./tmp/basins.nc')
+ds['basins'] = (('y','x'), b['Band1'].astype(np.int32).values)
+
+ds = ds.drop_vars(['time_dec','lon','lat','area','crs'])
+ds = ds.set_coords('basins')
+ds = ds.groupby(ds['basins']).sum()
+
+ds = ds.resample(time='YS-JUL').mean()
+ds = ds.diff(dim='time')
+ds = ds / 1E12 # kg to Gt
+
+# ds.to_dataframe()['dm'].unstack().plot()
+# ds.to_dataframe()['dm'].unstack().sum(axis='columns').plot()
+
+ds = ds.rename({'dm':'grounded_dm'})
+ds['grounded_dm'].attrs = attrs
+ds['grounded_dm'].attrs['units'] = 'Gt y-1'
+
+!rm ./dat/AQ_grounded_mass_change.nc
+ds.to_netcdf('./dat/AQ_grounded_mass_change.nc')
+# print(ds)
+!ncdump -h ./dat/AQ_grounded_mass_change.nc
+#+end_src
+
+#+RESULTS:
+#+begin_example
+netcdf AQ_grounded_mass_change {
+dimensions:
+	basins = 18 ;
+	time = 22 ;
+variables:
+	int basins(basins) ;
+	int64 time(time) ;
+		time:long_name = "modified julian date" ;
+		time:standard_name = "time" ;
+		time:actual_range = 52382., 60355.5 ;
+		time:axis = "T" ;
+		time:units = "days since 2002-07-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+	double grounded_dm(time, basins) ;
+		grounded_dm:_FillValue = NaN ;
+		grounded_dm:long_name = "change in ice mass" ;
+		grounded_dm:standard_name = "change_in_land_ice_amount" ;
+		grounded_dm:units = "Gt y-1" ;
+		grounded_dm:actual_range = -8886.4, 5083.7 ;
+
+// global attributes:
+		:title = "ESA CCI AIS Gravimetric Mass Balance Gridded Product" ;
+		:institution = "TU Dresden, Chair of Geodetic Earth System Research" ;
+		:source = "GRACE/GRACE-FO L2 monthly solutions provided by Center for Space Research (CSR RL06.2)" ;
+		:history = "2021-02-26: version 3.0 tracking_id d1fc87d6-6b3c-4b1b-8150-11afa029ac1a, 2021-04-06: version 3.1 tracking_id b70e848b-92ad-4690-855d-cc115616d49a, 2021-09-06: version 3.2 tracking_id 605c00a7-3325-46b8-b069-ab8e5b9be1a6, 2023-04-19: version 3.3 tracking_id bb83b110-f94a-4d81-ba3d-00143814961a, 2024-03-12: version 4.0 tracking_id d30c8f2d-72cf-4486-abe5-b4a4cc5f56b2, 2024-05-17: version 4.1 tracking_id e8fca258-8e11-4e80-86a2-fcf9bf5405ff, " ;
+		:references = "AIS_cci Product User Guide (https://climate.esa.int/en/projects/ice-sheets-antarctic/key-documents/)" ;
+		:tracking_id = "e8fca258-8e11-4e80-86a2-fcf9bf5405ff" ;
+		:Conventions = "CF-1.7" ;
+		:netCDF_version = "netCDF-4_classic" ;
+		:product_version = "4.1" ;
+		:format_version = "CCI Data Standards v2.2" ;
+		:summary = "GRACE/GRACE-FO-derived time series of gridded Antarctic ice mass changes with respect to the mass as of 2011-01-01 according to a linear, periodic (periods: 1 year, 1/2 year) and quadratic model fitted to the monthly solutions in the period 2002-08 - 2016-08" ;
+		:gia_model = "GIA correction: IJ05_R2 (https://doi.org/10.1002/jgrb.50208)" ;
+		:ellipsoidal_correction = "Ellipsoidal correction: The ice mass changes have been corrected to represent ice mass changes on the GRS80 reference ellipsoid. The ellipsoidal correction has been applied by spherical approximation at each point of interest as described by Ditmar (2018, https://doi.org/10.1007/s00190-018-1128-0)." ;
+		:keywords = "ESA CCI, Antarctica, Ice Sheet Mass Balance, GRACE, GRACE-FO" ;
+		:id = "20240517-ESACCI-L3C_AIS-GMB-GRID-fv4.1.nc" ;
+		:naming_authority = "tu-dresden.de/bu/umwelt/geo/ipg/gef" ;
+		:keyword_vocabulary = "GCMD" ;
+		:cdm_data_type = "Grid" ;
+		:date_created = "2024-05-17" ;
+		string :creator_name = "Thorben Döhne, Andreas Groh, Martin Horwath" ;
+		:creator_url = "https://tu-dresden.de/bu/umwelt/geo/ipg/gef" ;
+		:creator_email = "martin.horwath@tu-dresden.de" ;
+		:project = "Climate Change Initiative - European Space Agency" ;
+		:geospatial_lat_min = "-90" ;
+		:geospatial_lat_max = "-60" ;
+		:geospatial_lon_min = "-180" ;
+		:geospatial_lon_max = "180" ;
+		:geospatial_vertical_min = "0" ;
+		:geospatial_vertical_max = "0" ;
+		:time_coverage_start = "2002-04-18" ;
+		:time_coverage_end = "2024-02-16" ;
+		:time_coverage_duration = "P21Y11M" ;
+		:time_coverage_resolution = "P1M" ;
+		:standard_name_vocabulary = "CF Standard Name Table v77" ;
+		:license = "ESA CCI Data Policy: free and open access" ;
+		:platform = "GRACE, GRACE-FO" ;
+		:sensor = "KBR, ACC, GPS" ;
+		:spatial_resolution = "data resolution: ~350km, grid resolution: 50x50km^2" ;
+		:key_variables = "change_in_land_ice_amount" ;
+}
+#+end_example
+

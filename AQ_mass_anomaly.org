@@ -1,0 +1,301 @@
+
+#+PROPERTY: header-args:jupyter-python+ :dir (file-name-directory buffer-file-name) :session aq_anom
+
+* Table of contents                               :toc_3:noexport:
+- [[#introduction][Introduction]]
+  - [[#data-example][Data example]]
+    - [[#printout][Printout]]
+    - [[#plot-annual-mass-change-for-all-regions][Plot: Annual mass change for all regions]]
+    - [[#plots-for-each-region][Plots for each region]]
+    - [[#table-annual-mass-change-per-region][Table: Annual mass change per region]]
+    - [[#baseline][Baseline]]
+- [[#reprocess][Reprocess]]
+  - [[#algorithm-description][Algorithm description]]
+
+* Introduction
+
+AQ freshwater anomaly is provided with respect to 1990-1995 conditions. We use grounded mass loss from GRACE, submarine melt, and calving all projected back to 1990, then remove the 1990 through 1995 baseline to estimate an anomaly.
+
+** Data example
+
+*** Printout
+
+#+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
+xr.open_dataset('./dat/AQ_anomaly.nc')
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 15kB
+Dimensions:        (time: 34, region: 18)
+Coordinates:
+  ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
+Dimensions without coordinates: region
+Data variables:
+    calve          (time, region) float64 5kB ...
+    subshelf_melt  (time, region) float64 5kB ...
+    grounded_loss  (time, region) float64 5kB ...
+Attributes:
+    Creator:  Ken Mankoff
+#+end_example
+
+*** Plot: Annual mass change for all regions
+
+#+NAME: aq_mass_anom_plot
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass_anom.png
+import xarray as xr
+ds = xr.open_dataset('dat/AQ_anomaly.nc').sum(dim='region')
+df = ds.to_dataframe()
+
+ax = df.plot(legend=False)
+_ = ax.set_ylabel('Freshwater anomaly [Gt yr$^{-1}$]'),
+
+df.sum(axis='columns').plot(ax=ax, color='k', alpha=0.5, linewidth=3, label='Total')
+_ = plt.legend(ncols=1, fontsize='small', frameon=False)
+#+END_SRC
+
+#+RESULTS: aq_mass_anom_plot
+[[file:./fig/AQ_mass_anom.png]]
+
+*** Plots for each region
+
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass_anom_region.png
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+
+ds = xr.open_dataset('dat/AQ_anomaly.nc')
+df = ds.to_dataframe().unstack()
+
+fig, axes = plt.subplots(6, 3, figsize=(15, 20))
+plt.subplots_adjust(hspace=0.5)
+
+for i in range(18):
+    dd = df.loc[:, df.columns.get_level_values(1) == i]
+    if i == 0: dd.columns=['Calv','Melt','Grounded']
+    dd.plot(legend=False, ax=axes.flat[i], title='ROI: '+str(i+1))
+    dd.sum(axis='columns').plot(ax=axes.flat[i], color='k', alpha=0.5, linewidth=3, label='Total')
+
+_ = axes.flat[0].legend(ncols=1, fontsize='small', frameon=False)
+_ = axes.flat[0].set_ylabel('Freshwater anomaly\n[Gt yr$^{-1}$]')
+
+#+END_SRC
+
+#+RESULTS:
+[[file:./fig/AQ_mass_anom_region.png]]
+
+*** Table: Annual mass change per region
+
+#+begin_src jupyter-python :exports both
+import xarray as xr
+ds = xr.open_dataset('dat/AQ_anomaly.nc').sum(dim='region')
+df = ds.to_dataframe()
+df.index = df.index.year
+df.round().astype(int)
+#+end_src
+
+#+RESULTS:
+|   time |   calve |   subshelf_melt |   grounded_loss |
+|--------+---------+-----------------+-----------------|
+|   1990 |       0 |             -52 |               0 |
+|   1991 |       0 |             148 |               0 |
+|   1992 |       0 |             554 |               0 |
+|   1993 |       0 |            -215 |               0 |
+|   1994 |       0 |               1 |               0 |
+|   1995 |       0 |            -437 |               0 |
+|   1996 |       0 |            -318 |               0 |
+|   1997 |    -291 |            -177 |               0 |
+|   1998 |    1565 |              38 |               0 |
+|   1999 |    -291 |              69 |               0 |
+|   2000 |    4471 |            -363 |               0 |
+|   2001 |    1122 |             -71 |               0 |
+|   2002 |    -621 |             147 |               0 |
+|   2003 |      96 |             411 |             154 |
+|   2004 |     -18 |            -184 |              71 |
+|   2005 |    -804 |             199 |             -70 |
+|   2006 |    -744 |            -120 |             111 |
+|   2007 |    -915 |             179 |             243 |
+|   2008 |    -910 |              50 |             114 |
+|   2009 |    1320 |            -250 |             111 |
+|   2010 |      68 |            -293 |             260 |
+|   2011 |    -913 |             -74 |              60 |
+|   2012 |    -932 |             -47 |             203 |
+|   2013 |    -524 |             270 |             304 |
+|   2014 |    -280 |            -296 |             194 |
+|   2015 |    -669 |            -345 |             185 |
+|   2016 |    -863 |             -74 |              -5 |
+|   2017 |    -552 |            -190 |             168 |
+|   2018 |     565 |             -85 |             219 |
+|   2019 |    -737 |             -47 |             189 |
+|   2020 |    -385 |              -6 |              69 |
+|   2021 |    1241 |             -76 |              39 |
+|   2022 |       0 |               0 |            -203 |
+|   2023 |       0 |               0 |             156 |
+
+#+begin_src jupyter-python :exports both
+df.describe().round()
+#+end_src
+
+#+RESULTS:
+|       |   calve |   subshelf_melt |   grounded_loss |
+|-------+---------+-----------------+-----------------|
+| count |      34 |              34 |              34 |
+| mean  |      -0 |             -49 |              76 |
+| std   |    1029 |             218 |             109 |
+| min   |    -932 |            -437 |            -203 |
+| 25%   |    -657 |            -189 |               0 |
+| 50%   |      -9 |             -61 |              49 |
+| 75%   |       0 |              47 |             165 |
+| max   |    4471 |             554 |             304 |
+
+*** Baseline
+
+#+BEGIN_SRC jupyter-python :exports both
+import pandas as pd
+
+# Load the three CSV files
+g = pd.read_csv('tmp/ground_baseline.csv')
+m = pd.read_csv('tmp/melt_baseline.csv')
+c = pd.read_csv('tmp/calv_baseline.csv')
+
+g = g.rename(columns={g.columns[1]: 'grounded'})
+m = m.rename(columns={m.columns[1]: 'melt'})
+c = c.rename(columns={c.columns[1]: 'calve'})
+
+df = g.merge(m, on='region').merge(c, on='region').set_index('region')
+df['All'] = df.sum(axis='columns')
+df.loc['Total'] = df.sum(axis='rows')
+
+df
+#+END_SRC
+
+#+RESULTS:
+| region   |    grounded |       melt |     calve |       All |
+|----------+-------------+------------+-----------+-----------|
+| 1        |   1.6026    |   32.3638  |   46.6806 |   80.647  |
+| 2        |   1.3388    |   21.5569  |   41.6384 |   64.5341 |
+| 3        |  -6.47323   |   -5.06764 |   26.1282 |   14.5873 |
+| 4        |  -9.12286   |   12.9187  |   76.2248 |   80.0207 |
+| 5        |  27.633     |   85.5927  |  148.666  |  261.892  |
+| 6        | -17.8951    |   20.3605  |  123.697  |  126.163  |
+| 7        |   6.63013   |   15.6484  |   30.9391 |   53.2175 |
+| 8        |  25.3139    |   46.6715  |   58.0464 |  130.032  |
+| 9        |  67.819     |   75.2757  |  152.63   |  295.725  |
+| 10       |  16.5439    |  157.379   |   92.9395 |  266.862  |
+| 11       | -37.5959    |  235.64    |  299.082  |  497.127  |
+| 12       |  -3.01686   |   65.8642  |   44.7212 |  107.569  |
+| 13       |  -0.0152765 |  102.896   |   83.8413 |  186.722  |
+| 14       | -36.496     |   66.9801  |  126.92   |  157.404  |
+| 15       |   2.82642   |   16.9448  |   12.9096 |   32.6808 |
+| 16       | -21.5974    |   45.3117  |  228.922  |  252.636  |
+| 17       |  30.5238    |   12.2813  |   26.6986 |   69.5037 |
+| 18       |   4.21547   |   42.5389  |   33.3444 |   80.0988 |
+| Total    |  52.2346    | 1051.16    | 1654.03   | 2757.42   |
+
+* Reprocess
+
+** Algorithm description
+
++ For each of [grounded ice, ice shelf calving, and submarine melt]...
+  + Extrapolate back to 1990 as t0.
+  + Set 1990 through 1995 as baseline
+  + Calculate anomaly from baseline
+
+#+begin_src jupyter-python :exports both
+import numpy as np
+import pandas as pd
+import xarray as xr
+from matplotlib import pyplot as plt
+
+ds_ground = xr.open_dataset('./dat/AQ_grounded_mass_change.nc')
+ds_calv = xr.open_dataset('./dat/AQ_calving.nc')
+ds_melt = xr.open_dataset('./dat/AQ_subshelf_melt.nc')
+# print(ds_ground)
+# print(ds_calv)
+# print(ds_melt)
+
+df_ground = ds_ground.to_dataframe()['grounded_dm'].unstack().T
+df_calv = ds_calv.to_dataframe()['calving'].unstack().T
+df_melt = ds_melt.to_dataframe()['melt'].unstack()
+
+df_ground_fill = df_ground.iloc[0]
+df_calv_fill = df_calv.mean(axis='rows')
+df_melt_fill = df_melt.mean(axis='rows')
+
+def extend_to_1990(df, fill):
+    extended_index = pd.date_range(start=pd.Timestamp('1990-07-01'), end=df.index.min()- pd.DateOffset(years=1), freq='YS-JUL')
+    df_new = pd.DataFrame(index=extended_index, columns=df.columns)
+    df_new.loc[:, :] = fill.values
+    df_1990 = pd.concat([df_new,df])
+    df_1990.columns.name = 'region'
+    return df_1990
+
+df_ground = extend_to_1990(df_ground, df_ground_fill)
+df_calv = extend_to_1990(df_calv, df_calv_fill)
+df_melt = extend_to_1990(df_melt, df_melt_fill)
+
+# def extend_to_2025(df):
+#     init_val = df.iloc[:-1].mean() # average of first X years
+#     extended_index = pd.date_range(start=df.index.max() + pd.DateOffset(years=1), end=pd.Timestamp('2025-07-01'), freq='YS-JUL')
+#     df_new = pd.DataFrame(index=extended_index, columns=df.columns)
+#     df_new.loc[:, :] = init_val.values
+#     df_2025 = pd.concat([df,df_new])
+#     df_2025.columns.name = 'region'
+#     return df_2025
+
+# df_ground = extend_to_2025(df_ground)
+# df_calv = extend_to_2025(df_calv)
+# df_melt = extend_to_2025(df_melt)
+
+df_ground_baseline = df_ground.loc['1990':'1995'].mean()
+df_calv_baseline = df_calv.loc['1990':'1995'].mean()
+df_melt_baseline = df_melt.loc['1990':'1995'].mean()
+
+# save anomlies for QC
+df_ground_baseline.to_csv('./tmp/ground_baseline.csv')
+df_calv_baseline.to_csv('./tmp/calv_baseline.csv')
+df_melt_baseline.to_csv('./tmp/melt_baseline.csv')
+
+df_ground = df_ground - df_ground_baseline
+df_calv = df_calv - df_calv_baseline
+df_melt = df_melt - df_melt_baseline
+
+times = pd.date_range(start='2000-01-01',freq='1D',periods=365)
+data = np.random.random(times.size)
+
+ds = xr.Dataset({'calve': xr.DataArray(data=df_calv.values,
+                                       dims=['time','region'],
+                                       coords={'time':df_calv.index},
+                                       attrs = {'units':'Gt yr-1'}),
+                 'subshelf_melt': xr.DataArray(data=df_melt.values,
+                                               dims=['time','region'],
+                                               coords={'time':df_melt.index},
+                                               attrs = {'units':'Gt yr-1'}),
+                 'grounded_loss': xr.DataArray(data=(-1 * df_ground).values,
+                                               dims=['time','region'],
+                                               coords={'time':df_ground.index},
+                                               attrs = {'units':'Gt yr-1'})},
+                attrs = {'Creator':'Ken Mankoff'})
+
+
+!rm ./dat/AQ_anomaly.nc
+ds.to_netcdf('./dat/AQ_anomaly.nc')
+print(ds)
+#!ncdump -h ./dat/AQ_anomaly.nc
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 15kB
+Dimensions:        (time: 34, region: 18)
+Coordinates:
+  ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
+Dimensions without coordinates: region
+Data variables:
+    calve          (time, region) object 5kB 0.0 0.0 0.0 ... nan nan nan
+    subshelf_melt  (time, region) object 5kB 17.93711685429274 ... nan
+    grounded_loss  (time, region) object 5kB 2.220446049250313e-16 ... -39.06...
+Attributes:
+    Creator:  Ken Mankoff
+#+end_example
+
