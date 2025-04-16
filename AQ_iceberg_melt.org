@@ -63,6 +63,173 @@ The highest melt rates (largest meltwater injection) occurs in near-coastal cell
 
 *** Figure
 
+import rioxarray as rio
+import xarray as xr
+import numpy as np
+import cartopy.crs as ccrs
+from cartopy.feature import ShapelyFeature
+import matplotlib.pyplot as plt
+import geopandas as gpd
+from tqdm import tqdm
+
+gdf = gpd.read_file('~/data/Mouginot_2019/GL_regions.gpkg')
+gdf['geometry'] = gdf['geometry'].simplify(25000)
+gdf = gdf.set_index('label')
+
+ds = xr.open_dataset('dat/GL_iceberg_melt.nc')
+ds = ds.rio.write_crs('EPSG:4326')
+ds = ds.sel({'latitude':slice(40,90), 'longitude':slice(-100,15)}, drop=True)
+
+ds = ds.mean(dim='time')
+
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+ds['area'] = (('latitude','longitude'), cell_area)
+ds['melt'] = ds['melt'] / ds['melt'].sum() * ds['area']
+
+proj = ccrs.Stereographic(central_latitude=70, central_longitude=-42)
+gdf = gdf.to_crs(proj.proj4_init)
+
+f, axs = plt.subplots(2,4,
+                      figsize=(2*3, 7*3),
+                      subplot_kw={"projection": proj})
+
+mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
+mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
+roi_name = ds['region_name'].values
+
+for roi in tqdm(range(8)):
+    ax = axs.flatten()[roi]
+    if (roi < 7):
+        data = ds['melt'].isel({'region':roi})
+        title = f"{roi_name[roi]} [{roi+1}]"
+    elif (roi == 7):
+        data = ds['melt'].mean(dim='region')
+        title = 'All'
+    else: # should not be here
+        assert(False)
+
+    data = np.log10(data.where(data != 0))
+    p = data.plot(ax=ax,
+                  add_colorbar = False,
+                  vmin = np.log10(mmin),
+                  vmax = np.log10(mmax),
+                  transform = ccrs.PlateCarree())
+    
+    ax.coastlines()
+    ax.set_extent([-60, -20, 35, 90])
+    ax.set_aspect('equal', 'box')
+
+    ax.set_title(title)
+    # ax.set_ylabel(ylabel)
+    # ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
+    #         rotation='vertical', rotation_mode='anchor',
+    #         transform=ax.transAxes)
+
+    # | pink        | 251 | 154 | 153 | #fb9a99 |
+    # | red         | 227 |  26 |  28 | #e31a1c |
+    # | pale orange | 253 | 191 | 111 | #fdbf6f |
+    # | orange      | 255 | 127 |   0 | #ff7f00 |
+    fc='#fb9a99'
+    
+    gdf.boundary.plot(ax=ax, color='k', linewidth=1)
+    if roi < 7:
+        geom = gdf.loc[roi_name[roi]]['geometry']
+        ax.add_geometries(geom, crs=proj, facecolor=fc, edgecolor='k')
+    if (roi == 7):
+        gdf.plot(ax=ax, color=fc, facecolor=fc, linewidth=1)
+        
+plt.subplots_adjust(hspace=-0.85, wspace=0.05)
+**** All regions annual map
+#+begin_src jupyter-python :exports results :file ./fig/AQ_berg_melt_ann.png
+import rioxarray as rio
+import xarray as xr
+import numpy as np
+import cartopy.crs as ccrs
+from cartopy.feature import ShapelyFeature
+import matplotlib.pyplot as plt
+import geopandas as gpd
+from tqdm import tqdm
+
+gdf = gpd.read_file('~/data/IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp')
+gdf['geometry'] = gdf['geometry'].simplify(100000)
+gdf = gdf.set_index('Subregion').drop(columns='Regions')
+
+ds = xr.open_dataset('dat/AQ_iceberg_melt.nc')
+ds = ds.rio.write_crs('EPSG:3031')
+ds = ds.sel({'latitude':slice(-90,-40)}, drop=True)
+
+ds = ds.mean(dim='time')
+
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+ds['area'] = (('latitude','longitude'), cell_area)
+ds['melt'] = ds['melt'] / ds['melt'].sum() * ds['area']
+
+proj = ccrs.Stereographic(central_latitude=-90, central_longitude=0)
+gdf = gdf.to_crs(proj.proj4_init)
+
+f, axs = plt.subplots(4,5,
+                      figsize=(4*2.5, 5*2.5),
+                      subplot_kw={"projection": proj})
+
+mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
+mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
+roi_name = ds['region_name'].values
+
+for roi in tqdm(range(19)):
+  ax = axs.flat[roi]
+
+  ylabel = ''
+  if (roi < 18):
+    data = ds['melt'].isel({'region':roi})
+    title = f"{roi_name[roi]} [{roi+1}]"
+  elif (roi == 18):
+    data = ds['melt'].mean(dim='region')
+    title = 'All'
+  else:
+    assert(False)
+
+  data = np.log10(data.where(data != 0))
+  p = data.plot(ax=ax,
+                add_colorbar = False,
+                vmin = np.log10(mmin),
+                vmax = np.log10(mmax),
+                transform = ccrs.PlateCarree())
+        
+  ax.coastlines()
+  ax.set_extent([-180,180,-90,-50], crs=ccrs.PlateCarree())
+
+  ax.set_title(title)
+  ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
+          rotation='vertical', rotation_mode='anchor',
+          transform=ax.transAxes)
+  
+  fc='#fb9a99'
+  gdf.boundary.plot(ax=ax, color='k', linewidth=1)
+  if roi < 18:
+    geom = gdf.loc[roi_name[roi]]['geometry']
+    ax.add_geometries(geom, crs=proj, facecolor=fc, edgecolor='k')
+  if (roi == 18):
+    gdf.plot(ax=ax, facecolor=fc, linewidth=1)
+
+plt.subplots_adjust(hspace=-0.5) #, wspace=0.05)    
+_ = axs.flat[-1].axis('off')
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+: 100% 19/19 [00:41<00:00,  2.19s/it]
+[[file:./fig/AQ_berg_melt_ann.png]]
+:END:
+
+
+
+**** All regions monthly map
 #+begin_src jupyter-python :exports results :file ./fig/AQ_berg_melt.png
 import rioxarray as rio
 import xarray as xr
