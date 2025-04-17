@@ -82,36 +82,51 @@ import numpy as np
 import cartopy.crs as ccrs
 from cartopy.feature import ShapelyFeature
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+# from matplotlib.cm import get_cmap
 import geopandas as gpd
 from tqdm import tqdm
 
 gdf = gpd.read_file('~/data/Mouginot_2019/GL_regions.gpkg')
 gdf['geometry'] = gdf['geometry'].simplify(25000)
 gdf = gdf.set_index('label')
+proj = ccrs.Stereographic(central_latitude=70, central_longitude=-42)
+gdf = gdf.to_crs(proj.proj4_init)
 
 ds = xr.open_dataset('dat/GL_iceberg_melt.nc')
 ds = ds.rio.write_crs('EPSG:4326')
 ds = ds.sel({'latitude':slice(40,90), 'longitude':slice(-100,15)}, drop=True)
-
 ds = ds.mean(dim='time')
 
+# convert from m-2 to 
 llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
 earth_rad = 6.371e6 # Earth radius in m
 resdeg = 0.5 # output grid resolution in degrees
 cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
 ds['area'] = (('latitude','longitude'), cell_area)
-ds['melt'] = ds['melt'] / ds['melt'].sum() * ds['area']
-
-proj = ccrs.Stereographic(central_latitude=70, central_longitude=-42)
-gdf = gdf.to_crs(proj.proj4_init)
+#ds['melt'] = (ds['melt'] / ds['melt'].sum()) #  * ds['area']
 
 f, axs = plt.subplots(2,4,
-                      figsize=(2*3, 7*3),
+                      figsize=((8.3/2.54)*3, 2*3), # w,h in inches
                       subplot_kw={"projection": proj})
 
-mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
-mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
+# mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
+# mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
 roi_name = ds['region_name'].values
+
+# Create a truncated colormap (exclude the lightest ~10% of 'Blues')
+def truncate_colormap(cmap_in, minval=0.1, maxval=1.0, n=256):
+    new_cmap = mcolors.LinearSegmentedColormap.from_list(
+        f'trunc({cmap_in.name},{minval:.2f},{maxval:.2f})',
+        cmap_in(np.linspace(minval, maxval, n))
+    )
+    return new_cmap
+# Define discrete levels (in log10 space)
+# bins = 6
+# levels = np.linspace(np.log10(mmin), np.log10(mmax), bins+1)  # 8 bins → 9 edges
+# norm = mcolors.BoundaryNorm(boundaries=levels, ncolors=256)
+# cmap = plt.get_cmap('Blues')
+cmap = truncate_colormap(plt.get_cmap('Blues'), minval=0.1, maxval=1.0)# , n=bins)
 
 for roi in tqdm(range(8)):
     ax = axs.flatten()[roi]
@@ -124,18 +139,26 @@ for roi in tqdm(range(8)):
     else: # should not be here
         assert(False)
 
+    mmin = np.nanpercentile(data.where(data != 0).values, 5)
+    mmax = np.nanpercentile(data.where(data != 0).values, 95)
     data = np.log10(data.where(data != 0))
     p = data.plot(ax=ax,
                   add_colorbar = False,
                   vmin = np.log10(mmin),
                   vmax = np.log10(mmax),
+                  # norm = norm, cmap = cmap,
+                  cmap = 'Blues',
                   transform = ccrs.PlateCarree())
     
     ax.coastlines()
     ax.set_extent([-60, -20, 35, 90])
     ax.set_aspect('equal', 'box')
 
-    ax.set_title(title)
+    # ax.set_title(title)
+    ax.set_title("")
+    ax.text(0.95, 0.025, title,
+            va='bottom', ha='right',
+            transform=ax.transAxes, rotation_mode='anchor')
     # ax.set_ylabel(ylabel)
     # ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
     #         rotation='vertical', rotation_mode='anchor',
@@ -145,7 +168,7 @@ for roi in tqdm(range(8)):
     # | red         | 227 |  26 |  28 | #e31a1c |
     # | pale orange | 253 | 191 | 111 | #fdbf6f |
     # | orange      | 255 | 127 |   0 | #ff7f00 |
-    fc='#fb9a99'
+    fc='#999999'
     
     gdf.boundary.plot(ax=ax, color='k', linewidth=1)
     if roi < 7:
@@ -154,12 +177,17 @@ for roi in tqdm(range(8)):
     if (roi == 7):
         gdf.plot(ax=ax, color=fc, facecolor=fc, linewidth=1)
         
-plt.subplots_adjust(hspace=-0.85, wspace=0.05)
+plt.subplots_adjust(hspace=0.03, wspace=-0.45)
+
+cbar_ax = f.add_axes([0.84, 0.11, 0.015, 0.77])  # [left, bottom, width, height]
+#cb = plt.colorbar(mappable=p, cax=cbar_ax, boundaries=levels)
+cb = plt.colorbar(p, cax=cbar_ax)
+cb.set_label('Melt [log$_{10}$ m$^{-2}$]')
 #+end_src
 
 #+RESULTS:
 :RESULTS:
-: 100% 8/8 [00:01<00:00,  4.89it/s]
+: 100% 8/8 [00:01<00:00,  4.68it/s]
 [[file:./fig/GL_berg_melt_ann.png]]
 :END:
 

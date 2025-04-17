@@ -150,6 +150,7 @@ import numpy as np
 import cartopy.crs as ccrs
 from cartopy.feature import ShapelyFeature
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import geopandas as gpd
 from tqdm import tqdm
 
@@ -168,18 +169,27 @@ earth_rad = 6.371e6 # Earth radius in m
 resdeg = 0.5 # output grid resolution in degrees
 cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
 ds['area'] = (('latitude','longitude'), cell_area)
-ds['melt'] = ds['melt'] / ds['melt'].sum() * ds['area']
+# ds['melt'] = ds['melt'] / ds['melt'].sum() # * ds['area']
 
 proj = ccrs.Stereographic(central_latitude=-90, central_longitude=0)
 gdf = gdf.to_crs(proj.proj4_init)
 
 f, axs = plt.subplots(4,5,
-                      figsize=(4*2.5, 5*2.5),
+                      figsize=((8.3/2.54)*3, 2.6*3), # w,h in inches
                       subplot_kw={"projection": proj})
 
-mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
-mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
+# mmin = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 5)
+# mmax = np.nanpercentile(ds['melt'].where(ds['melt'] != 0).values, 95)
 roi_name = ds['region_name'].values
+
+# Create a truncated colormap (exclude the lightest ~10% of 'Blues')
+def truncate_colormap(cmap_in, minval=0.1, maxval=1.0, n=256):
+    new_cmap = mcolors.LinearSegmentedColormap.from_list(
+        f'trunc({cmap_in.name},{minval:.2f},{maxval:.2f})',
+        cmap_in(np.linspace(minval, maxval, n))
+    )
+    return new_cmap
+cmap = truncate_colormap(plt.get_cmap('Blues'), minval=0.1, maxval=1.0)# , n=bins)
 
 for roi in tqdm(range(19)):
   ax = axs.flat[roi]
@@ -194,22 +204,25 @@ for roi in tqdm(range(19)):
   else:
     assert(False)
 
+  mmin = np.nanpercentile(data.where(data != 0).values, 5)
+  mmax = np.nanpercentile(data.where(data != 0).values, 95)
   data = np.log10(data.where(data != 0))
   p = data.plot(ax=ax,
                 add_colorbar = False,
                 vmin = np.log10(mmin),
                 vmax = np.log10(mmax),
+                cmap = 'Blues',
                 transform = ccrs.PlateCarree())
         
-  ax.coastlines()
+  # ax.coastlines()
   ax.set_extent([-180,180,-90,-50], crs=ccrs.PlateCarree())
 
-  ax.set_title(title)
-  ax.text(-0.07, 0.55, ylabel, va='center', ha='center',
-          rotation='vertical', rotation_mode='anchor',
-          transform=ax.transAxes)
+  ax.set_title("")
+  ax.text(0.95, 0.025, title,
+          va='bottom', ha='right',
+          transform=ax.transAxes, rotation_mode='anchor')
   
-  fc='#fb9a99'
+  fc='#999999'
   gdf.boundary.plot(ax=ax, color='k', linewidth=1)
   if roi < 18:
     geom = gdf.loc[roi_name[roi]]['geometry']
@@ -217,13 +230,16 @@ for roi in tqdm(range(19)):
   if (roi == 18):
     gdf.plot(ax=ax, facecolor=fc, linewidth=1)
 
-plt.subplots_adjust(hspace=-0.5) #, wspace=0.05)    
+plt.subplots_adjust(hspace=0.05, wspace=0.05)    
 _ = axs.flat[-1].axis('off')
+cbar_ax = f.add_axes([0.91, 0.11, 0.015, 0.77])  # [left, bottom, width, height]
+cb = plt.colorbar(p, cax=cbar_ax)
+cb.set_label('Melt [log$_{10}$ m$^{-2}$]')
 #+end_src
 
 #+RESULTS:
 :RESULTS:
-: 100% 19/19 [00:41<00:00,  2.19s/it]
+: 100% 19/19 [00:12<00:00,  1.51it/s]
 [[file:./fig/AQ_berg_melt_ann.png]]
 :END:
 
