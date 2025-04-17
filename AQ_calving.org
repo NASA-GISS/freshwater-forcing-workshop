@@ -25,18 +25,20 @@ xr.open_dataset('./dat/AQ_calving.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 8kB
+<xarray.Dataset> Size: 12kB
 Dimensions:      (region: 18, time: 25)
 Coordinates:
   ,* time         (time) datetime64[ns] 200B 1997-07-01 1998-07-01 ... 2021-07-01
   ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
     calving      (region, time) float64 4kB ...
+    baseline     (region) float64 144B ...
+    anomaly      (region, time) float64 4kB ...
     uncertainty  (region, time) float64 4kB ...
     region_name  (region) <U5 360B ...
 Attributes:
     description:   Antarctic region ice shelf calving rate
-    date_created:  20250410T201734Z
+    date_created:  20250417T195003Z
     title:         Calving per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5281/ZENODO.8052519
@@ -45,15 +47,16 @@ Attributes:
 #+end_example
 
 *** Graphic
+**** All AQ
 
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_calving.png
 import xarray as xr
 ds = xr.open_dataset('./dat/AQ_calving.nc')
-df = ds.sum(dim='region')['calving'].to_dataframe()
-ax = df['calving'].plot(drawstyle='steps-post')
+df = ds.sum(dim='region').to_dataframe()[['calving','baseline','anomaly']]
+ax = df.plot()
 
-unc = (((ds['uncertainty']**2).sum(dim='region'))**0.5).to_dataframe()
-unc.plot(drawstyle='steps-post', ax=ax)
+# unc = (((ds['uncertainty']**2).sum(dim='region'))**0.5).to_dataframe()
+# unc.plot(drawstyle='steps-post', ax=ax)
 _ = ax.set_ylabel('Calving [Gt yr$^{-1}$]')
 #+END_SRC
 
@@ -132,48 +135,41 @@ region = region[region['Regions'] != 'Islands']
 shelf_region = gpd.sjoin_nearest(shelf,region)
 shelf_region = shelf_region.drop(columns=['index_right','latitude','longitude','Regions'])
 
-# load calving time series per shelf
+baseline = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx",
+                         sheet_name='Steady-state',
+                         index_col=0, skiprows=5, usecols=(1,6,7))
+baseline.columns = ['Calving','Uncertainty']
+
+# calving anomaly time series per shelf
 calving = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx",
                         sheet_name='Calving', index_col=1, skiprows=3, header=(0,1))
 calving = calving.T.dropna().drop(columns=['Antarctic Ice Shelves'])
 
-# WARNING: Calving < 0 implies error is baseline rate. This happens fairly often (small values) and occasionally (large values)
+# WARNING: Calving < 0 implies error in baseline rate. This happens fairly often (small values) and occasionally (large values)
 calving[calving < 0] = 0
 
 obs = calving.xs('observed', level='Ice shelf')
 obs.index.name = 'Date'
 obs.index = pd.to_datetime(obs.index.astype(int).astype(str)+'-07-01', format="%Y-%m-%d")
 
-# unc = calving.drop('observed', level=1, axis=0).reset_index().set_index('level_0').drop(columns=['Ice shelf'])
 unc = calving.xs('uncertainty', level='Ice shelf')
-unc.index.name = 'Date'
 unc.index = obs.index
+unc.columns = shelf_region['Subregion']
+unc = ((unc**2).T.groupby(unc.T.index).sum()).T**0.5
+unc.columns.name = 'region'
+unc.index.name = 'date'
 
 da_obs = xr.DataArray(data = obs.values,
                       dims = ['date','shelf'],
                       coords = {'date':obs.index.values, 'shelf':obs.columns})
 
 ds = xr.Dataset({'calving': da_obs})
-ds['uncertainty'] = (('date','shelf'), unc)
-ds = ds.where(ds['shelf'] != 'Antarctic Ice Shelves', drop=True)
 ds['region'] = (('shelf'), shelf_region['Subregion'])
-
-# ds = ds.groupby('region').sum() # Want to agg() with different functions per column...
-
-# uncertainty is sqrt of sum of squares. Not sure how to do this in-place in Xarray.
-ds['unc2'] = ds['uncertainty']**2
-ds2 = xr.merge([
-    ds[['calving','region']].groupby('region').sum(),
-    ds[['unc2','region']].groupby('region').sum(),
-])
-ds2['uncertainty'] = np.sqrt(ds2['unc2'])
-ds2 = ds2.drop_vars('unc2')
-# uncertainty for all of AQ as (sum(u**2))**0.5 matches Davison 2023 row 168 "Antarctic Ice Shelves"
-
-# need to calculate AQ-wide uncertainty at shelf resolution because step-aggregating is not commutative
-# ds2['uncertainty_AQ'] = np.sqrt(ds['unc2'].sum(dim='shelf'))
-
-ds = ds2
+ds['baseline'] = (('shelf'), baseline['Calving'])
+ds['anomaly'] = ds['calving'] - ds['baseline']
+ds = ds.where(ds['shelf'] != 'Antarctic Ice Shelves', drop=True)
+ds = ds.groupby('region').sum()
+ds['uncertainty'] = unc.unstack().to_xarray()
 
 ds = ds.rename({'date':'time'})
 ds['region'] = np.arange(18).astype(np.int32) + 1
@@ -222,6 +218,10 @@ variables:
 		calving:units = "Gt yr-1" ;
 		calving:long_name = "Shelf calving" ;
 		calving:standard_name = "ice_transport_across_line" ;
+	double baseline(region) ;
+		baseline:_FillValue = NaN ;
+	double anomaly(region, time) ;
+		anomaly:_FillValue = NaN ;
 	int time(time) ;
 		time:standard_name = "time" ;
 		time:units = "days since 1997-07-01 00:00:00" ;
@@ -235,7 +235,7 @@ variables:
 
 // global attributes:
 		:description = "Antarctic region ice shelf calving rate" ;
-		:date_created = "20250410T201734Z" ;
+		:date_created = "20250417T195003Z" ;
 		:title = "Calving per region" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:source = "doi:10.5281/ZENODO.8052519" ;

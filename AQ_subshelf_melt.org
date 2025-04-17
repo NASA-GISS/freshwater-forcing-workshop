@@ -11,7 +11,6 @@
   - [[#nsidc-0792-1992----2017][NSIDC 0792 (1992 -- 2017)]]
   - [[#davison-2023-1997----2021][Davison 2023 (1997 -- 2021)]]
     - [[#uncertainty][Uncertainty]]
-  - [[#notdone-adusumilli-2020][NOTDONE Adusumilli 2020]]
   - [[#merge-paolo--davison][Merge Paolo & Davison]]
 
 * Introduction
@@ -26,7 +25,7 @@ xr.open_dataset('./dat/AQ_subshelf_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 5kB
+<xarray.Dataset> Size: 10kB
 Dimensions:      (time: 31, region: 18)
 Coordinates:
   ,* time         (time) datetime64[ns] 248B 1991-07-01 1992-07-01 ... 2021-07-01
@@ -34,9 +33,11 @@ Coordinates:
 Data variables:
     melt         (region, time) float64 4kB ...
     region_name  (region) <U5 360B ...
+    baseline     (region) float64 144B ...
+    anomaly      (region, time) float64 4kB ...
 Attributes:
     description:   Antarctic region sub-shelf melt
-    date_created:  20241101T045557Z
+    date_created:  20250417T195813Z
     title:         Subshelf melt per region
     history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
     source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
@@ -49,13 +50,13 @@ Attributes:
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_subshelf_melt.png
 import xarray as xr
 ds = xr.open_dataset('./dat/AQ_subshelf_melt.nc')
-df = ds.sum(dim='region')['melt'].to_dataframe()
-ax = df['melt'].plot(drawstyle='steps-post')
+df = ds.sum(dim='region').to_dataframe()[['melt','baseline','anomaly']]
+ax = df.plot(drawstyle='steps-post')
 _ = ax.set_ylabel('Subshelf melt [Gt yr$^{-1}$]')
 #+END_SRC
 
 #+RESULTS:
-[[./fig/AQ_subshelf_melt.png]]
+[[file:./fig/AQ_subshelf_melt.png]]
 
 
 *** Subshelf melt by region
@@ -194,8 +195,7 @@ shelf = shelf.to_crs('EPSG:3031')
 region = gpd.read_file("~/data//IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp")
 region = region[region['Regions'] != 'Islands']
 # find regions nearest each shelf
-shelf_region = gpd.sjoin_nearest(shelf,region)\
-                  .drop(columns=['index_right','latitude','longitude','Regions'])
+shelf_region = gpd.sjoin_nearest(shelf,region).drop(columns=['index_right','latitude','longitude','Regions'])
 
 
 # Want groupby mean so need these as vars not just coords
@@ -241,7 +241,7 @@ with ProgressBar():
 #+end_src
 
 #+RESULTS:
-: [########################################] | 100% Completed | 34.59 s
+: [########################################] | 100% Completed | 141.79 s
 
 ** Davison 2023 (1997 -- 2021)
 
@@ -268,6 +268,11 @@ region = region[region['Regions'] != 'Islands']
 shelf_region = gpd.sjoin_nearest(shelf,region)
 shelf_region = shelf_region.drop(columns=['index_right','latitude','longitude','Regions'])
 
+baseline = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx",
+                         sheet_name='Steady-state',
+                         index_col=0, skiprows=5, usecols=(1,4,5))
+baseline.columns = ['Melting','Uncertainty']
+
 # load melt time series per shelf
 melt = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx",
                      sheet_name = 'Melt', index_col = 1, skiprows = 3, header = (0,1))
@@ -279,44 +284,49 @@ obs.index = pd.to_datetime(obs.index.astype(int).astype(str)+'-07-01', format="%
 
 # unc = melt.drop('observed', level=1, axis=0).reset_index().set_index('level_0').drop(columns=['ice shelf'])
 unc = melt.xs('uncertainty', level='Ice shelf')
-unc.index.name = 'date'
 unc.index = obs.index
+unc.columns = shelf_region['Subregion']
+unc = ((unc**2).T.groupby(unc.T.index).sum()).T**0.5
+unc.columns.name = 'region'
+unc.index.name = 'date'
 
-
-# # add steady state to time series
-# melt_dot = pd.read_excel("~/data/Davison_2023/adi0186_table_s2.xlsx", sheet_name = 'Steady-state', index_col = 0, skiprows = 5, usecols=(1,4,5))
-# melt_dot.columns = [_.split('.')[0] for _ in melt_dot.columns]
-# melt_dot = melt_dot.T
-# obs_dot = melt_dot.loc['observed'].T
-# unc_dot = melt_dot.loc['uncertainty'].T
-# obs = obs + obs_dot
-# unc = unc + unc_dot
 
 da_obs = xr.DataArray(data = obs.values,
                       dims = ['date','shelf'],
                       coords = {'date':obs.index.values, 'shelf':obs.columns})
 
 ds = xr.Dataset({'melt': da_obs})
-ds['uncertainty'] = (('date','shelf'), unc)
-ds = ds.where(ds['shelf'] != 'Antarctic Ice Shelves', drop=True)
 ds['region'] = (('shelf'), shelf_region['Subregion'])
+ds['baseline'] = (('shelf'), baseline['Melting'])
+ds = ds.where(ds['shelf'] != 'Antarctic Ice Shelves', drop=True)
+ds = ds.groupby('region').sum()
+ds['uncertainty'] = unc.unstack().to_xarray()
 
-# ds = ds.groupby('region').sum() # Want to agg() with different functions per column...
+# da_obs = xr.DataArray(data = obs.values,
+#                       dims = ['date','shelf'],
+#                       coords = {'date':obs.index.values, 'shelf':obs.columns})
 
-# uncertainty is sqrt of sum of squares. Not sure how to do this in-place in Xarray.
-ds['unc2'] = ds['uncertainty']**2
-ds2 = xr.merge([
-    ds[['melt','region']].groupby('region').sum(),
-    ds[['unc2','region']].groupby('region').sum(),
-])
-ds2['uncertainty'] = ds2['unc2']**0.5
-ds2 = ds2.drop_vars('unc2')
-# uncertainty for all of AQ as (sum(u**2))**0.5 matches Davison 2023 sheet "Melt" row 168 "Antarctic Ice Shelves"
+# ds = xr.Dataset({'melt': da_obs})
+# ds['uncertainty'] = (('date','shelf'), unc)
+# ds = ds.where(ds['shelf'] != 'Antarctic Ice Shelves', drop=True)
+# ds['region'] = (('shelf'), shelf_region['Subregion'])
 
-# need to calculate AQ-wide uncertainty at shelf resolution because step-aggregating is not commutative
-ds2['uncertainty_AQ'] = np.sqrt(ds['unc2'].sum(dim='shelf'))
+# # ds = ds.groupby('region').sum() # Want to agg() with different functions per column...
 
-ds = ds2
+# # uncertainty is sqrt of sum of squares. Not sure how to do this in-place in Xarray.
+# ds['unc2'] = ds['uncertainty']**2
+# ds2 = xr.merge([
+#     ds[['melt','region']].groupby('region').sum(),
+#     ds[['unc2','region']].groupby('region').sum(),
+# ])
+# ds2['uncertainty'] = ds2['unc2']**0.5
+# ds2 = ds2.drop_vars('unc2')
+# # uncertainty for all of AQ as (sum(u**2))**0.5 matches Davison 2023 sheet "Melt" row 168 "Antarctic Ice Shelves"
+
+# # need to calculate AQ-wide uncertainty at shelf resolution because step-aggregating is not commutative
+# ds2['uncertainty_AQ'] = np.sqrt(ds['unc2'].sum(dim='shelf'))
+
+# ds = ds2
 
 !rm tmp/aq_davison_2023.nc
 delayed_obj = ds.to_netcdf('tmp/aq_davison_2023.nc', compute=False)
@@ -326,7 +336,7 @@ with ProgressBar():
 #+end_src
 
 #+RESULTS:
-: [########################################] | 100% Completed | 102.91 ms
+: [########################################] | 100% Completed | 102.57 ms
 
 *** Uncertainty
 
@@ -352,64 +362,6 @@ err_pct.describe()
 : max      37.599188
 : dtype: float64
 
-** NOTDONE Adusumilli 2020
-
-+ citet:adusumilli_2020_data
-
-#+BEGIN_SRC jupyter-python :exports both
-import xarray as xr
-import h5py
-
-root = "/home/kdm/data/Adusumilli_2020"
-fname = root + '/' + 'bb0448974g_3_1.h5'
-hdf5file = root + '/' + fname
-
-# import netCDF4
-# ncf = netCDF4.Dataset(fname, diskless=True, persist=False)
-# nch = ncf.groups.get('hdf5-name')
-# xds = xr.open_dataset(xr.backends.NetCDF4DataStore(nch))
-
-h5 = h5py.File(fname,'r')
-w_b = h5['w_b'][:,:]
-w_b_interp = h5['w_b_interp'][:,:]
-w_b_uncert = h5['w_b_uncert'][:,:]
-x = h5['x'][:,0]
-y = h5['y'][:,0]
-h5.close()
-
-ds = xr.Dataset({
-    'w_b': xr.DataArray(data=w_b, dims=['y','x'], coords={'x':x,'y':y},
-                        attrs = {'_FillValue': -999.9, 'units':'m/yr'}),
-    'w_b_inter': xr.DataArray(data=w_b_interp, dims=['y','x'], coords={'x':x,'y':y},
-                        attrs = {'_FillValue': -999.9, 'units':'m/yr'}),
-    'w_b_uncert': xr.DataArray(data=w_b_uncert, dims=['y','x'], coords={'x':x,'y':y},
-                        attrs = {'_FillValue': -999.9, 'units':'m/yr'})})
-
-ds = ds.where(ds < 3)
-
-delayed_obj = ds.to_netcdf('./tmp/aq_adusumilli_2020.nc', compute=False)
-from dask.diagnostics import ProgressBar
-with ProgressBar():
-    results = delayed_obj.compute()
-
-print(ds)
-#+END_SRC
-
-#+RESULTS:
-#+begin_example
-[########################################] | 100% Completed | 7.44 s
-<xarray.Dataset> Size: 3GB
-Dimensions:     (y: 10229, x: 10941)
-Coordinates:
-  ,* x           (x) float64 88kB -2.736e+06 -2.736e+06 ... 2.734e+06 2.734e+06
-  ,* y           (y) float64 82kB -2.374e+06 -2.374e+06 ... 2.74e+06 2.74e+06
-Data variables:
-    w_b         (y, x) float64 895MB nan nan nan nan nan ... nan nan nan nan nan
-    w_b_inter   (y, x) float64 895MB nan nan nan nan nan ... nan nan nan nan nan
-    w_b_uncert  (y, x) float64 895MB nan nan nan nan nan ... nan nan nan nan nan
-#+end_example
-
-
 ** Merge Paolo & Davison
 
 #+begin_src jupyter-python :exports both
@@ -417,22 +369,47 @@ import xarray as xr
 import datetime
 import numpy as np
 
-p = xr.open_dataset('./tmp/aq_paolo_2024.nc')\
-      .rename({'melt':'melt_paolo',
-               'melt_err':'melt_err_paolo'})
-d = xr.open_dataset('./tmp/aq_davison_2023.nc')\
-      .rename({'date':'time',
-               'melt':'melt_davison',
-               'uncertainty':'melt_err_davison'})
+p = xr.open_dataset('./tmp/aq_paolo_2024.nc')
+p = p.rename({'melt':'melt_paolo', 'melt_err':'melt_err_paolo'})
+d = xr.open_dataset('./tmp/aq_davison_2023.nc')
+d = d.rename({'date':'time', 'melt':'melt_davison', 'uncertainty':'melt_err_davison'})
 
 m = xr.merge([p,d])
+print(m)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+<xarray.Dataset> Size: 14kB
+Dimensions:           (region: 18, time: 31)
+Coordinates:
+  ,* region            (region) <U5 360B 'A-Ap' 'Ap-B' 'B-C' ... 'Jpp-K' 'K-A'
+  ,* time              (time) datetime64[ns] 248B 1991-07-01 ... 2021-07-01
+Data variables:
+    melt_paolo        (time, region) float32 2kB 76.61 37.1 -17.04 ... nan nan
+    melt_err_paolo    (time, region) float32 2kB -2.358 -1.722 ... nan nan
+    melt_davison      (region, time) float64 4kB nan nan nan ... 22.46 23.39
+    baseline          (region) float64 144B ...
+    melt_err_davison  (region, time) float64 4kB nan nan nan ... 22.78 14.94
+Attributes:
+    Conventions:   CF-1.6
+    date_created:  26-Feb-2024 17:27:53
+    author:        Fernando Paolo, Alex S. Gardner, Chad Greene, Nicole-Jeann...
+    project:       ITS_LIVE, a NASA MEaSUREs project (its-live.jpl.nasa.gov)
+    institution:   NASA Jet Propulsion Laboratory (JPL), California Institute...
+    version:       1.0
+    references:    Paolo, F. S., Gardner, A. S., Greene, C. A., Nilsson, J., ...
+    summary:       Estimates of ice-shelf basal melt rates inform ice sheet m...
+    title:         MEaSUREs ITS_LIVE Antarctic Quarterly 1920 m Ice Shelf Hei...
+#+end_example
+
+#+begin_src jupyter-python :exports both
 
 m['region_name'] = m['region']
 m['region'] = np.arange(18).astype(np.int32) + 1
 m['melt_mean'] = xr.concat([m['melt_paolo'],
                             m['melt_davison']],
-                           dim='new_dim')\
-                   .mean(dim='new_dim', skipna=True)
+                           dim='new_dim').mean(dim='new_dim', skipna=True)
 
 ds = xr.Dataset()
 ds['time'] = m['time']
@@ -440,6 +417,8 @@ ds['region'] = m['region'].values
 
 ds['melt'] = m['melt_mean'].T
 ds['region_name'] = m['region_name']
+ds['baseline'] = m['baseline'].T
+ds['anomaly'] = ds['melt'] - ds['baseline']
 
 ds.attrs['description'] = 'Antarctic region sub-shelf melt'
 ds['melt'].attrs['units'] = 'Gt yr-1'
@@ -482,10 +461,14 @@ variables:
 		melt:long_name = "Sub shelf melt" ;
 		melt:standard_name = "water_flux_into_sea_water_from_land_ice" ;
 	string region_name(region) ;
+	double baseline(region) ;
+		baseline:_FillValue = NaN ;
+	double anomaly(region, time) ;
+		anomaly:_FillValue = NaN ;
 
 // global attributes:
 		:description = "Antarctic region sub-shelf melt" ;
-		:date_created = "20241101T050531Z" ;
+		:date_created = "20250417T195813Z" ;
 		:title = "Subshelf melt per region" ;
 		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:source = "doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519" ;

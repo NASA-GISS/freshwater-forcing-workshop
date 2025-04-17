@@ -208,7 +208,7 @@ Attributes: (12/13)
 
 **** Graphic
 
-[[./fig/AQ_iceberg_melt.png]]
+[[./fig/AQ_berg_melt.png]]
 
 
 *** NOTDONE Surface runoff

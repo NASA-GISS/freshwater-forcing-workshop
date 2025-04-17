@@ -50,7 +50,9 @@ df = ds.to_dataframe()
 ax = df.plot(legend=False)
 _ = ax.set_ylabel('Freshwater anomaly [Gt yr$^{-1}$]'),
 
-df.sum(axis='columns').plot(ax=ax, color='k', alpha=0.5, linewidth=3, label='Total')
+df.sum(axis='columns').plot(ax=ax, color='k', alpha=0.5, linewidth=1, label='Total')
+df.sum(axis='columns').rolling(5, center=True).mean().plot(ax=ax, color='k', alpha=0.5,
+                                                           linewidth=3, label='Total (5 yr smooth)')
 _ = plt.legend(ncols=1, fontsize='small', frameon=False)
 #+END_SRC
 
@@ -74,11 +76,12 @@ for i in range(18):
     dd = df.loc[:, df.columns.get_level_values(1) == i]
     if i == 0: dd.columns=['Calv','Melt','Grounded']
     dd.plot(legend=False, ax=axes.flat[i], title='ROI: '+str(i+1))
-    dd.sum(axis='columns').plot(ax=axes.flat[i], color='k', alpha=0.5, linewidth=3, label='Total')
+    dd.sum(axis='columns').plot(ax=axes.flat[i], color='k', alpha=0.5, linewidth=1, label='Total')
+    dd.sum(axis='columns').rolling(5, center=True).mean().plot(ax=axes.flat[i], color='k', alpha=0.5,
+                                                               linewidth=3, label='Total (5 yr smooth)')
 
 _ = axes.flat[0].legend(ncols=1, fontsize='small', frameon=False)
 _ = axes.flat[0].set_ylabel('Freshwater anomaly\n[Gt yr$^{-1}$]')
-
 #+END_SRC
 
 #+RESULTS:
@@ -97,59 +100,61 @@ df.round().astype(int)
 #+RESULTS:
 |   time |   calve |   subshelf_melt |   grounded_loss |
 |--------+---------+-----------------+-----------------|
-|   1990 |       0 |             -52 |               0 |
-|   1991 |       0 |             148 |               0 |
-|   1992 |       0 |             554 |               0 |
-|   1993 |       0 |            -215 |               0 |
-|   1994 |       0 |               1 |               0 |
-|   1995 |       0 |            -437 |               0 |
-|   1996 |       0 |            -318 |               0 |
-|   1997 |    -291 |            -177 |               0 |
-|   1998 |    1565 |              38 |               0 |
-|   1999 |    -291 |              69 |               0 |
-|   2000 |    4471 |            -363 |               0 |
-|   2001 |    1122 |             -71 |               0 |
-|   2002 |    -621 |             147 |               0 |
-|   2003 |      96 |             411 |             154 |
-|   2004 |     -18 |            -184 |              71 |
-|   2005 |    -804 |             199 |             -70 |
-|   2006 |    -744 |            -120 |             111 |
-|   2007 |    -915 |             179 |             243 |
-|   2008 |    -910 |              50 |             114 |
-|   2009 |    1320 |            -250 |             111 |
-|   2010 |      68 |            -293 |             260 |
-|   2011 |    -913 |             -74 |              60 |
-|   2012 |    -932 |             -47 |             203 |
-|   2013 |    -524 |             270 |             304 |
-|   2014 |    -280 |            -296 |             194 |
-|   2015 |    -669 |            -345 |             185 |
-|   2016 |    -863 |             -74 |              -5 |
-|   2017 |    -552 |            -190 |             168 |
-|   2018 |     565 |             -85 |             219 |
-|   2019 |    -737 |             -47 |             189 |
-|   2020 |    -385 |              -6 |              69 |
-|   2021 |    1241 |             -76 |              39 |
-|   2022 |       0 |               0 |            -203 |
-|   2023 |       0 |               0 |             156 |
+|   1990 |       0 |               0 |               0 |
+|   1991 |       0 |             297 |               0 |
+|   1992 |       0 |             703 |               0 |
+|   1993 |       0 |             -67 |               0 |
+|   1994 |       0 |             150 |               0 |
+|   1995 |       0 |            -289 |               0 |
+|   1996 |       0 |            -170 |               0 |
+|   1997 |      15 |             -29 |               0 |
+|   1998 |    1871 |             186 |               0 |
+|   1999 |      15 |             217 |               0 |
+|   2000 |    4777 |            -215 |               0 |
+|   2001 |    1428 |              78 |               0 |
+|   2002 |    -315 |             296 |             -52 |
+|   2003 |     402 |             559 |             102 |
+|   2004 |     288 |             -36 |              19 |
+|   2005 |    -498 |             348 |            -122 |
+|   2006 |    -438 |              28 |              59 |
+|   2007 |    -609 |             328 |             190 |
+|   2008 |    -604 |             199 |              62 |
+|   2009 |    1626 |            -102 |              59 |
+|   2010 |     374 |            -145 |             207 |
+|   2011 |    -607 |              74 |               8 |
+|   2012 |    -626 |             101 |             151 |
+|   2013 |    -218 |             418 |             251 |
+|   2014 |      26 |            -148 |             141 |
+|   2015 |    -363 |            -197 |             133 |
+|   2016 |    -557 |              74 |             -57 |
+|   2017 |    -246 |             -42 |             116 |
+|   2018 |     871 |              63 |             167 |
+|   2019 |    -431 |             101 |             136 |
+|   2020 |     -79 |             142 |              17 |
+|   2021 |    1547 |              73 |             -13 |
+|   2022 |       0 |               0 |            -255 |
+|   2023 |       0 |               0 |             104 |
 
 #+begin_src jupyter-python :exports both
-df['All'] = df['grounded'] + df['melt'] + df['calve']
+df['All'] = df['grounded_loss'] + df['subshelf_melt'] + df['calve']
+df[df == 0] = np.nan
 df.describe().round()
 #+end_src
 
 #+RESULTS:
-|       |   grounded |   melt |   calve |   All |
-|-------+------------+--------+---------+-------|
-| count |         19 |     19 |      19 |    19 |
-| mean  |          5 |    111 |     174 |   290 |
-| std   |         27 |    235 |     366 |   609 |
-| min   |        -38 |     -5 |      13 |    15 |
-| 25%   |         -8 |     19 |      37 |    75 |
-| 50%   |          2 |     45 |      76 |   126 |
-| 75%   |         21 |     80 |     138 |   257 |
-| max   |         68 |   1051 |    1654 |  2757 |
+|       |   calve |   subshelf_melt |   grounded_loss |   All |
+|-------+---------+-----------------+-----------------+-------|
+| count |      25 |              31 |              22 |    33 |
+| mean  |     306 |              97 |              65 |   366 |
+| std   |    1207 |             228 |             117 |  1015 |
+| min   |    -626 |            -289 |            -255 |  -541 |
+| 25%   |    -438 |             -54 |              10 |  -255 |
+| 50%   |     -79 |              74 |              82 |    19 |
+| 75%   |     402 |             208 |             140 |   452 |
+| max   |    4777 |             703 |             251 |  4562 |
 
 *** Baseline
+
 
 #+BEGIN_SRC jupyter-python :exports both
 import pandas as pd
@@ -171,27 +176,27 @@ df
 #+END_SRC
 
 #+RESULTS:
-| region   |    grounded |       melt |     calve |       All |
-|----------+-------------+------------+-----------+-----------|
-| 1        |   1.6026    |   32.3638  |   46.6806 |   80.647  |
-| 2        |   1.3388    |   21.5569  |   41.6384 |   64.5341 |
-| 3        |  -6.47323   |   -5.06764 |   26.1282 |   14.5873 |
-| 4        |  -9.12286   |   12.9187  |   76.2248 |   80.0207 |
-| 5        |  27.633     |   85.5927  |  148.666  |  261.892  |
-| 6        | -17.8951    |   20.3605  |  123.697  |  126.163  |
-| 7        |   6.63013   |   15.6484  |   30.9391 |   53.2175 |
-| 8        |  25.3139    |   46.6715  |   58.0464 |  130.032  |
-| 9        |  67.819     |   75.2757  |  152.63   |  295.725  |
-| 10       |  16.5439    |  157.379   |   92.9395 |  266.862  |
-| 11       | -37.5959    |  235.64    |  299.082  |  497.127  |
-| 12       |  -3.01686   |   65.8642  |   44.7212 |  107.569  |
-| 13       |  -0.0152765 |  102.896   |   83.8413 |  186.722  |
-| 14       | -36.496     |   66.9801  |  126.92   |  157.404  |
-| 15       |   2.82642   |   16.9448  |   12.9096 |   32.6808 |
-| 16       | -21.5974    |   45.3117  |  228.922  |  252.636  |
-| 17       |  30.5238    |   12.2813  |   26.6986 |   69.5037 |
-| 18       |   4.21547   |   42.5389  |   33.3444 |   80.0988 |
-| Total    |  52.2346    | 1051.16    | 1654.03   | 2757.42   |
+| region   |   grounded |      melt |      calve |       All |
+|----------+------------+-----------+------------+-----------|
+| 1        |          0 |  74.3873  |   55.9693  |  130.357  |
+| 2        |          0 |  28.0607  |   37.678   |   65.7386 |
+| 3        |         -0 |  44.3328  |   41.7563  |   86.0891 |
+| 4        |         -0 |  36.1365  |   91.027   |  127.163  |
+| 5        |          0 |  96.0739  |  134.671   |  230.745  |
+| 6        |         -0 |  -1.23953 |  113.014   |  111.774  |
+| 7        |          0 |   5.32141 |   25.8842  |   31.2056 |
+| 8        |          0 |  41.3723  |   42.633   |   84.0053 |
+| 9        |          0 |  68.9716  |  107.997   |  176.968  |
+| 10       |          0 |  69.03    |   83.5726  |  152.603  |
+| 11       |         -0 |  75.0989  |  199.763   |  274.862  |
+| 12       |         -0 |  64.4685  |   32.1058  |   96.5743 |
+| 13       |         -0 |  96.353   |   48.1826  |  144.536  |
+| 14       |         -0 |  -8.83398 |   45.3118  |   36.4778 |
+| 15       |          0 |  14.4753  |    9.94477 |   24.42   |
+| 16       |         -0 | 131.2     |  139.409   |  270.609  |
+| 17       |          0 |  40.5026  |   92.9084  |  133.411  |
+| 18       |          0 |  27.0638  |   46.1929  |   73.2567 |
+| Total    |          0 | 902.775   | 1348.02    | 2250.8    |
 
 * Reprocess
 
@@ -216,24 +221,31 @@ ds_melt = xr.open_dataset('./dat/AQ_subshelf_melt.nc')
 # print(ds_melt)
 
 df_ground = ds_ground.to_dataframe()['grounded_dm'].unstack().T
-df_calv = ds_calv.to_dataframe()['calving'].unstack().T
-df_melt = ds_melt.to_dataframe()['melt'].unstack()
+df_calv = ds_calv.to_dataframe()['anomaly'].unstack().T
+df_melt = ds_melt.to_dataframe()['anomaly'].unstack()
 
-df_ground_fill = df_ground.iloc[0]
-df_calv_fill = df_calv.mean(axis='rows')
-df_melt_fill = df_melt.mean(axis='rows')
+df_ground_baseline = df_ground.iloc[0]*0; df_ground_baseline.index.name='region'
+df_calv_baseline = ds_calv['baseline'].to_dataframe()
+df_melt_baseline = ds_melt['baseline'].to_dataframe()
+
+# save anomlies for QC
+df_ground_baseline.to_csv('./tmp/ground_baseline.csv')
+df_calv_baseline.to_csv('./tmp/calv_baseline.csv')
+df_melt_baseline.to_csv('./tmp/melt_baseline.csv')
+
+# df_ground = df_ground - df_ground_baseline
 
 def extend_to_1990(df, fill):
     extended_index = pd.date_range(start=pd.Timestamp('1990-07-01'), end=df.index.min()- pd.DateOffset(years=1), freq='YS-JUL')
     df_new = pd.DataFrame(index=extended_index, columns=df.columns)
-    df_new.loc[:, :] = fill.values
+    df_new.loc[:, :] = fill
     df_1990 = pd.concat([df_new,df])
     df_1990.columns.name = 'region'
     return df_1990
 
-df_ground = extend_to_1990(df_ground, df_ground_fill)
-df_calv = extend_to_1990(df_calv, df_calv_fill)
-df_melt = extend_to_1990(df_melt, df_melt_fill)
+df_ground = extend_to_1990(df_ground, 0.0)
+df_calv = extend_to_1990(df_calv, 0.0)
+df_melt = extend_to_1990(df_melt, 0.0)
 
 # def extend_to_2025(df):
 #     init_val = df.iloc[:-1].mean() # average of first X years
@@ -247,19 +259,6 @@ df_melt = extend_to_1990(df_melt, df_melt_fill)
 # df_ground = extend_to_2025(df_ground)
 # df_calv = extend_to_2025(df_calv)
 # df_melt = extend_to_2025(df_melt)
-
-df_ground_baseline = df_ground.loc['1990':'1995'].mean()
-df_calv_baseline = df_calv.loc['1990':'1995'].mean()
-df_melt_baseline = df_melt.loc['1990':'1995'].mean()
-
-# save anomlies for QC
-df_ground_baseline.to_csv('./tmp/ground_baseline.csv')
-df_calv_baseline.to_csv('./tmp/calv_baseline.csv')
-df_melt_baseline.to_csv('./tmp/melt_baseline.csv')
-
-df_ground = df_ground - df_ground_baseline
-df_calv = df_calv - df_calv_baseline
-df_melt = df_melt - df_melt_baseline
 
 times = pd.date_range(start='2000-01-01',freq='1D',periods=365)
 data = np.random.random(times.size)
@@ -293,9 +292,9 @@ Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
 Dimensions without coordinates: region
 Data variables:
-    calve          (time, region) object 5kB 0.0 0.0 0.0 ... nan nan nan
-    subshelf_melt  (time, region) object 5kB 17.93711685429274 ... nan
-    grounded_loss  (time, region) object 5kB 2.220446049250313e-16 ... -39.06...
+    calve          (time, region) object 5kB 0.0 0.0 0.0 0.0 ... nan nan nan nan
+    subshelf_melt  (time, region) object 5kB 0.0 0.0 0.0 0.0 ... nan nan nan nan
+    grounded_loss  (time, region) object 5kB -0.0 -0.0 ... -43.28157705693986
 Attributes:
     Creator:  Ken Mankoff
 #+end_example
