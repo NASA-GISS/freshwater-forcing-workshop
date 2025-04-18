@@ -42,13 +42,13 @@ xr.open_dataset('./dat/GL_discharge.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 12kB
+<xarray.Dataset> Size: 17kB
 Dimensions:      (region: 7, time: 186)
 Coordinates:
   ,* time         (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2025-01-01
-  ,* region       (region) int32 28B 1 2 3 4 5 6 7
+  ,* region       (region) int64 56B 1 2 3 4 5 6 7
 Data variables:
-    discharge    (region, time) float32 5kB ...
+    discharge    (region, time) float64 10kB ...
     err          (region, time) float32 5kB ...
     region_name  (region) <U2 56B ...
 Attributes: (12/14)
@@ -107,7 +107,7 @@ df = df - df['1850':'1900'].mean()
 
 ax = df.plot(drawstyle='steps-post', legend=False)
 _ = ax.set_ylabel('Discharge anomaly [Gt yr$^{-1}$]')
-ax.set_ylim([-12,32])
+ax.set_ylim([-12,50])
 _ = plt.legend(frameon=False)
 #+END_SRC
 
@@ -279,42 +279,42 @@ df.round()
 | 1984 |       66 |       66 |       22 |       23 |       91 |      129 |       19 |  416 |
 | 1985 |       67 |       67 |       22 |       23 |       92 |      131 |       19 |  421 |
 | 1986 |       64 |       73 |       22 |       23 |       93 |      142 |       21 |  438 |
-| 1987 |       65 |       72 |       23 |       24 |       90 |      143 |       21 |  437 |
-| 1988 |       67 |       70 |       22 |       23 |       93 |      132 |       21 |  427 |
-| 1989 |       68 |       71 |       22 |       23 |       99 |      126 |       21 |  431 |
-| 1990 |       70 |       68 |       22 |       23 |      102 |      127 |       22 |  433 |
-| 1991 |       70 |       67 |       23 |       23 |       97 |      129 |       22 |  432 |
-| 1992 |       73 |       68 |       23 |       23 |       95 |      132 |       21 |  436 |
-| 1993 |       73 |       67 |       24 |       23 |       96 |      132 |       20 |  435 |
-| 1994 |       67 |       67 |       24 |       25 |       94 |      136 |       18 |  432 |
-| 1995 |       62 |       64 |       22 |       26 |       91 |      137 |       18 |  420 |
-| 1996 |       65 |       66 |       21 |       25 |       90 |      136 |       20 |  424 |
-| 1997 |       66 |       68 |       20 |       23 |       90 |      134 |       20 |  421 |
-| 1998 |       67 |       72 |       22 |       22 |       90 |      130 |       18 |  421 |
-| 1999 |       66 |       73 |       22 |       25 |       89 |      132 |       18 |  426 |
-| 2000 |       66 |       78 |       22 |       24 |       90 |      130 |       20 |  430 |
-| 2001 |       66 |       79 |       23 |       23 |       88 |      125 |       19 |  424 |
-| 2002 |       69 |       80 |       25 |       23 |       89 |      132 |       19 |  438 |
-| 2003 |       73 |       83 |       24 |       23 |       92 |      138 |       20 |  452 |
-| 2004 |       77 |       83 |       23 |       24 |       95 |      145 |       20 |  466 |
-| 2005 |       83 |       83 |       24 |       23 |       96 |      146 |       20 |  475 |
-| 2006 |       82 |       85 |       24 |       24 |       94 |      139 |       20 |  469 |
-| 2007 |       78 |       85 |       24 |       25 |       94 |      136 |       19 |  462 |
-| 2008 |       76 |       86 |       25 |       26 |       97 |      140 |       19 |  468 |
-| 2009 |       75 |       88 |       24 |       23 |       99 |      143 |       19 |  472 |
-| 2010 |       74 |       88 |       25 |       27 |      100 |      144 |       18 |  476 |
-| 2011 |       75 |       88 |       25 |       25 |      104 |      144 |       20 |  481 |
-| 2012 |       75 |       93 |       25 |       24 |      103 |      140 |       20 |  480 |
-| 2013 |       75 |       94 |       26 |       24 |      106 |      142 |       20 |  486 |
-| 2014 |       72 |       93 |       27 |       26 |      108 |      140 |       19 |  485 |
-| 2015 |       72 |       92 |       28 |       26 |      108 |      142 |       19 |  487 |
-| 2016 |       71 |       89 |       28 |       26 |      110 |      137 |       19 |  481 |
-| 2017 |       76 |       81 |       29 |       27 |      112 |      147 |       19 |  490 |
-| 2018 |       79 |       78 |       30 |       28 |      113 |      145 |       19 |  491 |
-| 2019 |       80 |       79 |       30 |       28 |      109 |      152 |       19 |  497 |
-| 2020 |       84 |       84 |       30 |       27 |      108 |      153 |       19 |  506 |
-| 2021 |       81 |       89 |       30 |       27 |      110 |      151 |       20 |  507 |
-| 2022 |       83 |       83 |       30 |       26 |      112 |      149 |       19 |  503 |
+| 1987 |       67 |       73 |       19 |       24 |       91 |      147 |       21 |  442 |
+| 1988 |       68 |       65 |       17 |       25 |       97 |      131 |       20 |  423 |
+| 1989 |       67 |       72 |       20 |       22 |      101 |      124 |       21 |  427 |
+| 1990 |       71 |       69 |       30 |       25 |      104 |      124 |       22 |  444 |
+| 1991 |       71 |       65 |       38 |       24 |       97 |      133 |       22 |  450 |
+| 1992 |       74 |       70 |       14 |       29 |       96 |      133 |       22 |  438 |
+| 1993 |       70 |       66 |       26 |       25 |       93 |      131 |       20 |  430 |
+| 1994 |       65 |       64 |       23 |       16 |       93 |      139 |       18 |  418 |
+| 1995 |       64 |       65 |       35 |       24 |       98 |      137 |       18 |  441 |
+| 1996 |       70 |       64 |       34 |       36 |       93 |      137 |       20 |  454 |
+| 1997 |       68 |       67 |       12 |       18 |       81 |      136 |       20 |  403 |
+| 1998 |       64 |       82 |       17 |       17 |       98 |      133 |       19 |  430 |
+| 1999 |       63 |       83 |       26 |       20 |      101 |      133 |       19 |  445 |
+| 2000 |       70 |       79 |       20 |       26 |       99 |      134 |       20 |  449 |
+| 2001 |       68 |       75 |       29 |       41 |      100 |      127 |       19 |  459 |
+| 2002 |       72 |       89 |       38 |       36 |       98 |      140 |       19 |  491 |
+| 2003 |       76 |      108 |       39 |       40 |      107 |      147 |       20 |  537 |
+| 2004 |       80 |       97 |       38 |       26 |      111 |      156 |       20 |  527 |
+| 2005 |       94 |       87 |       26 |       21 |      110 |      162 |       20 |  520 |
+| 2006 |       83 |       91 |       25 |       24 |      104 |      130 |       20 |  478 |
+| 2007 |       78 |       84 |       28 |       27 |      110 |      138 |       19 |  483 |
+| 2008 |       75 |       90 |       32 |       38 |      111 |      143 |       19 |  508 |
+| 2009 |       76 |       97 |       36 |       44 |      110 |      152 |       19 |  533 |
+| 2010 |       77 |       97 |       27 |       47 |      116 |      144 |       18 |  525 |
+| 2011 |       77 |       92 |       34 |       54 |      123 |      147 |       20 |  545 |
+| 2012 |       71 |      103 |       60 |       34 |      114 |      144 |       20 |  545 |
+| 2013 |       74 |       96 |       55 |       33 |      121 |      143 |       20 |  541 |
+| 2014 |       74 |       97 |       37 |       30 |      114 |      139 |       19 |  509 |
+| 2015 |       75 |       94 |       31 |       26 |      122 |      151 |       19 |  519 |
+| 2016 |       71 |       89 |       30 |       29 |      122 |      135 |       19 |  495 |
+| 2017 |       89 |       73 |       38 |       31 |      129 |      163 |       19 |  541 |
+| 2018 |       86 |       73 |       27 |       30 |      120 |      143 |       19 |  498 |
+| 2019 |       83 |       82 |       37 |       28 |      111 |      161 |       19 |  521 |
+| 2020 |       89 |       89 |       45 |       27 |      124 |      160 |       20 |  554 |
+| 2021 |       81 |       96 |       41 |       27 |      122 |      152 |       21 |  539 |
+| 2022 |       89 |       75 |       33 |       32 |      133 |      152 |       19 |  533 |
 | 2023 |       80 |       83 |       30 |       26 |      110 |      142 |       18 |  490 |
 | 2024 |       79 |       84 |       30 |       26 |      113 |      140 |       19 |  491 |
 
@@ -326,13 +326,13 @@ df.describe().round()
 |       |   1 [CE] |   2 [CW] |   3 [NE] |   4 [NO] |   5 [NW] |   6 [SE] |   7 [SW] |   GL |
 |-------+----------+----------+----------+----------+----------+----------+----------+------|
 | count |      185 |      185 |      185 |      185 |      185 |      185 |      185 |  185 |
-| mean  |       67 |       69 |       22 |       23 |       92 |      131 |       19 |  424 |
-| std   |        5 |        8 |        2 |        2 |        7 |        8 |        1 |   30 |
-| min   |       57 |       57 |       19 |       20 |       79 |      112 |       17 |  361 |
-| 25%   |       64 |       64 |       21 |       22 |       88 |      125 |       18 |  402 |
-| 50%   |       66 |       67 |       22 |       23 |       91 |      130 |       19 |  421 |
-| 75%   |       70 |       71 |       23 |       24 |       95 |      136 |       20 |  438 |
-| max   |       84 |       94 |       30 |       28 |      113 |      153 |       22 |  507 |
+| mean  |       68 |       69 |       24 |       24 |       94 |      131 |       19 |  429 |
+| std   |        6 |        9 |        6 |        5 |       10 |        9 |        1 |   41 |
+| min   |       57 |       57 |       12 |       16 |       79 |      112 |       17 |  361 |
+| 25%   |       64 |       64 |       21 |       22 |       88 |      124 |       19 |  402 |
+| 50%   |       67 |       67 |       22 |       23 |       92 |      131 |       19 |  421 |
+| 75%   |       70 |       71 |       23 |       25 |       97 |      137 |       20 |  444 |
+| max   |       94 |      108 |       60 |       54 |      133 |      163 |       22 |  554 |
 
 * Fetch data
 
@@ -365,6 +365,7 @@ popd
 #+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
 import numpy as np
+import pandas as pd
 
 ds = xr.open_dataset('./tmp/greenland_discharge/MB_region.nc')
 
@@ -402,20 +403,43 @@ ds = ds.transpose()
 ds = ds.rename({'D_ROI':'discharge','D_ROI_err':'err'})
 ds = ds.drop_vars('D')
 
+
+
+### Add in Greene (2024) retreat. This code developed in GL_mass_anomaly and should match that.
+
+# load data and set 0 to 1986
+df = pd.read_excel("~/data/Greene_2024/greenland-icemask/data/greenland_calving_Supplementary_Table_1.xlsx", index_col=0, sheet_name='Mass (Gt)')
+df = df.set_index('Catchment').T
+df.index = [pd.to_datetime(_) for _ in df.index]
+df = df.drop(columns=['Total','Other'])
+df = df.loc['1986-01-01':]
+df = df - df.iloc[0]
+
+# convert from glacier names to regions
+import geopandas as gpd
+gdf = gpd.read_file('~/data/Mouginot_2019/Greenland_Basins_PS_v1.4.2.shp')
+gdf[['SUBREGION1','NAME','GL_TYPE']].head()
+df.columns = gdf['SUBREGION1']
+df = df.T.groupby(df.columns).sum().T
+
+df = df.resample('YS').mean() # annual
+# df.columns = np.arange(1,8) # CW:1, CE:2, etc.
+df = df.diff().dropna()
+da = xr.DataArray(df.values,coords = {'time': df.index, 'region': df.columns.values}, dims = ['time','region'])
+ds2 = xr.Dataset({'discharge': da})
+ds2 = ds2.reindex(time=ds.time, fill_value=0)
+ds['discharge'] = ds['discharge'] - ds2['discharge'] # Subtract Greene mass loss to Mankoff discharge. 
+### Done adding in Greene (2024) retreat
+
 ds['discharge'].attrs['units'] = 'Gt yr-1'
 ds['err'].attrs['units'] = 'Gt yr-1'
 
 ds['discharge'].attrs['long_name'] = 'Marine discharge. Includes both calving and submarine melt. Some calving is equivalent to submarine melt if using at fjord mouth'
 
 ds = ds.sortby('region')
-ds = ds.rename_dims({'region': 'region_name'})
-ds = ds.rename({'region': 'region_name'})
-ds = ds.set_index(region_name='region_name')
-
-ds['region'] = (('region_name'),np.arange(7).astype(np.int32) + 1)
-ds = ds.set_coords('region')
-ds = ds.swap_dims({'region_name':'region'})
-ds = ds.reset_coords('region_name')
+ds['region_name'] = ds['region']
+region_mapping = dict(zip(ds['region_name'].values, np.arange(ds['region_name'].size)+1))
+ds = ds.assign_coords(region=[region_mapping[r] for r in ds.region.values])
 
 ds['discharge'].attrs['standard_name'] = 'tendency_of_land_ice_mass_due_to_calving'
 ds['discharge'].attrs['units'] = 'Gt yr-1'
@@ -451,18 +475,16 @@ dimensions:
 	region = 7 ;
 	time = 186 ;
 variables:
-	float discharge(region, time) ;
-		discharge:_FillValue = NaNf ;
+	double discharge(region, time) ;
+		discharge:_FillValue = NaN ;
+		discharge:units = "Gt yr-1" ;
 		discharge:long_name = "Marine discharge. Includes both calving and submarine melt. Some calving is equivalent to submarine melt if using at fjord mouth" ;
 		discharge:standard_name = "tendency_of_land_ice_mass_due_to_calving" ;
-		discharge:units = "Gt yr-1" ;
 	float err(region, time) ;
 		err:_FillValue = NaNf ;
 		err:long_name = "Marine mass balance uncertainty" ;
 		err:standard_name = "tendency_of_land_ice_mass_due_to_calving" ;
 		err:units = "Gt yr-1" ;
-	string region_name(region) ;
-		region_name:long_name = "Mouginot 2019 regions" ;
 	int time(time) ;
 		time:cf_role = "timeseries_id" ;
 		time:standard_name = "time" ;
@@ -470,7 +492,9 @@ variables:
 		time:long_name = "time" ;
 		time:units = "days since 1840-01-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
-	int region(region) ;
+	string region_name(region) ;
+		region_name:long_name = "Mouginot 2019 regions" ;
+	int64 region(region) ;
 		region:long_name = "Mouginot (2019) region" ;
 
 // global attributes:
@@ -489,7 +513,5 @@ variables:
 		:Conventions = "CF-1.8" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
 }
-/tmp/ipykernel_613332/4182150838.py:47: UserWarning: rename 'region' to 'region_name' does not create an index anymore. Try using swap_dims instead or use set_index after rename to create an indexed coordinate.
-  ds = ds.rename({'region': 'region_name'})
 #+end_example
 
