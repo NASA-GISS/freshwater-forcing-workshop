@@ -69,17 +69,18 @@ There are two types of data products provided here:
 
 2. Weighted freshwater distribution maps [units: m^{-2}]. These are maps of where freshwater is distributed within a ROI if not at the coast, for example iceberg melt. These maps are provided in EPSG:4326 (lon,lat) projection.
 
-| Filename            | Dimensions     | Description                                                 |
-|---------------------+----------------+-------------------------------------------------------------|
-| AQ_calving.nc       | region, time   | Antarctic ice shelf calving                                 |
-| AQ_subshelf_melt.nc | region, time   | Antarctic ice shelf basal melting                           |
-| AQ_iceberg_melt.nc  | lon, lat       | Antarctic iceberg melt by location and magnitude            |
-|---------------------+----------------+-------------------------------------------------------------|
-| GL_discharge.nc     | region, time   | Greenland ice sheet  discharge upstream from grounding line |
-| GL_runoff.nc        | region, time   | Greenland ice sheet and non-ice grounded liquid runoff      |
-| GL_mass_anomaly.nc  | region, time   | Greenland mass anomaly by month and location                |
-| GL_basal_melt.nc    | region         | Greenland grounded ice basal melt by region                 |
-| GL_iceberg_melt.nc  | lon, lat, time | Greenland iceberg melt magnitude by month and location      |
+| Filename                   | Dimensions     | Description                                                 |
+|----------------------------+----------------+-------------------------------------------------------------|
+| AQ_anomaly.nc              | region, time   | Antarctic mass anomaly (grounded and shelf)                 |
+| AQ_calving.nc              | region, time   | Antarctic ice shelf calving                                 |
+| AQ_subshelf_melt.nc        | region, time   | Antarctic ice shelf basal melting                           |
+| AQ_grounded_mass_change.nc | region, time   | Antarctic grounded mass anomaly                             |
+| AQ_iceberg_melt.nc         | lon, lat       | Antarctic iceberg melt by location and magnitude            |
+|----------------------------+----------------+-------------------------------------------------------------|
+| GL_discharge.nc            | region, time   | Greenland ice sheet  discharge upstream from grounding line |
+| GL_runoff.nc               | region, time   | Greenland ice sheet and non-ice grounded liquid runoff      |
+| GL_mass_anomaly.nc         | region, time   | Greenland mass anomaly by month and location                |
+| GL_iceberg_melt.nc         | lon, lat, time | Greenland iceberg melt magnitude by month and location      |
 
 ** Antarctica
 
