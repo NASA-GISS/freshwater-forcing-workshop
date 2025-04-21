@@ -206,9 +206,8 @@ ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime
 ds.attrs['title'] = 'Calving per region'
 ds.attrs['history'] = 'See AQ_calving.org'
 ds.attrs['sourc_code_workbook'] = 'See AQ_calving.org'
-ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
-ds.attrs['original_data_source'] =  'Davison (2023) https://doi.org/10.1126/sciadv.adi0186' 
+ds.attrs['original_data_source'] =  'Davison (2023) https://doi.org/10.1126/sciadv.adi0186; doi:10.5281/ZENODO.8052519' 
 ds.attrs['creator_name'] = 'Ken Mankoff'
 ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
 ds.attrs['institution'] = 'NASA GISS'
@@ -255,13 +254,12 @@ variables:
 // global attributes:
 		:description = "Antarctic region ice shelf calving rate" ;
 		:Conventions = "CF-1.8" ;
-		:date_created = "20250421T155400Z" ;
+		:date_created = "20250421T184648Z" ;
 		:title = "Calving per region" ;
 		:history = "See AQ_calving.org" ;
 		:sourc_code_workbook = "See AQ_calving.org" ;
-		:source = "doi:10.5281/ZENODO.8052519" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
-		:original_data_source = "Davison (2023) https://doi.org/10.1126/sciadv.adi0186" ;
+		:original_data_source = "Davison (2023) https://doi.org/10.1126/sciadv.adi0186; doi:10.5281/ZENODO.8052519" ;
 		:creator_name = "Ken Mankoff" ;
 		:creator_email = "ken.mankoff@nasa.gov" ;
 		:institution = "NASA GISS" ;

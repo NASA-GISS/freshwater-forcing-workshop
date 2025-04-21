@@ -160,13 +160,12 @@ Data variables:
 Attributes:
     description:           Antarctic region ice shelf calving rate
     Conventions:           CF-1.8
-    date_created:          20250421T155400Z
+    date_created:          20250421T184648Z
     title:                 Calving per region
     history:               See AQ_calving.org
     sourc_code_workbook:   See AQ_calving.org
-    source:                doi:10.5281/ZENODO.8052519
     DOI:                   https://doi.org/10.5281/zenodo.14020895
-    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0186
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0...
     creator_name:          Ken Mankoff
     creator_email:         ken.mankoff@nasa.gov
     institution:           NASA GISS
