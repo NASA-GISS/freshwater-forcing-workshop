@@ -25,24 +25,29 @@ xr.open_dataset('./dat/AQ_subshelf_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 10kB
+<xarray.Dataset> Size: 9kB
 Dimensions:      (time: 31, region: 18)
 Coordinates:
   ,* time         (time) datetime64[ns] 248B 1991-07-01 1992-07-01 ... 2021-07-01
   ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
     melt         (region, time) float64 4kB ...
-    region_name  (region) <U5 360B ...
+    region_name  (region) int32 72B ...
     baseline     (region) float64 144B ...
     anomaly      (region, time) float64 4kB ...
 Attributes:
-    description:   Antarctic region sub-shelf melt
-    date_created:  20250417T195813Z
-    title:         Subshelf melt per region
-    history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
-    Conventions:   CF-1.8
-    DOI:           https://doi.org/10.5281/zenodo.14020895
+    description:           Antarctic region sub-shelf melt
+    Conventions:           CF-1.8
+    date_created:          20250421T155409Z
+    title:                 Subshelf melt per region
+    history:               See AQ_subshelf_melt.org
+    sourc_code_workbook:   See AQ_subshelf_melt.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 *** Graphic
@@ -423,15 +428,26 @@ ds['anomaly'] = ds['melt'] - ds['baseline']
 ds.attrs['description'] = 'Antarctic region sub-shelf melt'
 ds['melt'].attrs['units'] = 'Gt yr-1'
 ds['melt'].attrs['long_name'] = 'Sub shelf melt'
-ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_land_ice'
 ds['time'].attrs['standard_name'] = 'time'
 ds['region'].attrs['long_name'] = 'IMBIE region'
+ds['region_name'].attrs['long_name'] = 'IMBIE region'
+
+ds['baseline'].attrs['long_name'] = 'Baseline sub-shelf melt rate for steady state ice shelf mass'
+ds['baseline'].attrs['units'] = 'Gt yr-1'
+ds['anomaly'].attrs['long_name'] = 'Anomaly sub-shelrf melt rate causing ice shelf mass change'
+ds['anomaly'].attrs['units'] = 'Gt yr-1'
+
+ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 ds.attrs['title'] = 'Subshelf melt per region'
-ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
-ds.attrs['source'] = 'doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519'
-ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['history'] = 'See AQ_subshelf_melt.org'
+ds.attrs['sourc_code_workbook'] = 'See AQ_subshelf_melt.org'
+ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+ds.attrs['original_data_source'] =  'Davison (2023) https://doi.org/10.1126/sciadv.adi0186; Paolo (2024) https://doi.org/10.5067/SE3XH9RXQWAM'
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {var: comp for var in ['melt']}
@@ -459,21 +475,30 @@ variables:
 		melt:_FillValue = NaN ;
 		melt:units = "Gt yr-1" ;
 		melt:long_name = "Sub shelf melt" ;
-		melt:standard_name = "water_flux_into_sea_water_from_land_ice" ;
-	string region_name(region) ;
+	int region_name(region) ;
+		region_name:long_name = "IMBIE region" ;
 	double baseline(region) ;
 		baseline:_FillValue = NaN ;
+		baseline:long_name = "Baseline sub-shelf melt rate for steady state ice shelf mass" ;
+		baseline:units = "Gt yr-1" ;
 	double anomaly(region, time) ;
 		anomaly:_FillValue = NaN ;
+		anomaly:long_name = "Anomaly sub-shelrf melt rate causing ice shelf mass change" ;
+		anomaly:units = "Gt yr-1" ;
 
 // global attributes:
 		:description = "Antarctic region sub-shelf melt" ;
-		:date_created = "20250417T195813Z" ;
-		:title = "Subshelf melt per region" ;
-		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
-		:source = "doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519" ;
 		:Conventions = "CF-1.8" ;
+		:date_created = "20250421T155409Z" ;
+		:title = "Subshelf melt per region" ;
+		:history = "See AQ_subshelf_melt.org" ;
+		:sourc_code_workbook = "See AQ_subshelf_melt.org" ;
+		:source = "doi:10.5281/ZENODO.8052519" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+		:original_data_source = "Davison (2023) https://doi.org/10.1126/sciadv.adi0186; Paolo (2024) https://doi.org/10.5067/SE3XH9RXQWAM" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
+		:institution = "NASA GISS" ;
 }
 #+end_example
 

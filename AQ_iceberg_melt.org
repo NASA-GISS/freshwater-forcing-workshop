@@ -25,7 +25,7 @@ xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 226MB
-Dimensions:              (time: 12, region: 18, latitude: 360, longitude: 720)
+Dimensions:              (region: 18, time: 12, latitude: 360, longitude: 720)
 Coordinates:
   ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
   ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
@@ -33,25 +33,25 @@ Coordinates:
   ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
     spatial_ref          int8 1B ...
 Data variables:
-    melt                 (time, region, latitude, longitude) float32 224MB ...
+    melt                 (region, time, latitude, longitude) float32 224MB ...
     msk_nemo             (latitude, longitude) float32 1MB ...
     region_name          (region) <U5 360B ...
     region_map           (latitude, longitude) int16 518kB ...
     region_map_expanded  (latitude, longitude) int16 518kB ...
-Attributes: (12/13)
-    description:         Annual JRA55 climatology
-    original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
-    script_used:         remap_per_basin.py
-    processed_by:        Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alp...
-    geospatial_lat_min:  -89.75
-    geospatial_lat_max:  89.75
-    ...                  ...
-    geospatial_lon_max:  179.75
-    date_created:        20250220T153857Z
-    title:               Normalised iceberg melt climatology in the Southern ...
-    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    Conventions:         CF-1.8
-    DOI:                 https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/19)
+    description:           Annual JRA55 climatology
+    original_data:         NEMO 0.25° simulations by Anna Olive-Abello (in pr...
+    script_used:           remap_per_basin.py
+    processed_by:          Nicolas Jourdain <nicolas.jourdain@univ-grenoble-a...
+    geospatial_lat_min:    -89.75
+    geospatial_lat_max:    89.75
+    ...                    ...
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mathiot (2023) https://doi.org/10.5194/os-19-1595-...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 *** Information
@@ -380,8 +380,9 @@ ds = ds.rename_vars({'melt_pattern':'melt'})
 
 ds['melt'].attrs['units'] = 'm-2'
 ds['melt'].attrs['grid_mapping'] = 'spatial_ref'
-ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
+#ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
+ds['melt'] = ds['melt'].transpose('region','time','latitude','longitude')
 
 rt = rio.open('./tmp/regions.tif').read(1)[::-1,:]
 rt[rt < 0] = 0
@@ -392,8 +393,10 @@ rt[rt < 0] = 0
 ds['region_map_expanded'] = (('latitude','longitude'), rt)
 
 ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
+ds['spatial_ref'].attrs['long_name'] = 'EPSG:3031'
 ds['region'].attrs['long_name'] = 'Region IDs'
 ds['time'].attrs['standard_name'] = 'time'
+# ds['time'].attrs['units'] = 'months since 1999-12-01'
 ds['longitude'].attrs['standard_name'] = 'longitude'
 ds['longitude'].attrs['long_name'] = 'longitude'
 ds['longitude'].attrs['axis'] = 'X'
@@ -403,6 +406,7 @@ ds['latitude'].attrs['long_name'] = 'latitude'
 ds['latitude'].attrs['axis'] = 'Y'
 ds['latitude'].attrs['units'] = 'degrees_north'
 ds['region_map'].attrs['long_name'] = 'IMBIE regions'
+ds['region_map_expanded'].attrs['long_name'] = 'IMBIE regions'
 ds['region_name'].attrs['long_name'] = 'IMBIE regions'
 ds['region_name'].attrs['standard_name'] = 'region'
 
@@ -410,11 +414,18 @@ ds.attrs['geospatial_lat_min'] = ds['latitude'].values.min()
 ds.attrs['geospatial_lat_max'] = ds['latitude'].values.max()
 ds.attrs['geospatial_lon_min'] = ds['longitude'].values.min()
 ds.attrs['geospatial_lon_max'] = ds['longitude'].values.max()
+
+ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 ds.attrs['title'] = 'Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving'
-ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
-ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['history'] = 'See AQ_iceberg_melt.org'
+ds.attrs['sourc_code_workbook'] = 'See AQ_iceberg_melt.org'
+ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+ds.attrs['original_data_source'] =  'Mathiot (2023) https://doi.org/10.5194/os-19-1595-2023'
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {var: comp for var in ds.drop_vars(['region_name']).data_vars}
@@ -428,18 +439,17 @@ ds.to_netcdf('./dat/AQ_iceberg_melt.nc', encoding=encoding)
 #+begin_example
 netcdf AQ_iceberg_melt {
 dimensions:
-	time = 12 ;
 	region = 18 ;
+	time = 12 ;
 	latitude = 360 ;
 	longitude = 720 ;
 variables:
-	float melt(time, region, latitude, longitude) ;
+	float melt(region, time, latitude, longitude) ;
 		melt:_FillValue = NaNf ;
 		melt:long_name = "Normalised iceberg melt climatology per region of calving" ;
 		melt:comment = "The spatial integral on the spherical Earth summed over the 12 months and all regions is equal to 1.0" ;
 		melt:units = "m-2" ;
 		melt:grid_mapping = "spatial_ref" ;
-		melt:standard_name = "water_flux_into_sea_water_from_icebergs" ;
 		melt:coordinates = "spatial_ref" ;
 	float msk_nemo(latitude, longitude) ;
 		msk_nemo:_FillValue = NaNf ;
@@ -478,10 +488,12 @@ variables:
 		spatial_ref:horizontal_datum_name = "WGS 84" ;
 		spatial_ref:grid_mapping_name = "latitude_longitude" ;
 		spatial_ref:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
+		spatial_ref:long_name = "EPSG:3031" ;
 	short region_map(latitude, longitude) ;
 		region_map:long_name = "IMBIE regions" ;
 		region_map:coordinates = "spatial_ref" ;
 	short region_map_expanded(latitude, longitude) ;
+		region_map_expanded:long_name = "IMBIE regions" ;
 		region_map_expanded:coordinates = "spatial_ref" ;
 
 // global attributes:
@@ -493,11 +505,17 @@ variables:
 		:geospatial_lat_max = 89.75 ;
 		:geospatial_lon_min = -179.75 ;
 		:geospatial_lon_max = 179.75 ;
-		:date_created = "20250220T153857Z" ;
-		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving" ;
-		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
 		:Conventions = "CF-1.8" ;
+		:date_created = "20250421T160718Z" ;
+		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving" ;
+		:history = "See AQ_iceberg_melt.org" ;
+		:sourc_code_workbook = "See AQ_iceberg_melt.org" ;
+		:source = "doi:10.5281/ZENODO.8052519" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+		:original_data_source = "Mathiot (2023) https://doi.org/10.5194/os-19-1595-2023" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
+		:institution = "NASA GISS" ;
 }
 #+end_example
 

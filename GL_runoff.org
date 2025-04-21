@@ -41,10 +41,17 @@ Data variables:
     min_discharge_depth             (region) float32 28B ...
     region_name                     (region) <U2 56B ...
 Attributes:
-    title:        Ice sheet runoff by Mougniot region
-    history:      TBD
-    Conventions:  CF-1.8
-    DOI:          https://doi.org/10.5281/zenodo.14020895
+    Conventions:           CF-1.8
+    date_created:          20250421T155517Z
+    title:                 Ice sheet runoff by Mougniot region
+    history:               See GL_runoff.org
+    source_code_workbook:  GL_runoff.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2020) https://doi.org/10.5194/essd-12-281...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 *** Minimum runoff depth per ROI
@@ -269,6 +276,10 @@ with ProgressBar():
 Add metadata, extend back to 1840, etc.
 
 #+begin_src jupyter-python :exports both
+import xarray as xr
+import numpy as np
+import datetime
+
 ds = xr.open_dataset('tmp/GL_runoff.nc')
 
 ds = ds.rename({'M2019_region':'region'})
@@ -284,11 +295,18 @@ for i in items:
 ds['time'].attrs['long_name'] = 'time'
 ds['region'].attrs['long_name'] = 'Mougniot (2019) region'
 
-ds.attrs['title'] = 'Ice sheet runoff by Mougniot region'
-ds.attrs['history'] = 'TBD'
 ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+ds.attrs['title'] = 'Ice sheet runoff by Mougniot region'
+ds.attrs['history'] = 'See GL_runoff.org'
+ds.attrs['source_code_workbook'] = 'GL_runoff.org'
+ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
-    
+ds.attrs['original_data_source'] = 'Mankoff (2020) https://doi.org/10.5194/essd-12-2811-2020'
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
+
 comp = dict(zlib=True, complevel=5)
 encoding = {var: comp for var in items}
 encoding['time'] = {'dtype': 'i4'}
@@ -341,10 +359,17 @@ variables:
 	string region_name(region) ;
 
 // global attributes:
-		:title = "Ice sheet runoff by Mougniot region" ;
-		:history = "TBD" ;
 		:Conventions = "CF-1.8" ;
+		:date_created = "20250421T155517Z" ;
+		:title = "Ice sheet runoff by Mougniot region" ;
+		:history = "See GL_runoff.org" ;
+		:source_code_workbook = "GL_runoff.org" ;
+		:source = "doi:10.5281/ZENODO.8052519" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+		:original_data_source = "Mankoff (2020) https://doi.org/10.5194/essd-12-2811-2020" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
+		:institution = "NASA GISS" ;
 }
 #+end_example
 

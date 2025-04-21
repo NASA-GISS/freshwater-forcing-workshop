@@ -28,38 +28,49 @@ ncdump -h ./dat/GL_discharge.nc
 #+begin_example
 netcdf GL_discharge {
 dimensions:
-	time = 185 ;
 	region = 7 ;
+	time = 186 ;
 variables:
-	float discharge(time, region) ;
-		discharge:_FillValue = NaNf ;
-		discharge:long_name = "Marine discharge. Includes both calving and submarine melt. Some calvinvg is equivalent to submarine melt if using at fjord mouth" ;
-		discharge:standard_name = "land_ice_mass_tranport" ;
+	double discharge(region, time) ;
+		discharge:_FillValue = NaN ;
 		discharge:units = "Gt yr-1" ;
-	float err(time, region) ;
+		discharge:long_name = "Marine discharge. Includes both calving and submarine melt. Some calving is equivalent to submarine melt if using at fjord mouth" ;
+		discharge:standard_name = "tendency_of_land_ice_mass_due_to_calving" ;
+	float err(region, time) ;
 		err:_FillValue = NaNf ;
 		err:long_name = "Marine mass balance uncertainty" ;
-		err:standard_name = "land_ice_mass_tranport" ;
+		err:standard_name = "tendency_of_land_ice_mass_due_to_calving" ;
 		err:units = "Gt yr-1" ;
-	string region(region) ;
-		region:long_name = "Mouginot 2019 regions" ;
-	int64 time(time) ;
+	int time(time) ;
+		time:cf_role = "timeseries_id" ;
+		time:standard_name = "time" ;
+		time:axis = "T" ;
+		time:long_name = "time" ;
 		time:units = "days since 1840-01-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
+	string region_name(region) ;
+		region_name:long_name = "Mouginot 2019 regions" ;
+	int64 region(region) ;
+		region:long_name = "Mouginot (2019) region" ;
 
 // global attributes:
 		:featureType = "timeSeries" ;
-		:title = "Greenland ice sheet mass balance from 1840 through next week" ;
+		:title = "Greenland ice sheet discharge by Mouginot region" ;
 		:summary = "Greenland ice sheet mass balance from 1840 through next week" ;
 		:keywords = "Greenland; Mass; Mass balance" ;
-		:source = "git commit: 20af941" ;
+		:source = "doi:10.5281/ZENODO.8052519" ;
 		:creator_name = "Ken Mankoff" ;
-		:creator_email = "kdm@geus.dk" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
 		:creator_url = "http://kenmankoff.com" ;
-		:institution = "GEUS" ;
+		:institution = "NASA GISS" ;
 		:references = "10.22008/promice/mass_balance" ;
 		:product_version = 1. ;
+		:Conventions = "CF-1.8" ;
+		:date_created = "20250421T155603Z" ;
+		:history = "See GL_discharge.org" ;
+		:source_code_workbook = "GL_discharge.org" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+		:original_data_source = "Mankoff (2020) https://doi.org/10.5194/essd-12-1367-2020" ;
 }
 #+end_example
 

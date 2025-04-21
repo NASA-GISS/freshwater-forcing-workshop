@@ -101,22 +101,29 @@ xr.open_dataset('./dat/AQ_subshelf_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 5kB
+<xarray.Dataset> Size: 9kB
 Dimensions:      (time: 31, region: 18)
 Coordinates:
   ,* time         (time) datetime64[ns] 248B 1991-07-01 1992-07-01 ... 2021-07-01
   ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
     melt         (region, time) float64 4kB ...
-    region_name  (region) <U5 360B ...
+    region_name  (region) int32 72B ...
+    baseline     (region) float64 144B ...
+    anomaly      (region, time) float64 4kB ...
 Attributes:
-    description:   Antarctic region sub-shelf melt
-    date_created:  20241101T050531Z
-    title:         Subshelf melt per region
-    history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    source:        doi:10.5067/SE3XH9RXQWAM and doi:10.5281/ZENODO.8052519
-    Conventions:   CF-1.8
-    DOI:           https://doi.org/10.5281/zenodo.14020895
+    description:           Antarctic region sub-shelf melt
+    Conventions:           CF-1.8
+    date_created:          20250421T155409Z
+    title:                 Subshelf melt per region
+    history:               See AQ_subshelf_melt.org
+    sourc_code_workbook:   See AQ_subshelf_melt.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 **** Graphic
@@ -139,23 +146,30 @@ xr.open_dataset('./dat/AQ_calving.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 8kB
+<xarray.Dataset> Size: 12kB
 Dimensions:      (region: 18, time: 25)
 Coordinates:
   ,* time         (time) datetime64[ns] 200B 1997-07-01 1998-07-01 ... 2021-07-01
   ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 Data variables:
     calving      (region, time) float64 4kB ...
+    baseline     (region) float64 144B ...
+    anomaly      (region, time) float64 4kB ...
     uncertainty  (region, time) float64 4kB ...
     region_name  (region) <U5 360B ...
 Attributes:
-    description:   Antarctic region ice shelf calving rate
-    date_created:  20241104T185548Z
-    title:         Calving per region
-    history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    source:        doi:10.5281/ZENODO.8052519
-    Conventions:   CF-1.8
-    DOI:           https://doi.org/10.5281/zenodo.14020895
+    description:           Antarctic region ice shelf calving rate
+    Conventions:           CF-1.8
+    date_created:          20250421T155400Z
+    title:                 Calving per region
+    history:               See AQ_calving.org
+    sourc_code_workbook:   See AQ_calving.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0186
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 **** Graphic
@@ -177,7 +191,7 @@ xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 226MB
-Dimensions:              (time: 12, region: 18, latitude: 360, longitude: 720)
+Dimensions:              (region: 18, time: 12, latitude: 360, longitude: 720)
 Coordinates:
   ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
   ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
@@ -185,25 +199,25 @@ Coordinates:
   ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
     spatial_ref          int8 1B ...
 Data variables:
-    melt                 (time, region, latitude, longitude) float32 224MB ...
+    melt                 (region, time, latitude, longitude) float32 224MB ...
     msk_nemo             (latitude, longitude) float32 1MB ...
     region_name          (region) <U5 360B ...
     region_map           (latitude, longitude) int16 518kB ...
     region_map_expanded  (latitude, longitude) int16 518kB ...
-Attributes: (12/13)
-    description:         Annual JRA55 climatology
-    original_data:       NEMO 0.25° simulations by Anna Olive-Abello (in prep...
-    script_used:         remap_per_basin.py
-    processed_by:        Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alp...
-    geospatial_lat_min:  -89.75
-    geospatial_lat_max:  89.75
-    ...                  ...
-    geospatial_lon_max:  179.75
-    date_created:        20250220T153857Z
-    title:               Normalised iceberg melt climatology in the Southern ...
-    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    Conventions:         CF-1.8
-    DOI:                 https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/19)
+    description:           Annual JRA55 climatology
+    original_data:         NEMO 0.25° simulations by Anna Olive-Abello (in pr...
+    script_used:           remap_per_basin.py
+    processed_by:          Nicolas Jourdain <nicolas.jourdain@univ-grenoble-a...
+    geospatial_lat_min:    -89.75
+    geospatial_lat_max:    89.75
+    ...                    ...
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mathiot (2023) https://doi.org/10.5194/os-19-1595-...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 **** Graphic
@@ -238,21 +252,21 @@ Coordinates:
   ,* basins       (basins) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
   ,* time         (time) datetime64[ns] 176B 2002-07-01 2003-07-01 ... 2023-07-01
 Data variables:
-    grounded_dm  (time, basins) float64 3kB ...
-Attributes: (12/39)
-    title:                     ESA CCI AIS Gravimetric Mass Balance Gridded P...
-    institution:               TU Dresden, Chair of Geodetic Earth System Res...
-    source:                    GRACE/GRACE-FO L2 monthly solutions provided b...
-    history:                   2021-02-26: version 3.0 tracking_id d1fc87d6-6...
+    grounded_dm  (basins, time) float64 3kB ...
+Attributes: (12/42)
+    title:                     Antarctic grounded mass flow rate
+    institution:               NASA GISS
+    source:                    doi:10.5281/ZENODO.8052519
+    history:                   See AQ_grounded.org
     references:                AIS_cci Product User Guide (https://climate.es...
     tracking_id:               e8fca258-8e11-4e80-86a2-fcf9bf5405ff
     ...                        ...
-    standard_name_vocabulary:  CF Standard Name Table v77
-    license:                   ESA CCI Data Policy: free and open access
-    platform:                  GRACE, GRACE-FO
     sensor:                    KBR, ACC, GPS
     spatial_resolution:        data resolution: ~350km, grid resolution: 50x5...
     key_variables:             change_in_land_ice_amount
+    source_code_workbook:      AQ_grounded.org
+    DOI:                       https://doi.org/10.5281/zenodo.14020895
+    original_data_source:      Dohne (2023) https://doi.org/10.1007/s00190-02...
 #+end_example
 
 **** Graphic
@@ -279,11 +293,22 @@ Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
 Dimensions without coordinates: region
 Data variables:
-    calve          (time, region) float64 5kB ...
-    subshelf_melt  (time, region) float64 5kB ...
-    grounded_loss  (time, region) float64 5kB ...
+    calve          (region, time) float64 5kB ...
+    subshelf_melt  (region, time) float64 5kB ...
+    grounded_loss  (region, time) float64 5kB ...
 Attributes:
-    Creator:  Ken Mankoff
+    Creator:               Ken Mankoff
+    Conventions:           CF-1.8
+    date_created:          20250421T155346Z
+    title:                 Antarctic freshwater anomaly
+    history:               See AQ_mass_anomaly.org
+    source_code_workbook:  AQ_mass_anomaly.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 **** Graphic
@@ -335,10 +360,17 @@ Data variables:
     min_discharge_depth             (region) float32 28B ...
     region_name                     (region) <U2 56B ...
 Attributes:
-    title:        Ice sheet runoff by Mougniot region
-    history:      TBD
-    Conventions:  CF-1.8
-    DOI:          https://doi.org/10.5281/zenodo.14020895
+    Conventions:           CF-1.8
+    date_created:          20250421T155517Z
+    title:                 Ice sheet runoff by Mougniot region
+    history:               See GL_runoff.org
+    source_code_workbook:  GL_runoff.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2020) https://doi.org/10.5194/essd-12-281...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 **** Graphic
@@ -366,29 +398,29 @@ xr.open_dataset('./dat/GL_discharge.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 12kB
+<xarray.Dataset> Size: 17kB
 Dimensions:      (region: 7, time: 186)
 Coordinates:
   ,* time         (time) datetime64[ns] 1kB 1840-01-01 1841-01-01 ... 2025-01-01
-  ,* region       (region) int32 28B 1 2 3 4 5 6 7
+  ,* region       (region) int64 56B 1 2 3 4 5 6 7
 Data variables:
-    discharge    (region, time) float32 5kB ...
+    discharge    (region, time) float64 10kB ...
     err          (region, time) float32 5kB ...
     region_name  (region) <U2 56B ...
-Attributes: (12/14)
-    featureType:      timeSeries
-    title:            Greenland ice sheet discharge by Mouginot region
-    summary:          Greenland ice sheet discharge by Mouginot region
-    keywords:         Greenland; Mass; Mass balance
-    source:           git commit: 54a4452
-    creator_name:     Ken Mankoff
-    ...               ...
-    institution:      NASA GISS
-    references:       TBD
-    product_version:  1.0
-    history:          TBD
-    Conventions:      CF-1.8
-    DOI:              https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/17)
+    featureType:           timeSeries
+    title:                 Greenland ice sheet discharge by Mouginot region
+    summary:               Greenland ice sheet mass balance from 1840 through...
+    keywords:              Greenland; Mass; Mass balance
+    source:                doi:10.5281/ZENODO.8052519
+    creator_name:          Ken Mankoff
+    ...                    ...
+    Conventions:           CF-1.8
+    date_created:          20250421T155603Z
+    history:               See GL_discharge.org
+    source_code_workbook:  GL_discharge.org
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2020) https://doi.org/10.5194/essd-12-136...
 #+end_example
 
 **** Graphic
@@ -425,16 +457,20 @@ Data variables:
     region_map_expanded  (latitude, longitude) int8 259kB ...
     region_name          (region) <U2 56B ...
     spatial_ref          int8 1B ...
-Attributes:
-    geospatial_lat_min:  -90
-    geospatial_lat_max:  90
-    geospatial_lon_min:  -180
-    geospatial_lon_max:  180
-    date_created:        20250220T155519Z
-    title:               Normalised iceberg melt climatology per region of ca...
-    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    Conventions:         CF-1.8
-    DOI:                 https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/15)
+    geospatial_lat_min:    -90
+    geospatial_lat_max:    90
+    geospatial_lon_min:    -180
+    geospatial_lon_max:    180
+    Conventions:           CF-1.8
+    date_created:          20250421T160954Z
+    ...                    ...
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Marson (2024) https://doi.org/10.1029/2023jc020697 
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 **** Graphic
@@ -467,7 +503,7 @@ xr.open_dataset('./dat/GL_mass_anomaly.nc')
 Dimensions:      (region: 7, time: 175)
 Coordinates:
   ,* time         (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
-  ,* region       (region) int64 56B 1 2 3 4 5 6 7
+  ,* region       (region) int32 28B 1 2 3 4 5 6 7
 Data variables:
     SMB_ROI      (region, time) float32 5kB ...
     SMB_ROI_err  (region, time) float32 5kB ...
@@ -476,20 +512,20 @@ Data variables:
     region_name  (region) <U2 56B ...
     MB_ROI       (region, time) float64 10kB ...
     MB           (time) float64 1kB ...
-Attributes: (12/14)
-    featureType:      timeSeries
-    title:            Greenland ice sheet mass balance by Mouginot region
-    summary:          Greenland ice sheet mass balance by Mouginot region
-    keywords:         Greenland; Mass; Mass balance
-    source:           git commit: 54a4452
-    creator_name:     Ken Mankoff
-    ...               ...
-    institution:      NASA GISS
-    references:       TBD
-    product_version:  1.0
-    history:          TBD
-    Conventions:      CF-1.8
-    DOI:              https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/17)
+    featureType:           timeSeries
+    title:                 Greenland ice sheet mass balance by Mouginot region
+    summary:               Greenland ice sheet mass balance from 1840 through...
+    keywords:              Greenland; Mass; Mass balance
+    source:                doi:10.5281/ZENODO.8052519
+    creator_name:          Ken Mankoff
+    ...                    ...
+    Conventions:           CF-1.8
+    date_created:          20250421T155532Z
+    history:               See GL_mass_anomaly.org
+    source_code_workbook:  GL_mass_anomaly.org
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2021) https://doi.org/10.5194/essd-13-500...
 #+end_example
 
 **** Graphic

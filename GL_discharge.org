@@ -51,20 +51,20 @@ Data variables:
     discharge    (region, time) float64 10kB ...
     err          (region, time) float32 5kB ...
     region_name  (region) <U2 56B ...
-Attributes: (12/14)
-    featureType:      timeSeries
-    title:            Greenland ice sheet discharge by Mouginot region
-    summary:          Greenland ice sheet discharge by Mouginot region
-    keywords:         Greenland; Mass; Mass balance
-    source:           git commit: 54a4452
-    creator_name:     Ken Mankoff
-    ...               ...
-    institution:      NASA GISS
-    references:       TBD
-    product_version:  1.0
-    history:          TBD
-    Conventions:      CF-1.8
-    DOI:              https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/17)
+    featureType:           timeSeries
+    title:                 Greenland ice sheet discharge by Mouginot region
+    summary:               Greenland ice sheet mass balance from 1840 through...
+    keywords:              Greenland; Mass; Mass balance
+    source:                doi:10.5281/ZENODO.8052519
+    creator_name:          Ken Mankoff
+    ...                    ...
+    Conventions:           CF-1.8
+    date_created:          20250421T155603Z
+    history:               See GL_discharge.org
+    source_code_workbook:  GL_discharge.org
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2020) https://doi.org/10.5194/essd-12-136...
 #+end_example
 
 *** Plot: Annual discharge per region
@@ -366,6 +366,7 @@ popd
 import xarray as xr
 import numpy as np
 import pandas as pd
+import datetime
 
 ds = xr.open_dataset('./tmp/greenland_discharge/MB_region.nc')
 
@@ -448,16 +449,18 @@ ds['err'].attrs['standard_name'] = 'tendency_of_land_ice_mass_due_to_calving'
 ds['time'].attrs['long_name'] = 'time'
 ds['region'].attrs['long_name'] = 'Mouginot (2019) region'
 
-ds.attrs['title'] = 'Greenland ice sheet discharge by Mouginot region'
-ds.attrs['history'] = 'TBD'
-ds.attrs['Conventions'] = 'CF-1.8'
 
-ds.attrs['summary'] = 'Greenland ice sheet discharge by Mouginot region'
+ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+ds.attrs['title'] = 'Greenland ice sheet discharge by Mouginot region'
+ds.attrs['history'] = 'See GL_discharge.org'
+ds.attrs['source_code_workbook'] = 'GL_discharge.org'
+ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+ds.attrs['original_data_source'] = 'Mankoff (2020) https://doi.org/10.5194/essd-12-1367-2020'
 ds.attrs['creator_name'] = 'Ken Mankoff'
 ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
 ds.attrs['institution'] = 'NASA GISS'
-ds.attrs['references'] = 'TBD'
-ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {} # var: comp for var in items}
@@ -500,18 +503,21 @@ variables:
 // global attributes:
 		:featureType = "timeSeries" ;
 		:title = "Greenland ice sheet discharge by Mouginot region" ;
-		:summary = "Greenland ice sheet discharge by Mouginot region" ;
+		:summary = "Greenland ice sheet mass balance from 1840 through next week" ;
 		:keywords = "Greenland; Mass; Mass balance" ;
-		:source = "git commit: 54a4452" ;
+		:source = "doi:10.5281/ZENODO.8052519" ;
 		:creator_name = "Ken Mankoff" ;
 		:creator_email = "ken.mankoff@nasa.gov" ;
 		:creator_url = "http://kenmankoff.com" ;
 		:institution = "NASA GISS" ;
-		:references = "TBD" ;
+		:references = "10.22008/promice/mass_balance" ;
 		:product_version = 1. ;
-		:history = "TBD" ;
 		:Conventions = "CF-1.8" ;
+		:date_created = "20250421T155603Z" ;
+		:history = "See GL_discharge.org" ;
+		:source_code_workbook = "GL_discharge.org" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+		:original_data_source = "Mankoff (2020) https://doi.org/10.5194/essd-12-1367-2020" ;
 }
 #+end_example
 

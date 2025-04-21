@@ -10,6 +10,7 @@
     - [[#table-annual-mass-change-per-region][Table: Annual mass change per region]]
     - [[#baseline][Baseline]]
 - [[#reprocess][Reprocess]]
+- [[#archive][Archive]]
   - [[#algorithm-description][Algorithm description]]
 
 * Introduction
@@ -32,11 +33,22 @@ Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
 Dimensions without coordinates: region
 Data variables:
-    calve          (time, region) float64 5kB ...
-    subshelf_melt  (time, region) float64 5kB ...
-    grounded_loss  (time, region) float64 5kB ...
+    calve          (region, time) float64 5kB ...
+    subshelf_melt  (region, time) float64 5kB ...
+    grounded_loss  (region, time) float64 5kB ...
 Attributes:
-    Creator:  Ken Mankoff
+    Creator:               Ken Mankoff
+    Conventions:           CF-1.8
+    date_created:          20250421T155346Z
+    title:                 Antarctic freshwater anomaly
+    history:               See AQ_mass_anomaly.org
+    source_code_workbook:  AQ_mass_anomaly.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 *** Plot: Annual mass change for all regions
@@ -200,7 +212,15 @@ df
 
 * Reprocess
 
+* Archive
+
 ** Algorithm description
+:PROPERTIES:
+:ARCHIVE_TIME: 2025-04-21 Mon 08:02
+:ARCHIVE_FILE: ~/projects/GISS/freshwater-forcing-workshop/AQ_mass_anomaly.org
+:ARCHIVE_OLPATH: Reprocess
+:ARCHIVE_CATEGORY: AQ_mass_anomaly
+:END:
 
 + For each of [grounded ice, ice shelf calving, and submarine melt]...
   + Extrapolate back to 1990 as t0.
@@ -212,6 +232,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from matplotlib import pyplot as plt
+import datetime
 
 ds_ground = xr.open_dataset('./dat/AQ_grounded_mass_change.nc')
 ds_calv = xr.open_dataset('./dat/AQ_calving.nc')
@@ -263,23 +284,40 @@ df_melt = extend_to_1990(df_melt, 0.0)
 times = pd.date_range(start='2000-01-01',freq='1D',periods=365)
 data = np.random.random(times.size)
 
-ds = xr.Dataset({'calve': xr.DataArray(data=df_calv.values,
-                                       dims=['time','region'],
+ds = xr.Dataset({'calve': xr.DataArray(data=df_calv.T.values,
+                                       dims=['region','time'],
                                        coords={'time':df_calv.index},
                                        attrs = {'units':'Gt yr-1'}),
-                 'subshelf_melt': xr.DataArray(data=df_melt.values,
-                                               dims=['time','region'],
+                 'subshelf_melt': xr.DataArray(data=df_melt.T.values,
+                                               dims=['region','time'],
                                                coords={'time':df_melt.index},
                                                attrs = {'units':'Gt yr-1'}),
-                 'grounded_loss': xr.DataArray(data=(-1 * df_ground).values,
-                                               dims=['time','region'],
+                 'grounded_loss': xr.DataArray(data=(-1 * df_ground.T).values,
+                                               dims=['region','time'],
                                                coords={'time':df_ground.index},
                                                attrs = {'units':'Gt yr-1'})},
                 attrs = {'Creator':'Ken Mankoff'})
 
+ds['region'].attrs['long_name'] = 'Region IDs'
+ds['time'].attrs['standard_name'] = 'time'
+ds['subshelf_melt'].attrs['long_name'] = 'Sub-shelf melt anomaly'
+ds['grounded_loss'].attrs['long_name'] = 'Grounded mass loss anomaly'
+ds['calve'].attrs['long_name'] = 'Calving anomaly'
+
+ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+ds.attrs['title'] = 'Antarctic freshwater anomaly'
+ds.attrs['history'] = 'See AQ_mass_anomaly.org'
+ds.attrs['source_code_workbook'] = 'AQ_mass_anomaly.org'
+ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+ds.attrs['original_data_source'] = 'Davison (2023) https://doi.org/10.1126/sciadv.adi0186; ' 
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
 
 !rm ./dat/AQ_anomaly.nc
-ds.to_netcdf('./dat/AQ_anomaly.nc')
+ds.to_netcdf('./dat/AQ_anomaly.nc', encoding={'time':{'dtype':'int32'}})
 print(ds)
 #!ncdump -h ./dat/AQ_anomaly.nc
 #+end_src
@@ -292,10 +330,21 @@ Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
 Dimensions without coordinates: region
 Data variables:
-    calve          (time, region) object 5kB 0.0 0.0 0.0 0.0 ... nan nan nan nan
-    subshelf_melt  (time, region) object 5kB 0.0 0.0 0.0 0.0 ... nan nan nan nan
-    grounded_loss  (time, region) object 5kB -0.0 -0.0 ... -43.28157705693986
+    calve          (region, time) object 5kB 0.0 0.0 0.0 ... nan nan
+    subshelf_melt  (region, time) object 5kB 0.0 2.220276010175354 ... nan nan
+    grounded_loss  (region, time) object 5kB -0.0 -0.0 ... -43.28157705693986
 Attributes:
-    Creator:  Ken Mankoff
+    Creator:               Ken Mankoff
+    Conventions:           CF-1.8
+    date_created:          20250421T155346Z
+    title:                 Antarctic freshwater anomaly
+    history:               See AQ_mass_anomaly.org
+    source_code_workbook:  AQ_mass_anomaly.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0...
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 

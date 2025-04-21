@@ -52,16 +52,20 @@ Data variables:
     region_map_expanded  (latitude, longitude) int8 259kB ...
     region_name          (region) <U2 56B ...
     spatial_ref          int8 1B ...
-Attributes:
-    geospatial_lat_min:  -90
-    geospatial_lat_max:  90
-    geospatial_lon_min:  -180
-    geospatial_lon_max:  180
-    date_created:        20250220T155519Z
-    title:               Normalised iceberg melt climatology per region of ca...
-    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    Conventions:         CF-1.8
-    DOI:                 https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/15)
+    geospatial_lat_min:    -90
+    geospatial_lat_max:    90
+    geospatial_lon_min:    -180
+    geospatial_lon_max:    180
+    Conventions:           CF-1.8
+    date_created:          20250421T160954Z
+    ...                    ...
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Marson (2024) https://doi.org/10.1029/2023jc020697 
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 *** Information
@@ -1033,20 +1037,22 @@ ds['longitude'].attrs['units'] = 'degrees_east'
 ds['longitude'].attrs['standard_name'] = 'longitude'
 
 ds['time'].attrs['standard_name'] = 'time'
+# ds['time'].attrs['units'] = 'months since 1999-12-01'
 
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
 ds['melt'].attrs['units'] = 'm-2'
-ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
+#ds['melt'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
 ds['melt'].attrs['comment'] = 'This value summed by area and time and multiplied by cell area should sum to 1'
 ds['melt_GL'].attrs['long_name'] = 'Normalised iceberg melt climatology for all Greenland'
 ds['melt_GL'].attrs['units'] = 'm-2'
-ds['melt_GL'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
+#ds['melt_GL'].attrs['standard_name'] = 'water_flux_into_sea_water_from_icebergs'
 ds['melt_GL'].attrs['comment'] = 'This value multiplied by cell area should sum to 1'
 
 ds['region'].attrs['long_name'] = 'Region IDs'
 ds['region_name'].attrs['long_name'] = 'Mouginot (2019) region'
 ds['region_name'].attrs['standard_name'] = 'region'
 ds['region_map'].attrs['long_name'] = 'Region IDs'
+ds['region_map_expanded'].attrs['long_name'] = 'Region IDs'
 
 ds['spatial_ref'].attrs['horizontal_datum_name'] = 'WGS 84'
 
@@ -1054,11 +1060,18 @@ ds.attrs['geospatial_lat_min'] = -90 # ds['latitude'].values.min()
 ds.attrs['geospatial_lat_max'] = 90 # ds['latitude'].values.max()
 ds.attrs['geospatial_lon_min'] = -180 # ds['longitude'].values.min()
 ds.attrs['geospatial_lon_max'] = 180 # ds['longitude'].values.max()
+
+ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 ds.attrs['title'] = 'Normalised iceberg melt climatology per region of calving from Marson (2024)'
-ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
-ds.attrs['Conventions'] = 'CF-1.8'
+ds.attrs['history'] = 'See GL_iceberg_melt.org'
+ds.attrs['source_code_workbook'] = 'GL_iceberg_melt.org'
+ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+ds.attrs['original_data_source'] = 'Marson (2024) https://doi.org/10.1029/2023jc020697 '
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
 
 comp = dict(zlib=True, complevel=2) # Internal NetCDF compression
 encoding = {var: comp for var in ds.drop_vars('region_name').data_vars}
@@ -1084,16 +1097,20 @@ Data variables:
     region_map           (latitude, longitude) int8 259kB 0 0 0 0 0 ... 0 0 0 0
     region_map_expanded  (latitude, longitude) int8 259kB 0 0 0 0 0 ... 0 0 0 0
     region_name          (region) <U2 56B 'CE' 'CW' 'NE' 'NO' 'NW' 'SE' 'SW'
-Attributes:
-    geospatial_lat_min:  -90
-    geospatial_lat_max:  90
-    geospatial_lon_min:  -180
-    geospatial_lon_max:  180
-    date_created:        20250220T155519Z
-    title:               Normalised iceberg melt climatology per region of ca...
-    history:             Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    Conventions:         CF-1.8
-    DOI:                 https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/15)
+    geospatial_lat_min:    -90
+    geospatial_lat_max:    90
+    geospatial_lon_min:    -180
+    geospatial_lon_max:    180
+    Conventions:           CF-1.8
+    date_created:          20250421T160954Z
+    ...                    ...
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Marson (2024) https://doi.org/10.1029/2023jc020697 
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 *** Units check

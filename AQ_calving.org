@@ -37,13 +37,18 @@ Data variables:
     uncertainty  (region, time) float64 4kB ...
     region_name  (region) <U5 360B ...
 Attributes:
-    description:   Antarctic region ice shelf calving rate
-    date_created:  20250417T195003Z
-    title:         Calving per region
-    history:       Processed for Schmidt (YYYY; in prep); by Ken Mankoff
-    source:        doi:10.5281/ZENODO.8052519
-    Conventions:   CF-1.8
-    DOI:           https://doi.org/10.5281/zenodo.14020895
+    description:           Antarctic region ice shelf calving rate
+    Conventions:           CF-1.8
+    date_created:          20250421T155400Z
+    title:                 Calving per region
+    history:               See AQ_calving.org
+    sourc_code_workbook:   See AQ_calving.org
+    source:                doi:10.5281/ZENODO.8052519
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Davison (2023) https://doi.org/10.1126/sciadv.adi0186
+    creator_name:          Ken Mankoff
+    creator_email:         ken.mankoff@nasa.gov
+    institution:           NASA GISS
 #+end_example
 
 *** Graphic
@@ -183,19 +188,30 @@ ds.attrs['description'] = 'Antarctic region ice shelf calving rate'
 ds['calving'].attrs['units'] = 'Gt yr-1'
 ds['calving'].attrs['long_name'] = 'Shelf calving'
 
-# ds['calving'].attrs['standard_name'] = 'water_flux_into_sea_water_from_land_ice'
-# https://github.com/orgs/cf-convention/discussions/388
-ds['calving'].attrs['standard_name'] = 'ice_transport_across_line'
-
 ds['uncertainty'].attrs['long_name'] = 'Uncertainty of shelf calving'
 ds['time'].attrs['standard_name'] = 'time'
 ds['region'].attrs['long_name'] = 'IMBIE region'
+
+ds['baseline'].attrs['long_name'] = 'Baseline calving rate for steady state ice shelf mass'
+ds['baseline'].attrs['units'] = 'Gt yr-1'
+ds['anomaly'].attrs['long_name'] = 'Anomaly calving rate causing ice shelf mass change'
+ds['anomaly'].attrs['units'] = 'Gt yr-1'
+# ds['calving'].attrs['standard_name'] = 'water_flux_into_sea_water_from_land_ice'
+# https://github.com/orgs/cf-convention/discussions/388
+#ds['calving'].attrs['standard_name'] = 'ice_transport_across_line'
+ds['calving'].attrs['long_name'] = 'Total calving rate'
+
+ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 ds.attrs['title'] = 'Calving per region'
-ds.attrs['history'] = 'Processed for Schmidt (YYYY; in prep); by Ken Mankoff'
+ds.attrs['history'] = 'See AQ_calving.org'
+ds.attrs['sourc_code_workbook'] = 'See AQ_calving.org'
 ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
-ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+ds.attrs['original_data_source'] =  'Davison (2023) https://doi.org/10.1126/sciadv.adi0186' 
+ds.attrs['creator_name'] = 'Ken Mankoff'
+ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
+ds.attrs['institution'] = 'NASA GISS'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {}
@@ -216,12 +232,15 @@ variables:
 	double calving(region, time) ;
 		calving:_FillValue = NaN ;
 		calving:units = "Gt yr-1" ;
-		calving:long_name = "Shelf calving" ;
-		calving:standard_name = "ice_transport_across_line" ;
+		calving:long_name = "Total calving rate" ;
 	double baseline(region) ;
 		baseline:_FillValue = NaN ;
+		baseline:long_name = "Baseline calving rate for steady state ice shelf mass" ;
+		baseline:units = "Gt yr-1" ;
 	double anomaly(region, time) ;
 		anomaly:_FillValue = NaN ;
+		anomaly:long_name = "Anomaly calving rate causing ice shelf mass change" ;
+		anomaly:units = "Gt yr-1" ;
 	int time(time) ;
 		time:standard_name = "time" ;
 		time:units = "days since 1997-07-01 00:00:00" ;
@@ -235,12 +254,17 @@ variables:
 
 // global attributes:
 		:description = "Antarctic region ice shelf calving rate" ;
-		:date_created = "20250417T195003Z" ;
-		:title = "Calving per region" ;
-		:history = "Processed for Schmidt (YYYY; in prep); by Ken Mankoff" ;
-		:source = "doi:10.5281/ZENODO.8052519" ;
 		:Conventions = "CF-1.8" ;
+		:date_created = "20250421T155400Z" ;
+		:title = "Calving per region" ;
+		:history = "See AQ_calving.org" ;
+		:sourc_code_workbook = "See AQ_calving.org" ;
+		:source = "doi:10.5281/ZENODO.8052519" ;
 		:DOI = "https://doi.org/10.5281/zenodo.14020895" ;
+		:original_data_source = "Davison (2023) https://doi.org/10.1126/sciadv.adi0186" ;
+		:creator_name = "Ken Mankoff" ;
+		:creator_email = "ken.mankoff@nasa.gov" ;
+		:institution = "NASA GISS" ;
 }
 #+end_example
 

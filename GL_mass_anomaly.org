@@ -36,7 +36,7 @@ xr.open_dataset('./dat/GL_mass_anomaly.nc')
 Dimensions:      (region: 7, time: 175)
 Coordinates:
   ,* time         (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
-  ,* region       (region) int64 56B 1 2 3 4 5 6 7
+  ,* region       (region) int32 28B 1 2 3 4 5 6 7
 Data variables:
     SMB_ROI      (region, time) float32 5kB ...
     SMB_ROI_err  (region, time) float32 5kB ...
@@ -45,20 +45,20 @@ Data variables:
     region_name  (region) <U2 56B ...
     MB_ROI       (region, time) float64 10kB ...
     MB           (time) float64 1kB ...
-Attributes: (12/14)
-    featureType:      timeSeries
-    title:            Greenland ice sheet mass balance by Mouginot region
-    summary:          Greenland ice sheet mass balance by Mouginot region
-    keywords:         Greenland; Mass; Mass balance
-    source:           git commit: 54a4452
-    creator_name:     Ken Mankoff
-    ...               ...
-    institution:      NASA GISS
-    references:       TBD
-    product_version:  1.0
-    history:          TBD
-    Conventions:      CF-1.8
-    DOI:              https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/17)
+    featureType:           timeSeries
+    title:                 Greenland ice sheet mass balance by Mouginot region
+    summary:               Greenland ice sheet mass balance from 1840 through...
+    keywords:              Greenland; Mass; Mass balance
+    source:                doi:10.5281/ZENODO.8052519
+    creator_name:          Ken Mankoff
+    ...                    ...
+    Conventions:           CF-1.8
+    date_created:          20250421T155532Z
+    history:               See GL_mass_anomaly.org
+    source_code_workbook:  GL_mass_anomaly.org
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2021) https://doi.org/10.5194/essd-13-500...
 #+end_example
 
 *** Plot: Annual mass change per region (5 year smooth)
@@ -324,6 +324,7 @@ popd
 #+begin_src jupyter-python :exports both
 import xarray as xr
 import numpy as np
+import datetime
 
 ds = xr.open_dataset('./tmp/greenland_discharge/MB_region.nc')
 
@@ -399,20 +400,22 @@ ds['D_ROI'].attrs['standard_name'] = 'tendency_of_ice_mass'
 ds['time'].attrs['long_name'] = 'time'
 ds['region'].attrs['long_name'] = 'Mouginot (2019) region'
 
-ds.attrs['title'] = 'Greenland ice sheet mass balance by Mouginot region'
-ds.attrs['history'] = 'TBD'
 ds.attrs['Conventions'] = 'CF-1.8'
-
-ds.attrs['summary'] = 'Greenland ice sheet mass balance by Mouginot region'
+ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+ds.attrs['title'] = 'Greenland ice sheet mass balance by Mouginot region'
+ds.attrs['history'] = 'See GL_mass_anomaly.org'
+ds.attrs['source_code_workbook'] = 'GL_mass_anomaly.org'
+ds.attrs['source'] = 'doi:10.5281/ZENODO.8052519'
+ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
+ds.attrs['original_data_source'] = 'Mankoff (2021) https://doi.org/10.5194/essd-13-5001-2021'
 ds.attrs['creator_name'] = 'Ken Mankoff'
 ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
 ds.attrs['institution'] = 'NASA GISS'
-ds.attrs['references'] = 'TBD'
-ds.attrs['DOI'] = 'https://doi.org/10.5281/zenodo.14020895'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {} # var: comp for var in items}
 encoding['time'] = {'dtype': 'i4'}
+encoding['region'] = {'dtype': 'i4'}
 
 !rm ./tmp/GL_mass_anomaly.nc
 ds.to_netcdf('./tmp/GL_mass_anomaly.nc', encoding=encoding)
@@ -435,20 +438,20 @@ Data variables:
     region_name  (region) <U2 56B 'CE' 'CW' 'NE' 'NO' 'NW' 'SE' 'SW'
     MB_ROI       (region, time) float32 5kB -9.589 8.216 -12.97 ... -27.28 18.66
     MB           (time) float32 700B -20.68 66.63 -38.08 ... -193.1 -88.34
-Attributes: (12/14)
-    featureType:      timeSeries
-    title:            Greenland ice sheet mass balance by Mouginot region
-    summary:          Greenland ice sheet mass balance by Mouginot region
-    keywords:         Greenland; Mass; Mass balance
-    source:           git commit: 54a4452
-    creator_name:     Ken Mankoff
-    ...               ...
-    institution:      NASA GISS
-    references:       TBD
-    product_version:  1.0
-    history:          TBD
-    Conventions:      CF-1.8
-    DOI:              https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/17)
+    featureType:           timeSeries
+    title:                 Greenland ice sheet mass balance by Mouginot region
+    summary:               Greenland ice sheet mass balance from 1840 through...
+    keywords:              Greenland; Mass; Mass balance
+    source:                doi:10.5281/ZENODO.8052519
+    creator_name:          Ken Mankoff
+    ...                    ...
+    Conventions:           CF-1.8
+    date_created:          20250421T155532Z
+    history:               See GL_mass_anomaly.org
+    source_code_workbook:  GL_mass_anomaly.org
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2021) https://doi.org/10.5194/essd-13-500...
 #+end_example
 
 ** Add in Greene 2024
@@ -560,6 +563,13 @@ ds = xr.open_dataset('./tmp/GL_mass_anomaly.nc')
 ds['MB_ROI'] = ds['MB_ROI'] + ds2['MB_ROI']
 ds['MB'] = ds['MB'] + ds2['MB_ROI'].sum(dim='region')
 
+ds['MB'].attrs['long_name'] = 'Mass balance'
+ds['MB_ROI'].attrs['long_name'] = 'Mass balance per region'
+for v in ['SMB_ROI', 'SMB_ROI_err','D_ROI','D_ROI_err']:
+    del ds[v].attrs['standard_name']
+
+if 'cf_role' in ds['time'].attrs: del ds['time'].attrs['cf_role']
+
 !rm ./dat/GL_mass_anomaly.nc
 ds.to_netcdf('./dat/GL_mass_anomaly.nc', encoding=encoding)
 print(ds)
@@ -571,7 +581,7 @@ print(ds)
 Dimensions:      (region: 7, time: 175)
 Coordinates:
   ,* time         (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
-  ,* region       (region) int64 56B 1 2 3 4 5 6 7
+  ,* region       (region) int32 28B 1 2 3 4 5 6 7
 Data variables:
     SMB_ROI      (region, time) float32 5kB ...
     SMB_ROI_err  (region, time) float32 5kB ...
@@ -580,18 +590,18 @@ Data variables:
     region_name  (region) <U2 56B ...
     MB_ROI       (region, time) float64 10kB -9.589 8.216 ... -27.28 18.66
     MB           (time) float64 1kB -20.68 66.63 -38.08 ... -70.54 -193.1 -88.34
-Attributes: (12/14)
-    featureType:      timeSeries
-    title:            Greenland ice sheet mass balance by Mouginot region
-    summary:          Greenland ice sheet mass balance by Mouginot region
-    keywords:         Greenland; Mass; Mass balance
-    source:           git commit: 54a4452
-    creator_name:     Ken Mankoff
-    ...               ...
-    institution:      NASA GISS
-    references:       TBD
-    product_version:  1.0
-    history:          TBD
-    Conventions:      CF-1.8
-    DOI:              https://doi.org/10.5281/zenodo.14020895
+Attributes: (12/17)
+    featureType:           timeSeries
+    title:                 Greenland ice sheet mass balance by Mouginot region
+    summary:               Greenland ice sheet mass balance from 1840 through...
+    keywords:              Greenland; Mass; Mass balance
+    source:                doi:10.5281/ZENODO.8052519
+    creator_name:          Ken Mankoff
+    ...                    ...
+    Conventions:           CF-1.8
+    date_created:          20250421T155532Z
+    history:               See GL_mass_anomaly.org
+    source_code_workbook:  GL_mass_anomaly.org
+    DOI:                   https://doi.org/10.5281/zenodo.14020895
+    original_data_source:  Mankoff (2021) https://doi.org/10.5194/essd-13-500...
 #+end_example
