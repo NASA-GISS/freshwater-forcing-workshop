@@ -21,7 +21,7 @@ AQ freshwater anomaly is provided with respect to 1990-1995 conditions. We use g
 *** Printout
 
 #+BEGIN_SRC jupyter-python :exports results :prologue "import xarray as xr" :display text/plain
-xr.open_dataset('./dat/AQ_anomaly.nc')
+xr.open_dataset('./dat/AQ_mass_anomaly.nc')
 #+END_SRC
 
 #+RESULTS:
@@ -38,7 +38,7 @@ Data variables:
 Attributes:
     Creator:               Ken Mankoff
     Conventions:           CF-1.8
-    date_created:          20250421T155346Z
+    date_created:          20250422T230418Z
     title:                 Antarctic freshwater anomaly
     history:               See AQ_mass_anomaly.org
     source_code_workbook:  AQ_mass_anomaly.org
@@ -55,7 +55,7 @@ Attributes:
 #+NAME: aq_mass_anom_plot
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass_anom.png
 import xarray as xr
-ds = xr.open_dataset('dat/AQ_anomaly.nc').sum(dim='region')
+ds = xr.open_dataset('dat/AQ_mass_anomaly.nc').sum(dim='region')
 df = ds.to_dataframe()
 
 ax = df.plot(legend=False)
@@ -77,7 +77,7 @@ import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 
-ds = xr.open_dataset('dat/AQ_anomaly.nc')
+ds = xr.open_dataset('dat/AQ_mass_anomaly.nc')
 df = ds.to_dataframe().unstack()
 
 fig, axes = plt.subplots(6, 3, figsize=(15, 20))
@@ -104,7 +104,7 @@ _ = axes.flat[0].set_ylabel('Freshwater anomaly\n[Gt yr$^{-1}$]')
 import xarray as xr
 import numpy as np
 
-ds = xr.open_dataset('dat/AQ_anomaly.nc').sum(dim='region')
+ds = xr.open_dataset('dat/AQ_mass_anomaly.nc').sum(dim='region')
 df = ds.to_dataframe()
 df['All'] = df['grounded_loss'] + df['subshelf_melt'] + df['calve']
 df.index = df.index.year
@@ -167,7 +167,6 @@ df.describe().round()
 | max   |    4777 |             703 |             251 |  4562 |
 
 *** Baseline
-
 
 #+BEGIN_SRC jupyter-python :exports both
 import pandas as pd
@@ -315,14 +314,15 @@ ds.attrs['creator_name'] = 'Ken Mankoff'
 ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
 ds.attrs['institution'] = 'NASA GISS'
 
-!rm ./dat/AQ_anomaly.nc
-ds.to_netcdf('./dat/AQ_anomaly.nc', encoding={'time':{'dtype':'int32'}})
+!rm ./dat/AQ_mass_anomaly.nc
+ds.to_netcdf('./dat/AQ_mass_anomaly.nc', encoding={'time':{'dtype':'int32'}})
 print(ds)
-#!ncdump -h ./dat/AQ_anomaly.nc
+#!ncdump -h ./dat/AQ_mass_anomaly.nc
 #+end_src
 
 #+RESULTS:
 #+begin_example
+rm: cannot remove './dat/AQ_mass_anomaly.nc': No such file or directory
 <xarray.Dataset> Size: 15kB
 Dimensions:        (time: 34, region: 18)
 Coordinates:
@@ -335,7 +335,7 @@ Data variables:
 Attributes:
     Creator:               Ken Mankoff
     Conventions:           CF-1.8
-    date_created:          20250421T155346Z
+    date_created:          20250422T230418Z
     title:                 Antarctic freshwater anomaly
     history:               See AQ_mass_anomaly.org
     source_code_workbook:  AQ_mass_anomaly.org
