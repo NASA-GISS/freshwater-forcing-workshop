@@ -577,12 +577,12 @@ ds2 = xr.Dataset({'MB_ROI': da})
 ds2 = ds2.reindex(time=ds.time, fill_value=0)
 
 ds = xr.open_dataset('./tmp/GL_mass_anomaly.nc')
-ds['MB_ROI'] = ds['MB_ROI'] - ds2['MB_ROI']
-ds['MB'] = ds['MB'] - ds2['MB_ROI'].sum(dim='region')
+ds['MB_ROI'] = ds['MB_ROI'] + ds2['MB_ROI'] # add Greene frontal retreat mass loss to MB
+ds['MB'] = ds['MB'] + ds2['MB_ROI'].sum(dim='region')
 ds['MB'].attrs['long_name'] = 'Mass balance'
 ds['MB_ROI'].attrs['long_name'] = 'Mass balance per region'
 
-ds['D_ROI_anom'] = ds['D_ROI_anom'] - ds2['MB_ROI']
+ds['D_ROI_anom'] = ds['D_ROI_anom'] - ds2['MB_ROI'] # subtract Greene frontal retreat mass loss from D
 ds['D_ROI_anom'].attrs['long_name'] = 'Discharge anomaly'
 ds['D_ROI_anom'].attrs['standard_name'] = 'tendency_of_ice_mass'
 
@@ -599,7 +599,7 @@ print(ds)
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 47kB
-Dimensions:       (time: 175, region: 7)
+Dimensions:       (region: 7, time: 175)
 Coordinates:
   ,* time          (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
   ,* region        (region) int32 28B 1 2 3 4 5 6 7
@@ -609,9 +609,9 @@ Data variables:
     D_ROI         (region, time) float32 5kB ...
     D_ROI_err     (region, time) float32 5kB ...
     region_name   (region) <U2 56B ...
-    MB_ROI        (region, time) float64 10kB 15.42 33.22 12.03 ... -8.911 nan
-    MB            (time) float64 1kB -20.68 66.63 -38.08 ... -10.62 -193.1 nan
-    D_ROI_anom    (region, time) float64 10kB 0.389 -0.8089 1.15 ... 0.1657 nan
+    MB_ROI        (region, time) float64 10kB 15.42 33.22 12.03 ... -8.911 37.03
+    MB            (time) float64 1kB -20.68 66.63 -38.08 ... -193.1 -88.34
+    D_ROI_anom    (region, time) float64 10kB 0.389 -0.8089 ... 0.1657 0.6735
     SMB_ROI_anom  (region, time) float32 5kB ...
 Attributes: (12/17)
     featureType:           timeSeries
