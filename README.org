@@ -41,7 +41,7 @@
       - [[#data-7][Data]]
       - [[#graphic-7][Graphic]]
     - [[#basal-runoff][Basal runoff]]
-    - [[#mass-change-1][Mass change]]
+    - [[#mass-anomaly-1][Mass anomaly]]
       - [[#data-8][Data]]
       - [[#graphic-8][Graphic]]
   - [[#regions-name--id][Regions (Name & ID)]]
@@ -287,7 +287,7 @@ xr.open_dataset('./dat/AQ_mass_anomaly.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 15kB
+<xarray.Dataset> Size: 20kB
 Dimensions:        (time: 34, region: 18)
 Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
@@ -296,10 +296,11 @@ Data variables:
     calve          (region, time) float64 5kB ...
     subshelf_melt  (region, time) float64 5kB ...
     grounded_loss  (region, time) float64 5kB ...
+    MB_ROI_anom    (region, time) float64 5kB ...
 Attributes:
     Creator:               Ken Mankoff
     Conventions:           CF-1.8
-    date_created:          20250422T230418Z
+    date_created:          20250502T211720Z
     title:                 Antarctic freshwater anomaly
     history:               See AQ_mass_anomaly.org
     source_code_workbook:  AQ_mass_anomaly.org
@@ -484,7 +485,7 @@ This product splits basal melt from Karlsson (2021) http://doi.org/10.1038/s4146
 + Data product: =GL_basal_melt.nc=
 
 
-*** Mass change
+*** Mass anomaly
 
 This product uses the discharge product and has all of those limitations.
 
@@ -499,7 +500,7 @@ xr.open_dataset('./dat/GL_mass_anomaly.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 47kB
+<xarray.Dataset> Size: 57kB
 Dimensions:       (region: 7, time: 175)
 Coordinates:
   ,* time          (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
@@ -514,6 +515,7 @@ Data variables:
     MB            (time) float64 1kB ...
     D_ROI_anom    (region, time) float64 10kB ...
     SMB_ROI_anom  (region, time) float32 5kB ...
+    MB_ROI_anom   (region, time) float64 10kB ...
 Attributes: (12/17)
     featureType:           timeSeries
     title:                 Greenland ice sheet mass balance by Mouginot region
@@ -523,7 +525,7 @@ Attributes: (12/17)
     creator_name:          Ken Mankoff
     ...                    ...
     Conventions:           CF-1.8
-    date_created:          20250421T194733Z
+    date_created:          20250502T203459Z
     history:               See GL_mass_anomaly.org
     source_code_workbook:  GL_mass_anomaly.org
     DOI:                   https://doi.org/10.5281/zenodo.14020895

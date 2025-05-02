@@ -9,12 +9,12 @@
     - [[#table-annual-discharge-anomaly-per-region][Table: Annual discharge anomaly per region]]
 - [[#fetch-data][Fetch data]]
 - [[#reprocess][Reprocess]]
-  - [[#mankoff-2021][Mankoff 2021]]
-  - [[#add-in-greene-2024][Add in Greene 2024]]
+  - [[#mass-balance-excluding-frontal-retreat][Mass balance (excluding frontal retreat)]]
+  - [[#add-frontal-retreat][Add frontal retreat]]
     - [[#load-data][Load data]]
     - [[#load-mouginot-lookup][Load Mouginot lookup]]
     - [[#group-greene-by-roi][Group Greene by ROI]]
-    - [[#patch-to-mankoff][Patch to Mankoff]]
+    - [[#add-or-subtract-frontal-retreat-to-mass-balance][Add (or subtract) frontal retreat to mass balance]]
 
 * Introduction
 
@@ -32,7 +32,7 @@ xr.open_dataset('./dat/GL_mass_anomaly.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 47kB
+<xarray.Dataset> Size: 57kB
 Dimensions:       (region: 7, time: 175)
 Coordinates:
   ,* time          (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
@@ -47,6 +47,7 @@ Data variables:
     MB            (time) float64 1kB ...
     D_ROI_anom    (region, time) float64 10kB ...
     SMB_ROI_anom  (region, time) float32 5kB ...
+    MB_ROI_anom   (region, time) float64 10kB ...
 Attributes: (12/17)
     featureType:           timeSeries
     title:                 Greenland ice sheet mass balance by Mouginot region
@@ -56,7 +57,7 @@ Attributes: (12/17)
     creator_name:          Ken Mankoff
     ...                    ...
     Conventions:           CF-1.8
-    date_created:          20250421T194733Z
+    date_created:          20250502T203459Z
     history:               See GL_mass_anomaly.org
     source_code_workbook:  GL_mass_anomaly.org
     DOI:                   https://doi.org/10.5281/zenodo.14020895
@@ -322,7 +323,9 @@ popd
 
 * Reprocess
 
-** Mankoff 2021
+** Mass balance (excluding frontal retreat)
+
++ From Mankoff (2021) https://doi.org/10.5194/essd-13-5001-2021 
 
 #+begin_src jupyter-python :exports both
 import xarray as xr
@@ -391,7 +394,6 @@ offset = ds['D_ROI'].loc[{'time': slice('1850-01-01','1899-12-31')}].mean(dim='t
 ds['D_ROI_anom'] = ds['D_ROI'] - offset
 offset = ds['SMB_ROI'].loc[{'time': slice('1850-01-01','1899-12-31')}].mean(dim='time')
 ds['SMB_ROI_anom'] = ds['SMB_ROI'] - offset
-
 
 # # normalize so that 1850 to 1900 MB_ROIs all average to 0
 # offset = ds['MB_ROI'].loc[{'time': slice('1850-01-01','1899-12-31')}].mean(dim='time')
@@ -463,14 +465,17 @@ Attributes: (12/17)
     creator_name:          Ken Mankoff
     ...                    ...
     Conventions:           CF-1.8
-    date_created:          20250421T194733Z
+    date_created:          20250502T203459Z
     history:               See GL_mass_anomaly.org
     source_code_workbook:  GL_mass_anomaly.org
     DOI:                   https://doi.org/10.5281/zenodo.14020895
     original_data_source:  Mankoff (2021) https://doi.org/10.5194/essd-13-500...
 #+end_example
 
-** Add in Greene 2024
+** Add frontal retreat
+
++ From Greene (2024) https://doi.org/10.1038/s41586-023-06863-2 
+
 *** Load data
 
 #+BEGIN_SRC jupyter-python :exports both
@@ -562,7 +567,7 @@ dd
 | 2021-01-01 00:00:00 | -62.8459   | -110.175    | -216.412    | -160.927     | -301.71    | -113.971    | -3.58742    | -969.628    |
 | 2022-01-01 00:00:00 | -69.1205   | -102.075    | -218.741    | -166.617     | -322.627   | -116.862    | -3.54719    | -999.59     |
 
-*** Patch to Mankoff
+*** Add (or subtract) frontal retreat to mass balance
 
 #+BEGIN_SRC jupyter-python :exports both
 dd2 = dd.drop(columns='Total')
@@ -586,6 +591,11 @@ ds['D_ROI_anom'] = ds['D_ROI_anom'] - ds2['MB_ROI'] # subtract Greene frontal re
 ds['D_ROI_anom'].attrs['long_name'] = 'Discharge anomaly'
 ds['D_ROI_anom'].attrs['standard_name'] = 'tendency_of_ice_mass'
 
+ds['MB_ROI_anom'] = ds['SMB_ROI_anom'] - ds['D_ROI_anom']
+ds['MB_ROI_anom'].attrs['long_name'] = 'Mass balance anomaly'
+ds['MB_ROI_anom'].attrs['description'] = 'MB_anom = SMB_anom - D_anom'
+ds['MB_ROI_anom'].attrs['standard_name'] = 'tendency_of_ice_mass'
+
 for v in ['SMB_ROI', 'SMB_ROI_err','D_ROI','D_ROI_err']:
     del ds[v].attrs['standard_name']
 
@@ -598,7 +608,7 @@ print(ds)
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 47kB
+<xarray.Dataset> Size: 57kB
 Dimensions:       (region: 7, time: 175)
 Coordinates:
   ,* time          (time) datetime64[ns] 1kB 1850-01-01 1851-01-01 ... 2024-01-01
@@ -613,6 +623,7 @@ Data variables:
     MB            (time) float64 1kB -20.68 66.63 -38.08 ... -193.1 -88.34
     D_ROI_anom    (region, time) float64 10kB 0.389 -0.8089 ... 0.1657 0.6735
     SMB_ROI_anom  (region, time) float32 5kB ...
+    MB_ROI_anom   (region, time) float64 10kB -9.589 8.216 ... -27.28 18.66
 Attributes: (12/17)
     featureType:           timeSeries
     title:                 Greenland ice sheet mass balance by Mouginot region
@@ -622,7 +633,7 @@ Attributes: (12/17)
     creator_name:          Ken Mankoff
     ...                    ...
     Conventions:           CF-1.8
-    date_created:          20250421T194733Z
+    date_created:          20250502T203459Z
     history:               See GL_mass_anomaly.org
     source_code_workbook:  GL_mass_anomaly.org
     DOI:                   https://doi.org/10.5281/zenodo.14020895

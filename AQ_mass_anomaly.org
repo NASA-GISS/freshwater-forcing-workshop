@@ -26,7 +26,7 @@ xr.open_dataset('./dat/AQ_mass_anomaly.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 15kB
+<xarray.Dataset> Size: 20kB
 Dimensions:        (time: 34, region: 18)
 Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
@@ -35,10 +35,11 @@ Data variables:
     calve          (region, time) float64 5kB ...
     subshelf_melt  (region, time) float64 5kB ...
     grounded_loss  (region, time) float64 5kB ...
+    MB_ROI_anom    (region, time) float64 5kB ...
 Attributes:
     Creator:               Ken Mankoff
     Conventions:           CF-1.8
-    date_created:          20250422T230418Z
+    date_created:          20250502T211720Z
     title:                 Antarctic freshwater anomaly
     history:               See AQ_mass_anomaly.org
     source_code_workbook:  AQ_mass_anomaly.org
@@ -78,6 +79,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 ds = xr.open_dataset('dat/AQ_mass_anomaly.nc')
+ds = ds.drop_vars(['MB_ROI_anom'])
 df = ds.to_dataframe().unstack()
 
 fig, axes = plt.subplots(6, 3, figsize=(15, 20))
@@ -296,6 +298,11 @@ ds = xr.Dataset({'calve': xr.DataArray(data=df_calv.T.values,
                                                attrs = {'units':'Gt yr-1'})},
                 attrs = {'Creator':'Ken Mankoff'})
 
+ds['MB_ROI_anom'] = ds['grounded_loss'] + ds['calve'] + ds['subshelf_melt']
+ds['MB_ROI_anom'].attrs['long_name'] = 'Mass balance anomaly'
+ds['MB_ROI_anom'].attrs['description'] = 'MB_anom = grounded_anom + shelf_anom'
+ds['MB_ROI_anom'].attrs['standard_name'] = 'tendency_of_ice_mass'
+
 ds['region'].attrs['long_name'] = 'Region IDs'
 ds['time'].attrs['standard_name'] = 'time'
 ds['subshelf_melt'].attrs['long_name'] = 'Sub-shelf melt anomaly'
@@ -322,8 +329,7 @@ print(ds)
 
 #+RESULTS:
 #+begin_example
-rm: cannot remove './dat/AQ_mass_anomaly.nc': No such file or directory
-<xarray.Dataset> Size: 15kB
+<xarray.Dataset> Size: 20kB
 Dimensions:        (time: 34, region: 18)
 Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
@@ -332,10 +338,11 @@ Data variables:
     calve          (region, time) object 5kB 0.0 0.0 0.0 ... nan nan
     subshelf_melt  (region, time) object 5kB 0.0 2.220276010175354 ... nan nan
     grounded_loss  (region, time) object 5kB -0.0 -0.0 ... -43.28157705693986
+    MB_ROI_anom    (region, time) object 5kB 0.0 2.220276010175354 ... nan nan
 Attributes:
     Creator:               Ken Mankoff
     Conventions:           CF-1.8
-    date_created:          20250422T230418Z
+    date_created:          20250502T211720Z
     title:                 Antarctic freshwater anomaly
     history:               See AQ_mass_anomaly.org
     source_code_workbook:  AQ_mass_anomaly.org
