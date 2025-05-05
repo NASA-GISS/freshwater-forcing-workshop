@@ -72,6 +72,7 @@ Attributes: (12/17)
 #+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge.png
 import xarray as xr
 import matplotlib.pyplot as plt
+plt.style.use('tableau-colorblind10')
 
 ds = xr.open_dataset('dat/GL_discharge.nc')
 df = ds['discharge'].to_dataframe()['discharge']
