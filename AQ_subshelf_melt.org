@@ -12,6 +12,8 @@
   - [[#davison-2023-1997----2021][Davison 2023 (1997 -- 2021)]]
     - [[#uncertainty][Uncertainty]]
   - [[#merge-paolo--davison][Merge Paolo & Davison]]
+  - [[#add-injection-depth-from-clara-burgard][Add injection depth from Clara Burgard]]
+  - [[#write-netcdf][Write NetCDF]]
 
 * Introduction
 
@@ -25,20 +27,22 @@ xr.open_dataset('./dat/AQ_subshelf_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 9kB
-Dimensions:      (time: 31, region: 18)
+<xarray.Dataset> Size: 10kB
+Dimensions:              (time: 31, region: 18)
 Coordinates:
-  ,* time         (time) datetime64[ns] 248B 1991-07-01 1992-07-01 ... 2021-07-01
-  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* time                 (time) datetime64[ns] 248B 1991-07-01 ... 2021-07-01
+  ,* region               (region) int32 72B 1 2 3 4 5 6 7 ... 13 14 15 16 17 18
 Data variables:
-    melt         (region, time) float64 4kB ...
-    region_name  (region) int32 72B ...
-    baseline     (region) float64 144B ...
-    anomaly      (region, time) float64 4kB ...
+    melt                 (region, time) float64 4kB ...
+    region_name          (region) <U5 360B ...
+    baseline             (region) float64 144B ...
+    anomaly              (region, time) float64 4kB ...
+    injection_depth_min  (region) int32 72B ...
+    injection_depth_max  (region) int32 72B ...
 Attributes:
     description:           Antarctic region sub-shelf melt
     Conventions:           CF-1.8
-    date_created:          20250421T155409Z
+    date_created:          20250620T194142Z
     title:                 Subshelf melt per region
     history:               See AQ_subshelf_melt.org
     sourc_code_workbook:   See AQ_subshelf_melt.org
@@ -449,9 +453,36 @@ ds.attrs['creator_name'] = 'Ken Mankoff'
 ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
 ds.attrs['institution'] = 'NASA GISS'
 
+#+end_src
+
+#+RESULTS:
+
+** Add injection depth from Clara Burgard
+
+#+begin_src jupyter-python :exports both
+i_min = [47, 31, 159, 17, 28, 121, 4, 52, 13, 8, 50, 1, 4, 18, 2, 205, 350, 14]
+i_max = [855, 1100, 1853, 1156, 1982, 1297, 1531, 959, 741, 1517, 1444, 434, 501, 545, 932, 1396, 1283, 814]
+
+ds['injection_depth_min'] = (('region'), i_min)
+ds['injection_depth_max'] = (('region'), i_max)
+ds['injection_depth_min'].attrs['long_name'] = 'Minimum depth to inject subshelf melt'
+ds['injection_depth_min'].attrs['units'] = 'm'
+ds['injection_depth_max'].attrs['long_name'] = 'Maximum depth to inject subshelf melt'
+ds['injection_depth_max'].attrs['units'] = 'm'
+
+#+end_src
+
+#+RESULTS:
+
+** Write NetCDF
+
+#+begin_src jupyter-python :exports both
 comp = dict(zlib=True, complevel=5)
+
 encoding = {var: comp for var in ['melt']}
 encoding['time'] = {'dtype': 'i4'}
+encoding['injection_depth_min'] = {'dtype': 'i4'}
+encoding['injection_depth_max'] = {'dtype': 'i4'}
 
 !rm ./dat/AQ_subshelf_melt.nc
 ds.to_netcdf('./dat/AQ_subshelf_melt.nc', encoding=encoding)
@@ -485,11 +516,17 @@ variables:
 		anomaly:_FillValue = NaN ;
 		anomaly:long_name = "Anomaly sub-shelrf melt rate causing ice shelf mass change" ;
 		anomaly:units = "Gt yr-1" ;
+	int injection_depth_min(region) ;
+		injection_depth_min:long_name = "Minimum depth to inject subshelf melt" ;
+		injection_depth_min:units = "m" ;
+	int injection_depth_max(region) ;
+		injection_depth_max:long_name = "Maximum depth to inject subshelf melt" ;
+		injection_depth_max:units = "m" ;
 
 // global attributes:
 		:description = "Antarctic region sub-shelf melt" ;
 		:Conventions = "CF-1.8" ;
-		:date_created = "20250421T155409Z" ;
+		:date_created = "20250620T194142Z" ;
 		:title = "Subshelf melt per region" ;
 		:history = "See AQ_subshelf_melt.org" ;
 		:sourc_code_workbook = "See AQ_subshelf_melt.org" ;
