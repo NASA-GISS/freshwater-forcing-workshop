@@ -131,14 +131,14 @@ Already done by another product processed earlier. See other Org files.
 ** Align AQ basins with GMB product
 
 #+BEGIN_SRC bash :exports both :results verbatim
-grass ../G_3031/PERMANENT
+grass ./G_3031/PERMANENT
 g.mapset -c Groh_2021
 r.in.gdal -o input=NetCDF:${DATADIR}/Groh_2021/AIS_GMB_grid.nc:dm band=1 output=tmp
 g.region raster=tmp -pa
 
 r.mapcalc "basins = regions@PERMANENT"
 r.grow.distance input=basins value=basins_grow
-r.out.gdal input=basins_grow output=tmp/basins.nc format=netCDF
+r.out.gdal -c -m  input=basins_grow output=dat/AQ_regions_3031_flood.nc format=netCDF
 #+END_SRC
 
 ** Sum gridded time series by basins and year
@@ -154,7 +154,7 @@ ds = xr.open_dataset(base + '/AIS_GMB_grid.nc')
 attrs = ds['dm'].attrs
 ds['dm'] = ds['dm'] * ds['area']
 
-b = xr.open_dataset('./tmp/basins.nc')
+b = xr.open_dataset('./dat/AQ_regions_3031_flood.nc')
 ds['basins'] = (('y','x'), b['Band1'].astype(np.int32).values)
 
 ds = ds.drop_vars(['time_dec','lon','lat','area','crs'])

@@ -70,7 +70,7 @@ _ = ax.set_ylabel('Subshelf melt [Gt yr$^{-1}$]')
 
 *** Subshelf melt by region
 
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge_ROI.png
+#+BEGIN_SRC jupyter-python :exports both
 import xarray as xr
 import matplotlib.pyplot as plt
 
@@ -250,7 +250,7 @@ with ProgressBar():
 #+end_src
 
 #+RESULTS:
-: [########################################] | 100% Completed | 141.79 s
+: [########################################] | 100% Completed | 23.17 s
 
 ** Davison 2023 (1997 -- 2021)
 
@@ -345,7 +345,7 @@ with ProgressBar():
 #+end_src
 
 #+RESULTS:
-: [########################################] | 100% Completed | 102.57 ms
+: [########################################] | 100% Completed | 101.62 ms
 
 *** Uncertainty
 
@@ -506,7 +506,7 @@ variables:
 		melt:_FillValue = NaN ;
 		melt:units = "Gt yr-1" ;
 		melt:long_name = "Sub shelf melt" ;
-	int region_name(region) ;
+	string region_name(region) ;
 		region_name:long_name = "IMBIE region" ;
 	double baseline(region) ;
 		baseline:_FillValue = NaN ;

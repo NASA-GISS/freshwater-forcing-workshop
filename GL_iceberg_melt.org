@@ -477,6 +477,7 @@ g.region vector=ROIs res=1000 -pa
 v.to.rast input=ROIs output=ROIs use=attr attribute_column=cat_
 
 r.grow input=ROIs output=ROIs_grow radius=1000
+r.out.gdal -c -m  input=ROIs_grow output=dat/GL_regions_3413_flood.nc format=netCDF
 #+END_SRC
 
 

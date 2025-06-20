@@ -259,7 +259,7 @@ Coordinates:
 Data variables:
     grounded_dm  (basins, time) float64 3kB ...
 Attributes: (12/42)
-    title:                     Antarctic grounded mass flow rate
+    title:                     Antarctic grounded mass balance
     institution:               NASA GISS
     source:                    doi:10.5281/ZENODO.8052519
     history:                   See AQ_grounded.org
