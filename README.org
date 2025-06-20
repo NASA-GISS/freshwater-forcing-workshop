@@ -93,6 +93,9 @@ All products below are split by the Rignot (2017) regions a.k.a. IMBIE 2 regions
 + Workbook: [[./AQ_subshelf_melt.org]]
 
 Average of sub-shelf melt estimates from Davison (2023) and Paolo (2024; dataset)
+Also in this file: Minimum and maximum injection depth of the melt per basin (inferred from BedMachine3 geometry).
+
+The python script [[./guideline_subshelf_melt_distrib.py]] can be used as a guideline to redistribute this sub-shelf melt given per basin to the ice-shelf fronts within the basin on the model grid of your choice. This script results in a 2D map of melt injection locations (on the model grid of interest) in kg s^-1 m^-2. 
 
 **** Data
 
