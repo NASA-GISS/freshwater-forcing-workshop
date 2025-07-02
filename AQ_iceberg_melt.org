@@ -136,7 +136,9 @@ for roi in tqdm(range(19)):
                 transform = ccrs.PlateCarree())
         
   # ax.coastlines()
-  ax.set_extent([-180,180,-90,-50], crs=ccrs.PlateCarree())
+  # ax.set_extent([-180.0,180.0,-90,-50], crs=ccrs.PlateCarree())
+  # https://stackoverflow.com/questions/60908274/plotting-data-from-netcdf-with-cartopy-isnt-plotting-data-at-0-longitude
+  lim=5000000; ax.set_xlim(-lim,lim); ax.set_ylim(-lim, lim)
 
   ax.set_title("")
   ax.text(0.95, 0.025, title,
