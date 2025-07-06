@@ -56,12 +56,14 @@ Attributes:
 
 *** Graphic
 
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_subshelf_melt.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_subshelf_melt.png :epilogue "from adjust_spines import adjust_spines as adj\nadj(ax, ['left','bottom'])"
 import xarray as xr
 ds = xr.open_dataset('./dat/AQ_subshelf_melt.nc')
 df = ds.sum(dim='region').to_dataframe()[['melt','baseline','anomaly']]
 ax = df.plot(drawstyle='steps-post')
-_ = ax.set_ylabel('Subshelf melt [Gt yr$^{-1}$]')
+ax.set_ylabel('Subshelf melt [Gt yr$^{-1}$]')
+ax.set_xlabel('Time [year]')
+plt.legend(frameon=False)
 #+END_SRC
 
 #+RESULTS:

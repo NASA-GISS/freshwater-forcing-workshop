@@ -54,18 +54,29 @@ Attributes:
 *** Plot: Annual mass change for all regions
 
 #+NAME: aq_mass_anom_plot
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass_anom.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass_anom.png :epilogue "from adjust_spines import adjust_spines as adj\nadj(ax, ['left','bottom'])"
 import xarray as xr
 ds = xr.open_dataset('dat/AQ_mass_anomaly.nc').sum(dim='region')
 df = ds.to_dataframe()
 
+df = df.drop(columns=['MB_ROI_anom'])
+
+df['Total'] = df.sum(axis='columns')
+
 ax = df.plot(legend=False)
 _ = ax.set_ylabel('Freshwater anomaly [Gt yr$^{-1}$]'),
 
-df.sum(axis='columns').plot(ax=ax, color='k', alpha=0.5, linewidth=1, label='Total')
-df.sum(axis='columns').rolling(5, center=True).mean().plot(ax=ax, color='k', alpha=0.5,
-                                                           linewidth=3, label='Total (5 yr smooth)')
-_ = plt.legend(ncols=1, fontsize='small', frameon=False)
+# next coloro
+# prop_cycle = plt.rcParams['axes.prop_cycle']
+# colors = prop_cycle.by_key()['color']
+# shifted_colors = colors[1:] + colors[:1]
+# ax.set_prop_cycle(color=shifted_colors)
+
+df.sum(axis='columns').rolling(5, center=True).mean().plot(ax=ax,
+                                                           linewidth=3,
+                                                           label='Total (5 yr smooth)')
+plt.legend(ncols=1, fontsize='small', frameon=False)
+ax.set_xlabel('Time [year]')
 #+END_SRC
 
 #+RESULTS: aq_mass_anom_plot

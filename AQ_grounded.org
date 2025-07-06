@@ -53,16 +53,21 @@ Attributes: (12/42)
 
 *** Plot: Annual mass change per region
 
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_mass.png  :epilogue "from adjust_spines import adjust_spines as adj\nadj(ax, ['left','bottom'])"
 import xarray as xr
 import matplotlib.pyplot as plt
 ds = xr.open_dataset('dat/AQ_grounded_mass_change.nc')
 df = ds.to_dataframe()['grounded_dm'].unstack().T
 
-ax = df.plot(legend=False)
+<<df_rep4stepspost>>
 
-plt.legend(ncols=6, fontsize='small', frameon=False)
-_ = ax.set_ylabel('Grounded mass loss [Gt yr$^{-1}$]')
+ax = df.plot(legend=False, color='k', alpha=0.2, drawstyle='steps-post')
+
+df.sum(axis='columns').plot(color='k', linewidth=3, drawstyle='steps-post')
+
+# plt.legend(ncols=6, fontsize='small', frameon=False)
+ax.set_ylabel('Grounded mass loss [Gt yr$^{-1}$]')
+ax.set_xlabel('Time [year]')
 #+END_SRC
 
 #+RESULTS:

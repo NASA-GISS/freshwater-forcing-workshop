@@ -54,7 +54,7 @@ Attributes:
 *** Graphic
 **** All AQ
 
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_calving.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/AQ_calving.png :epilogue "from adjust_spines import adjust_spines as adj\nadj(ax, ['left','bottom'])"
 import xarray as xr
 ds = xr.open_dataset('./dat/AQ_calving.nc')
 df = ds.sum(dim='region').to_dataframe()[['calving','baseline','anomaly']]
@@ -62,7 +62,9 @@ ax = df.plot()
 
 # unc = (((ds['uncertainty']**2).sum(dim='region'))**0.5).to_dataframe()
 # unc.plot(drawstyle='steps-post', ax=ax)
-_ = ax.set_ylabel('Calving [Gt yr$^{-1}$]')
+ax.set_ylabel('Calving [Gt yr$^{-1}$]')
+ax.set_xlabel('Time [year]')
+plt.legend(frameon=False)
 #+END_SRC
 
 #+RESULTS:

@@ -69,24 +69,21 @@ Attributes: (12/17)
 
 *** Plot: Annual discharge per region
 
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge.png :epilogue "from adjust_spines import adjust_spines as adj\nadj(ax, ['left','bottom'])"
 import xarray as xr
 import matplotlib.pyplot as plt
-plt.style.use('tableau-colorblind10')
 
 ds = xr.open_dataset('dat/GL_discharge.nc')
 df = ds['discharge'].to_dataframe()['discharge']
 
 df = df.unstack().T
+
+<<df_clip4stepspost>>
+
 df.columns = ds['region_name'].values
 ax = df.plot(drawstyle='steps-post', legend=False)
-_ = ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
-
-# plt.legend(ncols=3, fontsize='small', frameon=False)
-# for c in df.columns:
-#     x = df.index[-1]
-#     y = df[c].values[-2]
-#     ax.text(x,y,' '+c, verticalalignment='center', horizontalalignment='left')
+ax.set_xlabel('Time [year]')
+ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
 #+END_SRC
 
 #+RESULTS:
@@ -94,7 +91,7 @@ _ = ax.set_ylabel('Discharge [Gt yr$^{-1}$]')
 
 *** Plot: Annual discharge anomaly per region
 
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge_anomaly.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_discharge_anomaly.png :epilogue "from adjust_spines import adjust_spines as adj\nadj(ax, ['left','bottom'])"
 import xarray as xr
 import matplotlib.pyplot as plt
 
@@ -104,12 +101,16 @@ df = ds['discharge'].to_dataframe()['discharge']
 df = df.unstack().T
 df.columns = ds['region_name'].values
 
+<<df_clip4stepspost>>
+
 df = df - df['1850':'1900'].mean()
+df['Total'] = df.sum(axis='columns')
 
 ax = df.plot(drawstyle='steps-post', legend=False)
-_ = ax.set_ylabel('Discharge anomaly [Gt yr$^{-1}$]')
-ax.set_ylim([-12,50])
-_ = plt.legend(frameon=False)
+ax.set_xlabel('Time [year]')
+ax.set_ylabel('Discharge anomaly [Gt yr$^{-1}$]')
+ax.set_ylim([-50,175])
+plt.legend(frameon=False)
 #+END_SRC
 
 #+RESULTS:

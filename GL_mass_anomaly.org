@@ -66,30 +66,24 @@ Attributes: (12/17)
 
 *** Plot: Annual discharge anomaly per region (5 year smooth)
 
-#+NAME: plotme
-#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_mass_anom.png
+#+BEGIN_SRC jupyter-python :exports both :file ./fig/GL_mass_anom.png  :epilogue "from adjust_spines import adjust_spines as adj\nadj(ax, ['left','bottom'])"
 import xarray as xr
 ds = xr.open_dataset('dat/GL_mass_anomaly.nc')
 
-df = ds['D_ROI_anom'].to_dataframe()['D_ROI_anom']
+df = ds['MB_ROI_anom'].to_dataframe()['MB_ROI_anom']
 
 df = df.unstack().T
 df.columns = ds['region_name'].values
-df['GL'] = df.sum(axis='columns')
+df['Total'] = df.sum(axis='columns')
 
-ax = df.drop(columns='GL').rolling(window=5, center=True).mean().plot(drawstyle='steps-post')
-df['GL'].rolling(window=5, center=True).mean().plot(drawstyle='steps-post', ax=ax, linewidth=2, color='k')
-
-# df_MB = ds['MB_orig'].to_dataframe()['MB_orig']
-# df_MB.rolling(window=5, center=True).mean().plot(drawstyle='steps-post', ax=ax, linewidth=3, alpha=0.5)
-
-_ = ax.set_ylabel('Mass balance [Gt yr$^{-1}$]')
+ax = df.rolling(window=5, center=True).mean().plot(drawstyle='steps-post')
+ax.set_ylabel('Mass change [Gt yr$^{-1}$]')
+ax.set_xlabel('Time [year]')
+ax.legend(frameon=False)
 #+END_SRC
 
-#+RESULTS: plotme
-[[file:./fig/GL_mass_anom.png]]
-
 #+RESULTS:
+[[file:./fig/GL_mass_anom.png]]
 
 *** Table: Annual discharge anomaly per region
 
