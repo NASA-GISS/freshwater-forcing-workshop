@@ -6,7 +6,6 @@
 * Table of contents                               :toc_4:noexport:
 - [[#ice-sheet-freshwater-forcing][Ice Sheet Freshwater Forcing]]
 - [[#introduction][Introduction]]
-- [[#workshop][Workshop]]
 - [[#data-products][Data Products]]
   - [[#antarctica][Antarctica]]
     - [[#sub-shelf-melt][Sub-shelf melt]]
@@ -48,18 +47,16 @@
 
 * Introduction
 
-This repository contains discussions and workbooks (code) from a virtual workshop on Anomalous Freshwater Fluxes.
+This repository contains discussions and workbooks (code) from a virtual workshop on Anomalous Freshwater Fluxes and for the subsequent paper "Datasets and protocols for including anomalous freshwater from melting ice sheets in climate simulations"
 
-Included in this repository are:
-+ GitHub [[https://github.com/NASA-GISS/freshwater-forcing-workshop/discussions][Discussions]] from before, during, and after the workshop.
-+ Workbooks (code) used to build data products (e.g. Greenlandic and Antarctic freshwater from surface melt, ice shelf melt, basal melt, icebergs, etc.).
-+ Examples of data product post-processing to aid modelers who want use the data.
++ GMD paper: https://doi.org/10.5194/egusphere-2025-1940
++ Data presented in the paper: https://doi.org/10.5281/zenodo.14020895
++ Zenodo archive of the workbooks in this repository: https://doi.org/10.5281/zenodo.15707384
++ Zenodo archive of the workshop slides, videos, and discussion notes: https://zenodo.org/doi/10.5281/zenodo.11127902
++ Eos paper about the workshop meet format: https://doi.org/10.1029/2024EO240514
++ GitHub [[https://github.com/NASA-GISS/freshwater-forcing-workshop/discussions][discussions]] from before, during, and after the workshop.
 
-* Workshop
-
-The virtual workshop on Anomalous Freshwater Fluxes aimed to capture freshwater fluxes from ice sheets and ice shelves for use in climate models that don't include interactive ice sheets. The workshop slides, videos, and discussion notes are archived at https://zenodo.org/doi/10.5281/zenodo.11127902.
- 
-To stay up-to-date with existing and new discussions, click on the =watch= button near the top of this page and then select =All Activity= or =Custom > Discussions (and Issues)=. If you're new to GitHub, it can be used as a collaborative project management tool (in addition to a code repository). See Braga (2023) http://doi.org/10.1111/2041-210x.14108.
+The workbooks provide the code used to build data products (e.g. Greenlandic and Antarctic freshwater from surface melt, ice shelf melt, basal melt, icebergs, etc.). There are also examples of data product post-processing to aid modelers who want use the data.
 
 * Data Products
 
