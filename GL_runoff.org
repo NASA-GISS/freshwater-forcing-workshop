@@ -95,7 +95,7 @@ df.columns = [' '.join(_.split('_')) for _ in df.columns]
 
 df = df * 86400 / 1E9 # convert from m^3/s -> ~ Gt/year
 ax = df.plot(drawstyle='steps-post')
-ax.set_ylabel('Runoff [Gt year$^{-1}$]')
+ax.set_ylabel('Runoff [Gt yr$^{-1}$]')
 ax.set_xlabel('Time [year]')
 ax.legend(frameon=False)
 #+END_SRC

@@ -67,7 +67,7 @@ df.sum(axis='columns').plot(color='k', linewidth=3, drawstyle='steps-post')
 df.sum(axis='columns').cumsum().plot(color='k', linewidth=1, linestyle='--', drawstyle='steps-post')
 
 # plt.legend(ncols=6, fontsize='small', frameon=False)
-ax.set_ylabel('Grounded mass change [Gt yr$^{-1}$Gt] or [Gt]')
+ax.set_ylabel('Grounded mass change [Gt yr$^{-1}$] or [Gt]')
 ax.set_xlabel('Time [year]')
 #+END_SRC
 
