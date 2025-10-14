@@ -146,6 +146,7 @@ r.mapcalc "basins = regions@PERMANENT"
 r.grow.distance input=basins value=basins_grow
 r.mapcalc "regions = int(basins_grow)"
 r.out.gdal -c -m  input=regions output=dat/AQ_regions_3031_flood.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
+ncatted -a long_name,ocean_regions,o,c,"Ocean regions" dat/AQ_regions_3031_flood.nc
 #+END_SRC
 
 ** Sum gridded time series by basins and year
