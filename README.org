@@ -249,12 +249,12 @@ xr.open_dataset('./dat/AQ_grounded_mass_change.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 3kB
-Dimensions:      (basins: 18, time: 22)
+Dimensions:      (region: 18, time: 22)
 Coordinates:
-  ,* basins       (basins) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
   ,* time         (time) datetime64[ns] 176B 2002-07-01 2003-07-01 ... 2023-07-01
 Data variables:
-    grounded_dm  (basins, time) float64 3kB ...
+    grounded_dm  (region, time) float64 3kB ...
 Attributes: (12/42)
     title:                     Antarctic grounded mass balance
     institution:               NASA GISS

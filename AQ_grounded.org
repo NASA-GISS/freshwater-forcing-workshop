@@ -8,8 +8,8 @@
     - [[#plot-annual-mass-change-per-region][Plot: Annual mass change per region]]
     - [[#table-annual-mass-change-per-region][Table: Annual mass change per region]]
 - [[#reprocess][Reprocess]]
-  - [[#import-aq-basins][Import AQ basins]]
-  - [[#align-aq-basins-with-gmb-product][Align AQ basins with GMB product]]
+  - [[#import-aq-regions][Import AQ regions]]
+  - [[#align-aq-regions-with-gmb-product][Align AQ regions with GMB product]]
   - [[#sum-gridded-time-series-by-basins-and-year][Sum gridded time series by basins and year]]
 
 * Introduction
@@ -29,12 +29,12 @@ xr.open_dataset('./dat/AQ_grounded_mass_change.nc')
 #+RESULTS:
 #+begin_example
 <xarray.Dataset> Size: 3kB
-Dimensions:      (basins: 18, time: 22)
+Dimensions:      (region: 18, time: 22)
 Coordinates:
-  ,* basins       (basins) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+  ,* region       (region) int32 72B 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
   ,* time         (time) datetime64[ns] 176B 2002-07-01 2003-07-01 ... 2023-07-01
 Data variables:
-    grounded_dm  (basins, time) float64 3kB ...
+    grounded_dm  (region, time) float64 3kB ...
 Attributes: (12/42)
     title:                     Antarctic grounded mass balance
     institution:               NASA GISS
@@ -128,13 +128,13 @@ df.describe().round()
 
 * Reprocess
 
-The ESA CCI AQ GMB product is provided by basin, but uses Zwally (2012) basins, not Rignot (2019) basins. It is also provided as a gridded product. Therefore, we use the gridded product and do the basin separation here.
+The ESA CCI AQ GMB product is provided by region, but uses Zwally (2012) regions, not Rignot (2019) regions. It is also provided as a gridded product. Therefore, we use the gridded product and do the basin separation here.
 
-** Import AQ basins
+** Import AQ regions
 
 Already done by another product processed earlier. See other Org files.
 
-** Align AQ basins with GMB product
+** Align AQ regions with GMB product
 
 #+BEGIN_SRC bash :exports both :results verbatim
 grass ./G_3031/PERMANENT
@@ -144,7 +144,8 @@ g.region raster=tmp -pa
 
 r.mapcalc "basins = regions@PERMANENT"
 r.grow.distance input=basins value=basins_grow
-r.out.gdal -c -m  input=basins_grow output=dat/AQ_regions_3031_flood.nc format=netCDF
+r.mapcalc "regions = int(basins_grow)"
+r.out.gdal -c -m  input=regions output=dat/AQ_regions_3031_flood.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
 #+END_SRC
 
 ** Sum gridded time series by basins and year
@@ -161,11 +162,11 @@ attrs = ds['dm'].attrs
 ds['dm'] = ds['dm'] * ds['area']
 
 b = xr.open_dataset('./dat/AQ_regions_3031_flood.nc')
-ds['basins'] = (('y','x'), b['Band1'].astype(np.int32).values)
+ds['region'] = (('y','x'), b['ocean_regions'].astype(np.int32).values)
 
 ds = ds.drop_vars(['time_dec','lon','lat','area','crs'])
-ds = ds.set_coords('basins')
-ds = ds.groupby(ds['basins']).sum()
+ds = ds.set_coords('region')
+ds = ds.groupby(ds['region']).sum()
 
 ds = ds.resample(time='YS-JUL').mean()
 ds = ds.diff(dim='time')
@@ -173,7 +174,7 @@ ds = ds / 1E12 # kg to Gt
 
 
 ds = ds.rename({'dm':'grounded_dm'})
-ds['grounded_dm'] = ds['grounded_dm'].transpose('basins','time')
+ds['grounded_dm'] = ds['grounded_dm'].transpose('region','time')
 ds['grounded_dm'].attrs = attrs
 ds['grounded_dm'].attrs['units'] = 'Gt yr-1'
 
@@ -181,7 +182,7 @@ del ds['time'].attrs['actual_range']
 del ds['grounded_dm'].attrs['actual_range']
 del ds['grounded_dm'].attrs['standard_name']
 
-ds['basins'].attrs['long_name'] = 'Rignot basins'
+ds['region'].attrs['long_name'] = 'Rignot regions'
 
 ds.attrs['Conventions'] = 'CF-1.8'
 ds.attrs['date_created'] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -205,18 +206,18 @@ ds.to_netcdf('./dat/AQ_grounded_mass_change.nc', encoding={'time':{'dtype':'int3
 #+begin_example
 netcdf AQ_grounded_mass_change {
 dimensions:
-	basins = 18 ;
+	region = 18 ;
 	time = 22 ;
 variables:
-	int basins(basins) ;
-		basins:long_name = "Rignot basins" ;
+	int region(region) ;
+		region:long_name = "Rignot regions" ;
 	int time(time) ;
 		time:long_name = "modified julian date" ;
 		time:standard_name = "time" ;
 		time:axis = "T" ;
 		time:units = "days since 2002-07-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
-	double grounded_dm(basins, time) ;
+	double grounded_dm(region, time) ;
 		grounded_dm:_FillValue = NaN ;
 		grounded_dm:long_name = "change in ice mass" ;
 		grounded_dm:units = "Gt yr-1" ;
@@ -240,7 +241,7 @@ variables:
 		:naming_authority = "tu-dresden.de/bu/umwelt/geo/ipg/gef" ;
 		:keyword_vocabulary = "GCMD" ;
 		:cdm_data_type = "Grid" ;
-		:date_created = "20250421T161218Z" ;
+		:date_created = "20251014T213219Z" ;
 		:creator_name = "Ken Mankoff" ;
 		:creator_url = "https://tu-dresden.de/bu/umwelt/geo/ipg/gef" ;
 		:creator_email = "ken.mankoff@nasa.gov" ;
