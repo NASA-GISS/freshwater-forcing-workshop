@@ -293,7 +293,7 @@ xr.open_dataset('./dat/AQ_mass_anomaly.nc')
 Dimensions:        (time: 34, region: 18)
 Coordinates:
   ,* time           (time) datetime64[ns] 272B 1990-07-01 ... 2023-07-01
-Dimensions without coordinates: region
+  ,* region         (region) int32 72B 1 2 3 4 5 6 7 8 ... 12 13 14 15 16 17 18
 Data variables:
     calve          (region, time) float64 5kB ...
     subshelf_melt  (region, time) float64 5kB ...
@@ -302,7 +302,7 @@ Data variables:
 Attributes:
     Creator:               Ken Mankoff
     Conventions:           CF-1.8
-    date_created:          20250502T211720Z
+    date_created:          20251014T213443Z
     title:                 Antarctic freshwater anomaly
     history:               See AQ_mass_anomaly.org
     source_code_workbook:  AQ_mass_anomaly.org
