@@ -478,10 +478,7 @@ v.to.rast input=ROIs output=ROIs use=attr attribute_column=cat_
 
 r.grow input=ROIs output=ROIs_grow radius=1000
 r.mapcalc "regions = int(ROIs_grow)"
-r.out.gdal -c -m  input=regions output=dat/GL_regions_3413_flood.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
-ncatted -a long_name,ocean_regions,o,c,"Ocean regions" dat/GL_regions_3413_flood.nc
 #+END_SRC
-
 
 ** Load data
 

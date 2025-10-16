@@ -1,0 +1,39 @@
+
+* Table of contents                               :toc_3:noexport:
+  - [[#expand-greenland-regions-into-the-sea][Expand Greenland regions into the sea]]
+  - [[#expand-antarctic-regions-into-the-sea][Expand Antarctic regions into the sea]]
+
+** Expand Greenland regions into the sea
+
+#+BEGIN_SRC bash :exports both :results verbatim
+grass ./G_3413/PERMANENT
+g.mapset -c flood
+v.import input=${DATADIR}/Mouginot_2019/GL_regions.gpkg output=ROIs
+v.db.select map=ROIs
+g.region vector=ROIs res=1000 -pa
+v.to.rast input=ROIs output=ROIs use=attr attribute_column=cat_
+
+r.grow input=ROIs output=ROIs_grow radius=1000
+r.mapcalc "regions = int(ROIs_grow)"
+
+r.out.gdal -c -m  input=regions output=dat/GL_regions_3413_flood.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
+ncatted -a long_name,ocean_regions,o,c,"Ocean regions" dat/GL_regions_3413_flood.nc
+#+END_SRC
+
+** Expand Antarctic regions into the sea
+
+#+BEGIN_SRC bash :exports both :results verbatim
+grass ./G_3031/PERMANENT
+g.mapset -c flood
+
+v.in.ogr input=${DATADIR}/IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp output=rignot
+g.region vector=rignot res=1000 -pa
+v.to.rast input=rignot output=ROI2 use=cat where='cat > 1'
+r.mapcalc "ROIs = ROI2-1"
+r.grow input=ROIs output=ROIs_grow radius=5000
+r.mapcalc "regions = int(ROIs_grow)"
+r.out.gdal -c -m  input=regions output=dat/AQ_regions_3031_flood.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
+ncatted -a long_name,ocean_regions,o,c,"Ocean regions" dat/AQ_regions_3031_flood.nc
+#+END_SRC
+
+

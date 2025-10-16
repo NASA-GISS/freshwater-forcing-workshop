@@ -145,8 +145,8 @@ g.region raster=tmp -pa
 r.mapcalc "basins = regions@PERMANENT"
 r.grow.distance input=basins value=basins_grow
 r.mapcalc "regions = int(basins_grow)"
-r.out.gdal -c -m  input=regions output=dat/AQ_regions_3031_flood.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
-ncatted -a long_name,ocean_regions,o,c,"Ocean regions" dat/AQ_regions_3031_flood.nc
+r.out.gdal -c -m  input=regions output=tmp/groh_regions.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
+ncatted -a long_name,ocean_regions,o,c,"Ocean regions" tmp/groh_regions.nc
 #+END_SRC
 
 ** Sum gridded time series by basins and year
@@ -162,7 +162,7 @@ ds = xr.open_dataset(base + '/AIS_GMB_grid.nc')
 attrs = ds['dm'].attrs
 ds['dm'] = ds['dm'] * ds['area']
 
-b = xr.open_dataset('./dat/AQ_regions_3031_flood.nc')
+b = xr.open_dataset('./tmp/groh_regions.nc')
 ds['region'] = (('y','x'), b['ocean_regions'].astype(np.int32).values)
 
 ds = ds.drop_vars(['time_dec','lon','lat','area','crs'])
@@ -242,7 +242,7 @@ variables:
 		:naming_authority = "tu-dresden.de/bu/umwelt/geo/ipg/gef" ;
 		:keyword_vocabulary = "GCMD" ;
 		:cdm_data_type = "Grid" ;
-		:date_created = "20251014T213219Z" ;
+		:date_created = "20251016T203246Z" ;
 		:creator_name = "Ken Mankoff" ;
 		:creator_url = "https://tu-dresden.de/bu/umwelt/geo/ipg/gef" ;
 		:creator_email = "ken.mankoff@nasa.gov" ;
