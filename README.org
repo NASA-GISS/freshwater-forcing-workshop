@@ -49,7 +49,7 @@
 
 This repository contains discussions and workbooks (code) from a virtual workshop on Anomalous Freshwater Fluxes and for the subsequent paper "Datasets and protocols for including anomalous freshwater from melting ice sheets in climate simulations"
 
-+ GMD paper: https://doi.org/10.5194/egusphere-2025-1940
++ GMD paper: https://doi.org/10.5194/gmd-18-8333-2025
 + Data presented in the paper: https://doi.org/10.5281/zenodo.14020895
 + Zenodo archive of the workbooks in this repository: https://doi.org/10.5281/zenodo.15707384
 + Zenodo archive of the workshop slides, videos, and discussion notes: https://zenodo.org/doi/10.5281/zenodo.11127902
