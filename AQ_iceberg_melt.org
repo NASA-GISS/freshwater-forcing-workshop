@@ -1,4 +1,6 @@
 
+#+PROPERTY: header-args:jupyter-python+ :session fw-forcing-workshop
+
 * Table of contents                               :toc_3:noexport:
 - [[#introduction][Introduction]]
   - [[#data][Data]]
@@ -24,7 +26,7 @@ xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 226MB
+<xarray.Dataset> Size: 450MB
 Dimensions:              (region: 18, time: 12, latitude: 360, longitude: 720)
 Coordinates:
   ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
@@ -33,7 +35,7 @@ Coordinates:
   ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
     spatial_ref          int8 1B ...
 Data variables:
-    melt                 (region, time, latitude, longitude) float32 224MB ...
+    melt                 (region, time, latitude, longitude) float64 448MB ...
     msk_nemo             (latitude, longitude) float32 1MB ...
     region_name          (region) <U5 360B ...
     region_map           (latitude, longitude) int16 518kB ...
@@ -307,6 +309,19 @@ ds['melt'].attrs['grid_mapping'] = 'spatial_ref'
 ds['melt'].attrs['long_name'] = 'Normalised iceberg melt climatology per region of calving'
 ds['melt'] = ds['melt'].transpose('region','time','latitude','longitude')
 
+
+# normalize
+llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
+earth_rad = 6.371e6 # Earth radius in m
+resdeg = 0.5 # output grid resolution in degrees
+cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
+ds['area'] = (('latitude','longitude'), cell_area)
+attrs = ds['melt'].attrs
+ds['melt'] = (ds['melt']*ds['area']) / ((ds['melt']*ds['area']).sum()) / ds['area']
+ds['melt'].attrs = attrs
+ds = ds.drop_vars('area')
+
+!cp ~/data/Mathiot_2023/regions*.tif ./tmp
 rt = rio.open('./tmp/regions.tif').read(1)[::-1,:]
 rt[rt < 0] = 0
 ds['region_map'] = (('latitude','longitude'), rt)
@@ -352,6 +367,7 @@ ds.attrs['institution'] = 'NASA GISS'
 
 comp = dict(zlib=True, complevel=5)
 encoding = {var: comp for var in ds.drop_vars(['region_name']).data_vars}
+encoding['melt']['dtype'] = 'f4'
 
 !rm ./dat/AQ_iceberg_melt.nc
 ds.to_netcdf('./dat/AQ_iceberg_melt.nc', encoding=encoding)
@@ -412,10 +428,12 @@ variables:
 		spatial_ref:grid_mapping_name = "latitude_longitude" ;
 		spatial_ref:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
 		spatial_ref:long_name = "EPSG:3031" ;
-	short region_map(latitude, longitude) ;
+	float region_map(latitude, longitude) ;
+		region_map:_FillValue = NaNf ;
 		region_map:long_name = "IMBIE regions" ;
 		region_map:coordinates = "spatial_ref" ;
-	short region_map_expanded(latitude, longitude) ;
+	float region_map_expanded(latitude, longitude) ;
+		region_map_expanded:_FillValue = NaNf ;
 		region_map_expanded:long_name = "IMBIE regions" ;
 		region_map_expanded:coordinates = "spatial_ref" ;
 
@@ -429,7 +447,7 @@ variables:
 		:geospatial_lon_min = -179.75 ;
 		:geospatial_lon_max = 179.75 ;
 		:Conventions = "CF-1.8" ;
-		:date_created = "20250421T160718Z" ;
+		:date_created = "20260314T155416Z" ;
 		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving" ;
 		:history = "See AQ_iceberg_melt.org" ;
 		:sourc_code_workbook = "See AQ_iceberg_melt.org" ;
@@ -441,8 +459,6 @@ variables:
 		:institution = "NASA GISS" ;
 }
 #+end_example
-
-
 *** Units check
 
 #+BEGIN_SRC jupyter-python :exports both
@@ -455,9 +471,8 @@ llon,llat = np.meshgrid(ds['longitude'].values, ds['latitude'].values)
 earth_rad = 6.371e6 # Earth radius in m
 resdeg = 0.5 # output grid resolution in degrees
 cell_area = np.cos(np.deg2rad(llat)) * earth_rad**2 * np.deg2rad(resdeg)**2
-
 ds['area'] = (('latitude','longitude'), cell_area)
-# print(ds)
+
 print( 'melt', (ds['melt']*ds['area']).sum().values )
 
 times = (ds['melt']*ds['area']).sum(dim=['latitude','longitude','region'])
@@ -468,9 +483,9 @@ print( 'melt rois', rois.values, rois.sum().values)
 #+END_SRC
 
 #+RESULTS:
-: melt 0.989742102609713
-: melt times [0.21008673 0.20930613 0.1380628  0.07019004 0.0393484  0.03732747
-:  0.02741233 0.02707993 0.02636447 0.03068494 0.05382992 0.12004895] 0.9897421026097116
-: melt rois [0.04957716 0.02489026 0.04744073 0.06769404 0.08279573 0.06925033
-:  0.00440376 0.04834739 0.09674372 0.06607943 0.12372214 0.01435447
-:  0.01112696 0.03560035 0.01393721 0.14893319 0.04256935 0.04227588] 0.9897421026097117
+: melt 0.9999999999999993
+: melt times [0.21226412 0.21147542 0.13949372 0.0709175  0.03975621 0.03771434
+:  0.02769643 0.02736059 0.02663772 0.03100297 0.05438782 0.12129316] 0.9999999999999988
+: melt rois [0.05009098 0.02514823 0.04793241 0.06839564 0.08365384 0.06996806
+:  0.0044494  0.04884848 0.09774639 0.0667643  0.12500442 0.01450325
+:  0.01124228 0.03596932 0.01408166 0.15047677 0.04301055 0.04271403] 0.9999999999999989
