@@ -26,18 +26,18 @@ xr.open_dataset('./dat/AQ_iceberg_melt.nc')
 
 #+RESULTS:
 #+begin_example
-<xarray.Dataset> Size: 450MB
+<xarray.Dataset> Size: 226MB
 Dimensions:              (region: 18, time: 12, latitude: 360, longitude: 720)
 Coordinates:
-  ,* longitude            (longitude) float64 6kB -179.8 -179.2 ... 179.2 179.8
-  ,* latitude             (latitude) float64 3kB -89.75 -89.25 ... 89.25 89.75
+  ,* longitude            (longitude) float32 3kB -179.8 -179.2 ... 179.2 179.8
+  ,* latitude             (latitude) float32 1kB -89.75 -89.25 ... 89.25 89.75
   ,* region               (region) int32 72B 1 2 3 4 5 6 7 ... 13 14 15 16 17 18
   ,* time                 (time) int8 12B 1 2 3 4 5 6 7 8 9 10 11 12
-    spatial_ref          int8 1B ...
 Data variables:
-    melt                 (region, time, latitude, longitude) float64 448MB ...
+    melt                 (region, time, latitude, longitude) float32 224MB ...
     msk_nemo             (latitude, longitude) float32 1MB ...
     region_name          (region) <U5 360B ...
+    spatial_ref          int8 1B ...
     region_map           (latitude, longitude) int16 518kB ...
     region_map_expanded  (latitude, longitude) int16 518kB ...
 Attributes: (12/19)
@@ -237,7 +237,7 @@ for roi in tqdm(range(19)):
                       vmax = np.log10(mmax),
                       transform = ccrs.PlateCarree())
         
-        ax.coastlines()
+        ax.coastlines(resolution='110m')
         ax.set_extent([-180,180,-90,-50], crs=ccrs.PlateCarree())
 
         ax.set_title(title)
@@ -259,8 +259,8 @@ plt.subplots_adjust(wspace=-0.935, hspace=0.1)
 
 #+RESULTS:
 :RESULTS:
-: 100% 19/19 [29:50<00:00, 94.22s/it] 
-[[./fig/AQ_berg_melt.png]]
+: 100% 19/19 [19:00<00:00, 60.02s/it] 
+[[file:./fig/AQ_berg_melt.png]]
 :END:
 
 
@@ -275,18 +275,12 @@ import xarray as xr
 import numpy as np
 import datetime
 
-ds = xr.open_dataset('~/data/Mathiot_2023/iceberg_melt_pattern_SH_per_basin.nc')
+ds = xr.open_dataset('~/data/Mathiot_2023/iceberg_melt_pattern_SH_per_basin_v2.1.nc')
 
 # add projection metadata
 ds = ds.rio.write_crs('epsg:4326') # create ds['spatial_ref']
 ds = ds.rio.set_spatial_dims(x_dim='longitude', y_dim='latitude') # or ('lon','lat') and only maybe needed
 ds['spatial_ref'] = ds['spatial_ref'].astype(np.byte)
-
-# provide cell center values at all coordinates
-ds = ds.pad(latitude=(0, 1), longitude=(0,1))  # Add one column at the end
-ds['latitude'] = np.linspace(-89.75, 89.75, num=360)
-ds['longitude'] = np.linspace(-179.75, 179.75, num=720)
-
 ds['time'] = (('time'), np.arange(12).astype(np.int8)+1)
 
 # Rignot basins are 1 through 18, not 0 through 17
@@ -366,8 +360,10 @@ ds.attrs['creator_email'] = 'ken.mankoff@nasa.gov'
 ds.attrs['institution'] = 'NASA GISS'
 
 comp = dict(zlib=True, complevel=5)
-encoding = {var: comp for var in ds.drop_vars(['region_name']).data_vars}
+encoding = {var: comp.copy() for var in ds.drop_vars(['region_name']).data_vars}
 encoding['melt']['dtype'] = 'f4'
+encoding['region_map']['dtype'] = 'i2'
+encoding['region_map_expanded']['dtype'] = 'i2'
 
 !rm ./dat/AQ_iceberg_melt.nc
 ds.to_netcdf('./dat/AQ_iceberg_melt.nc', encoding=encoding)
@@ -389,27 +385,24 @@ variables:
 		melt:comment = "The spatial integral on the spherical Earth summed over the 12 months and all regions is equal to 1.0" ;
 		melt:units = "m-2" ;
 		melt:grid_mapping = "spatial_ref" ;
-		melt:coordinates = "spatial_ref" ;
 	float msk_nemo(latitude, longitude) ;
 		msk_nemo:_FillValue = NaNf ;
 		msk_nemo:long_name = "Original land/sea mask in the NEMO simulation" ;
-		msk_nemo:coordinates = "spatial_ref" ;
 	string region_name(region) ;
 		region_name:long_name = "IMBIE regions" ;
 		region_name:standard_name = "region" ;
-		region_name:coordinates = "spatial_ref" ;
-	double longitude(longitude) ;
-		longitude:_FillValue = NaN ;
-		longitude:standard_name = "longitude" ;
+	float longitude(longitude) ;
+		longitude:_FillValue = NaNf ;
 		longitude:long_name = "longitude" ;
-		longitude:axis = "X" ;
 		longitude:units = "degrees_east" ;
-	double latitude(latitude) ;
-		latitude:_FillValue = NaN ;
-		latitude:standard_name = "latitude" ;
+		longitude:axis = "X" ;
+		longitude:standard_name = "longitude" ;
+	float latitude(latitude) ;
+		latitude:_FillValue = NaNf ;
 		latitude:long_name = "latitude" ;
-		latitude:axis = "Y" ;
 		latitude:units = "degrees_north" ;
+		latitude:axis = "Y" ;
+		latitude:standard_name = "latitude" ;
 	int region(region) ;
 		region:long_name = "Region IDs" ;
 		region:comment = "IMBIE2 basin (https://doi.org/10.1038/s41586-018-0179-y)" ;
@@ -428,26 +421,22 @@ variables:
 		spatial_ref:grid_mapping_name = "latitude_longitude" ;
 		spatial_ref:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
 		spatial_ref:long_name = "EPSG:3031" ;
-	float region_map(latitude, longitude) ;
-		region_map:_FillValue = NaNf ;
+	short region_map(latitude, longitude) ;
 		region_map:long_name = "IMBIE regions" ;
-		region_map:coordinates = "spatial_ref" ;
-	float region_map_expanded(latitude, longitude) ;
-		region_map_expanded:_FillValue = NaNf ;
+	short region_map_expanded(latitude, longitude) ;
 		region_map_expanded:long_name = "IMBIE regions" ;
-		region_map_expanded:coordinates = "spatial_ref" ;
 
 // global attributes:
 		:description = "Annual JRA55 climatology" ;
 		string :original_data = "NEMO 0.25° simulations by Anna Olive-Abello (in preparation)" ;
 		:script_used = "remap_per_basin.py" ;
 		:processed_by = "Nicolas Jourdain <nicolas.jourdain@univ-grenoble-alpes.fr>" ;
-		:geospatial_lat_min = -89.75 ;
-		:geospatial_lat_max = 89.75 ;
-		:geospatial_lon_min = -179.75 ;
-		:geospatial_lon_max = 179.75 ;
+		:geospatial_lat_min = -89.75f ;
+		:geospatial_lat_max = 89.75f ;
+		:geospatial_lon_min = -179.75f ;
+		:geospatial_lon_max = 179.75f ;
 		:Conventions = "CF-1.8" ;
-		:date_created = "20260314T155416Z" ;
+		:date_created = "20260701T020719Z" ;
 		:title = "Normalised iceberg melt climatology in the Southern Hemisphere per month and region of calving" ;
 		:history = "See AQ_iceberg_melt.org" ;
 		:sourc_code_workbook = "See AQ_iceberg_melt.org" ;
@@ -483,9 +472,10 @@ print( 'melt rois', rois.values, rois.sum().values)
 #+END_SRC
 
 #+RESULTS:
-: melt 0.9999999999999993
-: melt times [0.21226412 0.21147542 0.13949372 0.0709175  0.03975621 0.03771434
-:  0.02769643 0.02736059 0.02663772 0.03100297 0.05438782 0.12129316] 0.9999999999999988
-: melt rois [0.05009098 0.02514823 0.04793241 0.06839564 0.08365384 0.06996806
-:  0.0044494  0.04884848 0.09774639 0.0667643  0.12500442 0.01450325
-:  0.01124228 0.03596932 0.01408166 0.15047677 0.04301055 0.04271403] 0.9999999999999989
+: melt 1.000000004310112
+: melt times [0.21340232 0.21160654 0.14007841 0.07255956 0.04004069 0.03764511
+:  0.02656431 0.02727616 0.02530672 0.02914711 0.05298608 0.12338698] 1.0000000043101118
+: melt rois [0.04676462 0.02450083 0.04550505 0.0644929  0.08695534 0.07082969
+:  0.0043351  0.04548241 0.10067929 0.06859701 0.13007731 0.01477399
+:  0.00976437 0.03826817 0.01450819 0.14938534 0.04247963 0.04260078] 1.0000000043101118
+
