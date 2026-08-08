@@ -28,8 +28,22 @@ g.mapset -c flood
 
 v.in.ogr input=${DATADIR}/IMBIE/Rignot/ANT_Basins_IMBIE2_v1.6.shp output=rignot
 g.region vector=rignot res=1000 -pa
-v.to.rast input=rignot output=ROI2 use=cat where='cat > 1'
-r.mapcalc "ROIs = ROI2-1"
+
+v.db.addcolumn map=rignot columns="subregion_num integer"
+
+# Add an ID based on alphabetic order
+n=1
+while IFS= read -r subregion; do
+  v.db.update map=rignot column=subregion_num value=$n where="Subregion='$subregion'"
+  ((n++))
+done < <(v.db.select map=rignot column=Subregion \
+                     separator=pipe \
+                     where="Subregion IS NOT NULL" |
+           sort -u)
+v.db.select map=rignot
+
+v.to.rast input=rignot output=ROIs use=attr attribute_column=subregion_num where='cat > 1'
+r.mapcalc "regions = ROIs-1"
 r.grow input=ROIs output=ROIs_grow radius=5000
 r.mapcalc "regions = int(ROIs_grow)"
 r.out.gdal -c -m  input=regions output=dat/AQ_regions_3031_flood.nc format=netCDF createopt="BAND_NAMES=ocean_regions"
